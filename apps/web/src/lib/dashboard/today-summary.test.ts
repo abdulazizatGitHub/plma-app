@@ -1,6 +1,6 @@
 import type { HabitDefinitionDto, HabitLogDto } from "@life/shared";
 import { describe, expect, it } from "vitest";
-import { buildTodayDashboard } from "./today-summary";
+import { buildHabitHistoryStrips, buildTodayDashboard } from "./today-summary";
 
 const USER_ID = "123e4567-e89b-42d3-a456-556642440000";
 
@@ -392,5 +392,47 @@ describe("buildTodayDashboard — action metadata (habitDefinitionId/counter/ava
     expect(rows.find((r) => r.key === "study")?.available).toBe(false);
     // Every wired row is available by default (field simply absent/undefined).
     expect(rows.find((r) => r.key === "exercise")?.available).toBeUndefined();
+  });
+});
+
+describe("buildHabitHistoryStrips", () => {
+  it("returns `days` entries ending on `endDate`, oldest first", () => {
+    const strips = buildHabitHistoryStrips(ALL_DEFS, [], 7, MONDAY);
+    expect(strips.exercise).toHaveLength(7);
+  });
+
+  it("defaults to all-false when there are no logs", () => {
+    const strips = buildHabitHistoryStrips(ALL_DEFS, [], 7, MONDAY);
+    expect(strips.exercise).toEqual([false, false, false, false, false, false, false]);
+  });
+
+  it("marks only the specific days a habit was completed, in the right position", () => {
+    // MONDAY = 2026-09-28; two days prior is 2026-09-26 (index 5 of a 7-day
+    // window ending on MONDAY, since the window is [MON-6 .. MON]).
+    const log = makeLog({
+      id: "hist-1",
+      habitDefinitionId: EXERCISE_DEF.id,
+      logDate: "2026-09-26",
+      payload: { completed: true },
+    });
+    const strips = buildHabitHistoryStrips(ALL_DEFS, [log], 7, MONDAY);
+    expect(strips.exercise).toEqual([
+      false, // 09-22
+      false, // 09-23
+      false, // 09-24
+      false, // 09-25
+      true, // 09-26 <- completed
+      false, // 09-27
+      false, // 09-28 (today, MONDAY)
+    ]);
+  });
+
+  it("defaults `days` to 7 and `endDate` to today without throwing", () => {
+    expect(() => buildHabitHistoryStrips(ALL_DEFS, [])).not.toThrow();
+  });
+
+  it("supports a custom window length", () => {
+    const strips = buildHabitHistoryStrips(ALL_DEFS, [], 3, MONDAY);
+    expect(strips.exercise).toHaveLength(3);
   });
 });

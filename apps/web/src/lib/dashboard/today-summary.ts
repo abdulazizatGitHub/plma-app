@@ -1,5 +1,11 @@
 import type { HabitDefinitionDto, HabitLogDto } from "@life/shared";
-import { countPrayersByStatus, isFriday, isQuranLogDone, todayLocalDate } from "@life/shared";
+import {
+  countPrayersByStatus,
+  isFriday,
+  isQuranLogDone,
+  toLocalDateString,
+  todayLocalDate,
+} from "@life/shared";
 
 export type DashboardRow = {
   key: string;
@@ -225,6 +231,33 @@ export function buildTodayDashboard(
     totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
 
   return { rows, completionPercent };
+}
+
+/**
+ * Per-row done/not-done for each of the last `days` days (oldest first,
+ * ending at `endDate` inclusive), keyed by DashboardRow.key. Reuses
+ * buildTodayDashboard's own per-day logic so a row's "done" definition
+ * never drifts between the today view and its history strip.
+ */
+export function buildHabitHistoryStrips(
+  definitions: HabitDefinitionDto[],
+  logs: HabitLogDto[],
+  days = 7,
+  endDate = todayLocalDate(),
+): Record<string, boolean[]> {
+  const [year, month, day] = endDate.split("-").map(Number);
+  const dates = Array.from({ length: days }, (_, i) =>
+    toLocalDateString(new Date(year, month - 1, day - (days - 1 - i))),
+  );
+
+  const perDate = dates.map((date) => buildTodayDashboard(definitions, logs, date));
+  const result: Record<string, boolean[]> = {};
+  for (const row of perDate[perDate.length - 1]?.rows ?? []) {
+    result[row.key] = perDate.map(
+      (d) => d.rows.find((r) => r.key === row.key)?.done ?? false,
+    );
+  }
+  return result;
 }
 
 export { todayLocalDate };
