@@ -187,3 +187,27 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Liquid Glass, restricted to the functional layer (bottom nav) per Apple's
+ * HIG: "Glass on app backgrounds, cards, list rows, or content containers
+ * is a defect." Never apply this class to content-layer surfaces.
+ */
+.glass-nav {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+/* No `prefers-reduced-transparency` media feature exists on the web; treat
+   forced/high-contrast preferences as the closest available signal and
+   fall back to an opaque bar. */
+@media (prefers-contrast: more), (forced-colors: active) {
+  .glass-nav {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--line);
+  }
+}

@@ -359,3 +359,38 @@ describe("buildTodayDashboard — completion percentage", () => {
     expect(() => buildTodayDashboard([], [])).not.toThrow();
   });
 });
+
+describe("buildTodayDashboard — action metadata (habitDefinitionId/counter/available)", () => {
+  it("carries habitDefinitionId for wired boolean habits, undefined when unconfigured", () => {
+    const { rows } = buildTodayDashboard(ALL_DEFS, [], MONDAY);
+    expect(rows.find((r) => r.key === "exercise")?.habitDefinitionId).toBe(EXERCISE_DEF.id);
+    expect(rows.find((r) => r.key === "make-bed")?.habitDefinitionId).toBe(MAKE_BED_DEF.id);
+    expect(rows.find((r) => r.key === "no-phone")?.habitDefinitionId).toBe(NO_PHONE_DEF.id);
+
+    const withoutExercise = ALL_DEFS.filter((d) => d.id !== EXERCISE_DEF.id);
+    expect(
+      buildTodayDashboard(withoutExercise, [], MONDAY).rows.find((r) => r.key === "exercise")
+        ?.habitDefinitionId,
+    ).toBeUndefined();
+  });
+
+  it("carries actual/goal counter metadata for steps and water", () => {
+    const log = makeLog({
+      id: "log-19",
+      habitDefinitionId: WATER_DEF.id,
+      logDate: MONDAY,
+      payload: { value: 3 },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [log], MONDAY).rows.find((r) => r.key === "water");
+    expect(row?.habitDefinitionId).toBe(WATER_DEF.id);
+    expect(row?.counter).toEqual({ actual: 3, goal: 8 });
+  });
+
+  it("marks reading and study as unavailable (no habit definition wired yet)", () => {
+    const { rows } = buildTodayDashboard(ALL_DEFS, [], MONDAY);
+    expect(rows.find((r) => r.key === "reading")?.available).toBe(false);
+    expect(rows.find((r) => r.key === "study")?.available).toBe(false);
+    // Every wired row is available by default (field simply absent/undefined).
+    expect(rows.find((r) => r.key === "exercise")?.available).toBeUndefined();
+  });
+});

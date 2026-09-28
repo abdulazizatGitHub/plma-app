@@ -23,10 +23,12 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+10px)]"
       aria-label="Main"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1">
+      <ul
+        className="glass-nav flex max-w-lg flex-1 items-stretch justify-around gap-0.5 rounded-[28px] px-1.5 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+      >
         {tabs.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/"
@@ -38,8 +40,8 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px] font-medium transition-colors ${
-                  active ? "text-accent" : "text-ink-muted hover:text-ink"
+                className={`flex min-h-13 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors ${
+                  active ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 <Icon

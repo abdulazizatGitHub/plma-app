@@ -7,6 +7,12 @@ export type DashboardRow = {
   value: string;
   done: boolean;
   count?: { completed: number; total: number };
+  /** Present only when this row is backed by a real habit definition the user can act on directly. */
+  habitDefinitionId?: string;
+  /** Present only for counter-tracked rows (steps, water) — lets the UI offer a quick increment. */
+  counter?: { actual: number; goal: number };
+  /** False for rows shown for CRD completeness but not yet wired to a habit definition (reading, study). */
+  available?: boolean;
 };
 
 function defBySlug(defs: HabitDefinitionDto[], slug: string) {
@@ -71,7 +77,7 @@ function counterSummary(
   fallbackGoal: number,
   unitLabel: string,
 ) {
-  if (!def) return { value: "—", done: false, completed: 0, total: 1 };
+  if (!def) return { value: "—", done: false, completed: 0, total: 1, id: undefined, actual: 0, goal: 0 };
   const goal = Number(def.config?.goal ?? fallbackGoal);
   const log = logForDef(logs, def.id);
   const actual = Number(log?.payload?.value ?? 0);
@@ -84,6 +90,9 @@ function counterSummary(
     done,
     completed: done ? 1 : 0,
     total: 1,
+    id: def.id,
+    actual,
+    goal,
   };
 }
 
@@ -93,7 +102,7 @@ function booleanSummary(
   labelDone = "Completed",
   labelPending = "Pending",
 ) {
-  if (!def) return { value: "—", done: false, completed: 0, total: 1 };
+  if (!def) return { value: "—", done: false, completed: 0, total: 1, id: undefined };
   const log = logForDef(logs, def.id);
   const completed = log?.payload?.completed === true;
   return {
@@ -101,6 +110,7 @@ function booleanSummary(
     done: completed,
     completed: completed ? 1 : 0,
     total: 1,
+    id: def.id,
   };
 }
 
@@ -147,32 +157,56 @@ export function buildTodayDashboard(
       count: { completed: prayer.completed, total: prayer.total },
     },
     { key: "quran", label: "Quran", value: quran.value, done: quran.done },
-    { key: "steps", label: "Steps", value: steps.value, done: steps.done },
-    { key: "water", label: "Water", value: water.value, done: water.done },
+    {
+      key: "steps",
+      label: "Steps",
+      value: steps.value,
+      done: steps.done,
+      habitDefinitionId: steps.id,
+      counter: steps.id ? { actual: steps.actual, goal: steps.goal } : undefined,
+    },
+    {
+      key: "water",
+      label: "Water",
+      value: water.value,
+      done: water.done,
+      habitDefinitionId: water.id,
+      counter: water.id ? { actual: water.actual, goal: water.goal } : undefined,
+    },
     {
       key: "exercise",
       label: "Exercise",
       value: exercise.value,
       done: exercise.done,
+      habitDefinitionId: exercise.id,
     },
     {
       key: "reading",
       label: "Reading",
-      value: "Pending",
+      value: "Not tracked yet",
       done: false,
+      available: false,
     },
-    { key: "study", label: "Study", value: "0m", done: false },
+    {
+      key: "study",
+      label: "Study",
+      value: "Not tracked yet",
+      done: false,
+      available: false,
+    },
     {
       key: "make-bed",
       label: "Make bed",
       value: makeBed.value,
       done: makeBed.done,
+      habitDefinitionId: makeBed.id,
     },
     {
       key: "no-phone",
       label: "No phone",
       value: noPhone.value,
       done: noPhone.done,
+      habitDefinitionId: noPhone.id,
     },
   ];
 
