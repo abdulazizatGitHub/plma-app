@@ -40,6 +40,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Fetch-on-mount: setState happens after the internal `await`, not
+    // synchronously within this effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refresh();
     const onOnline = () => void refresh();
     window.addEventListener("online", onOnline);

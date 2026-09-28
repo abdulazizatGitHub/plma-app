@@ -6,7 +6,9 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project web",
     "postinstall": "node -e \"const fs=require('fs');const p=require('path');const dist=p.join(require.resolve('sql.js'),'..','..','dist');const dest=p.join(process.cwd(),'public');for(const f of ['sql-wasm.wasm','sql-wasm-browser.wasm']){const s=p.join(dist,f);if(fs.existsSync(s))fs.copyFileSync(s,p.join(dest,f));}\""
   },
   "dependencies": {

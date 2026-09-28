@@ -45,7 +45,7 @@ function mapLog(row: typeof habitLogs.$inferSelect) {
   };
 }
 
-export async function habitRoutes(app: FastifyInstance) {
+export function habitRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireApiKey);
 
   app.get("/v1/habits/definitions", async () => {

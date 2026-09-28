@@ -10,7 +10,7 @@ function toIso(value: Date | null) {
   return value ? value.toISOString() : null;
 }
 
-export async function syncRoutes(app: FastifyInstance) {
+export function syncRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireApiKey);
 
   app.get("/v1/sync/pull", async (request, reply) => {

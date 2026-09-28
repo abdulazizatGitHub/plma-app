@@ -33,6 +33,9 @@ export function TodayDashboard() {
   }, []);
 
   useEffect(() => {
+    // Fetch-on-mount: setState happens after the internal `await`, not
+    // synchronously within this effect body.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load, syncOnline]);
 

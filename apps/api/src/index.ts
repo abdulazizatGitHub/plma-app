@@ -15,7 +15,7 @@ await app.register(cors, {
   origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
 });
 
-app.get("/health", async () => {
+app.get("/health", () => {
   const payload = {
     status: "ok" as const,
     service: "life-api",
