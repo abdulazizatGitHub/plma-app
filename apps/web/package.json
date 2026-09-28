@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "node -e \"const fs=require('fs');const p=require('path');const s=p.join(require.resolve('sql.js'),'..','..','dist','sql-wasm.wasm');const d=p.join(process.cwd(),'public','sql-wasm.wasm');if(fs.existsSync(s))fs.copyFileSync(s,d);\""
+    "postinstall": "node -e \"const fs=require('fs');const p=require('path');const dist=p.join(require.resolve('sql.js'),'..','..','dist');const dest=p.join(process.cwd(),'public');for(const f of ['sql-wasm.wasm','sql-wasm-browser.wasm']){const s=p.join(dist,f);if(fs.existsSync(s))fs.copyFileSync(s,p.join(dest,f));}\""
   },
   "dependencies": {
     "@life/shared": "*",
