@@ -1,6 +1,6 @@
 # Progress tracker
 
-Last updated: **2026-09-27**
+Last updated: **2026-09-28**
 
 ## Overall
 
@@ -8,7 +8,7 @@ Last updated: **2026-09-27**
 |-----------|--------|
 | Phase 01 | Done |
 | Phase 02 | Done — Supabase session pooler + migrations |
-| Phase 03 | In progress — home wired to synced habits |
+| Phase 03 | Done (pending manual browser confirmation — see phase doc) — home wired to synced habits |
 
 ---
 
@@ -18,15 +18,15 @@ Last updated: **2026-09-27**
 |-------|-----|--------|------------|
 | 01 | [foundation](./docs/phases/phase-01-foundation.md) | Done | Yes |
 | 02 | [data-sync](./docs/phases/phase-02-data-sync.md) | Done | Yes |
-| 03 | [shell-home](./docs/phases/phase-03-shell-home.md) | In progress | Partial |
+| 03 | [shell-home](./docs/phases/phase-03-shell-home.md) | Done (verify in browser) | Yes |
 | 04+ | … | Not started | — |
 
 ---
 
 ## Current sprint
 
-- **Active:** Phase 03 — home dashboard from local SQLite + Supabase sync
-- **Next:** Phase 04 — prayer & Quran logging UI
+- **Active:** Phase 04 — prayer & Quran logging UI
+- **Next:** Phase 05 — health (steps, water, exercise, sleep)
 
 ---
 

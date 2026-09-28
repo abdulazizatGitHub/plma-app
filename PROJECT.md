@@ -24,7 +24,7 @@ _Blockers prevent phase or release progress._
 
 | ID | Opened | Status | Severity | Summary | Steps / notes | Fix reference |
 |----|--------|--------|----------|---------|---------------|---------------|
-| — | — | — | — | _None yet_ | — | — |
+| BUG-001 | 2026-09-28 | fixed | major | Home dashboard hangs forever on "Loading habits…" | `postinstall` only copied `dist/sql-wasm.wasm`; webpack resolves sql.js's `browser` export to `sql-wasm-browser.js`, which fetches `sql-wasm-browser.wasm` (never present in `public/`) → 404 → WASM loader hangs silently, `getLocalDb()` never resolves | apps/web/package.json postinstall, commit ba755e4 |
 
 **Severity:** `critical` (data loss / security / unusable) · `major` · `minor` · `trivial`
 

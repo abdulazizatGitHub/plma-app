@@ -102,6 +102,14 @@ Use this template for each decision:
 - **Consequences:** Slightly slower dev/build vs Turbopack; SW typed with `/// <reference lib="webworker" />` in `src/sw.ts`.
 - **Related:** Phase 01, T-01-03
 
+### 2026-09-28 — Git repo initialized; sql.js browser WASM postinstall fixed
+
+- **Context:** Repo had no version control despite phases 01–02 shipped. Separately, verifying Phase 03 acceptance in a real browser found the home dashboard stuck permanently on "Loading habits…" — `getLocalDb()` never resolves.
+- **Decision:** `git init` + baseline commit of current tree. Root-caused the hang: webpack resolves `sql.js`'s `browser` export condition to `dist/sql-wasm-browser.js`, whose glue code fetches `sql-wasm-browser.wasm`, but `apps/web/package.json`'s `postinstall` only copied `dist/sql-wasm.wasm` into `public/`. Fixed by copying both wasm variants.
+- **Alternatives considered:** Force sql.js import to resolve to the non-browser build instead (rejected — fights the bundler's default resolution, more fragile long-term).
+- **Consequences:** Anyone who already ran `npm install` before this fix needs to rerun `npm run postinstall -w web` (or reinstall) to pick up `public/sql-wasm-browser.wasm`.
+- **Related:** Phase 03, PROJECT.md BUG-001
+
 ---
 
 <!-- Add new decisions below this line, newest first within each phase or chronologically as preferred. -->
