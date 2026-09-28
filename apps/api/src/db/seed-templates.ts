@@ -1,0 +1,90 @@
+import type { HabitDefinition } from "./schema.js";
+
+export type HabitTemplate = Omit<
+  HabitDefinition,
+  "id" | "userId" | "createdAt" | "updatedAt" | "deletedAt" | "archivedAt"
+>;
+
+export const systemHabitTemplates: HabitTemplate[] = [
+  {
+    slug: "prayer",
+    name: "Daily prayers",
+    category: "faith",
+    trackingMethod: "prayer_set",
+    frequency: "daily",
+    config: { prayers: ["fajr", "zuhr", "asr", "maghrib", "isha"] },
+    isSystem: true,
+  },
+  {
+    slug: "quran-mulk",
+    name: "Surah Mulk",
+    category: "faith",
+    trackingMethod: "boolean",
+    frequency: "nightly",
+    config: {},
+    isSystem: true,
+  },
+  {
+    slug: "quran-kahf",
+    name: "Surah Kahf",
+    category: "faith",
+    trackingMethod: "boolean",
+    frequency: "weekly_friday",
+    config: {},
+    isSystem: true,
+  },
+  {
+    slug: "steps",
+    name: "Steps",
+    category: "health",
+    trackingMethod: "counter",
+    frequency: "daily",
+    config: { goal: 10000, unit: "steps" },
+    isSystem: true,
+  },
+  {
+    slug: "water",
+    name: "Water",
+    category: "health",
+    trackingMethod: "counter",
+    frequency: "daily",
+    config: { goal: 8, unit: "glasses" },
+    isSystem: true,
+  },
+  {
+    slug: "exercise",
+    name: "Exercise",
+    category: "health",
+    trackingMethod: "boolean_duration",
+    frequency: "daily",
+    config: {},
+    isSystem: true,
+  },
+  {
+    slug: "sleep",
+    name: "Sleep",
+    category: "health",
+    trackingMethod: "sleep_window",
+    frequency: "daily",
+    config: { wakeGoal: "06:00" },
+    isSystem: true,
+  },
+  {
+    slug: "make-bed",
+    name: "Make bed",
+    category: "personal",
+    trackingMethod: "boolean",
+    frequency: "daily",
+    config: {},
+    isSystem: true,
+  },
+  {
+    slug: "no-phone-hour",
+    name: "1 hour no phone",
+    category: "personal",
+    trackingMethod: "timer",
+    frequency: "daily",
+    config: { durationMinutes: 60 },
+    isSystem: true,
+  },
+];
