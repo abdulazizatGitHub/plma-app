@@ -110,6 +110,17 @@ Use this template for each decision:
 - **Consequences:** Anyone who already ran `npm install` before this fix needs to rerun `npm run postinstall -w web` (or reinstall) to pick up `public/sql-wasm-browser.wasm`.
 - **Related:** Phase 03, PROJECT.md BUG-001
 
+### 2026-09-28 — Testing/lint/typecheck infra; Phase 04 prayer & Quran
+
+- **Context:** No test runner, no lint config outside `apps/web`, and `tsc --noEmit` was doubling as "lint" — no rule actually enforced "no `any`" or caught unused/type errors distinctly from a lint pass. Phase 04 (CRD §2–3) needed prayer/Quran logging + a monthly report.
+- **Decision:**
+  - **Vitest**, one root `vitest.config.ts` with per-workspace projects (`shared`/`api` on `node`, `web` on `jsdom` + React Testing Library). Each workspace gets its own `test` script; root `npm test` runs all.
+  - **ESLint**: root `eslint.config.mjs` (typescript-eslint, `no-explicit-any: error`) covers `apps/api` + `packages/shared`; `apps/web` keeps its own `eslint-config-next` config with the same `no-explicit-any` rule added. `lint` (eslint) and `typecheck` (`tsc --noEmit`) are now separate scripts per workspace, not aliased to each other.
+  - **Phase 04 data model:** prayer/Quran are ordinary `habit_definitions` rows (slugs `prayer`, `quran-mulk`, `quran-kahf` — already seeded in Phase 02) logged through the existing generic `habit_logs` sync path. No new API routes or tables — matches DATABASE_STANDARDS.md's "dedicated tables optional" note. Payload shapes (`prayerLogPayloadSchema`, `quranLogPayloadSchema`) and the pure aggregation (`computeMonthlyPrayerReport`, `isFriday`) live in `packages/shared` so client and any future server-side stats endpoint share one validated, tested implementation.
+- **Alternatives considered:** Dedicated `prayer_logs`/`quran_logs` Postgres tables (deferred — no proven need yet, would duplicate the sync plumbing); Jest instead of Vitest (rejected — Vite/Next-native tooling, faster, no extra transform config); component tests for every screen (deferred — reserved for components with real interaction logic like `PrayerTracker`; static shells stay covered by typecheck + lint only).
+- **Consequences:** New free-text fields must validate through a shared Zod schema (see `validateCustomHabitName`) rather than ad hoc checks. `apps/web/vitest.setup.ts` registers RTL's `cleanup()` — any new component test file gets it for free via the shared setup.
+- **Related:** Phase 04, docs/phases/phase-04-prayer-quran.md
+
 ---
 
 <!-- Add new decisions below this line, newest first within each phase or chronologically as preferred. -->

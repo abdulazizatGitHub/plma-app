@@ -38,3 +38,4 @@ export {
   todayLocalDate,
   isValidLocalDateString,
 } from "./date.js";
+export { slugify, uniqueSlug } from "./slug.js";

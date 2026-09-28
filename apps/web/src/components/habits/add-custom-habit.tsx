@@ -3,19 +3,32 @@
 import { useState } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button } from "@/components/ui/button";
-import { createLocalCustomHabit } from "@/lib/sync/sync-engine";
+import {
+  createLocalCustomHabit,
+  validateCustomHabitName,
+} from "@/lib/sync/sync-engine";
+
+const MAX_NAME_LENGTH = 120;
 
 export function AddCustomHabit() {
   const { refresh } = useAppData();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const trimmed = name.trim();
+  const liveError = name.length > 0 ? validateCustomHabitName(trimmed) : null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
+    const validationError = validateCustomHabitName(trimmed);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setBusy(true);
+    setError(null);
     setMessage(null);
     try {
       await createLocalCustomHabit(trimmed);
@@ -23,24 +36,46 @@ export function AddCustomHabit() {
       setMessage("Saved locally — sync when online to update the cloud.");
       await refresh();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Could not save habit");
+      setError(err instanceof Error ? err.message : "Could not save habit");
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mt-3 space-y-3">
+    <form onSubmit={(e) => void onSubmit(e)} className="mt-3 space-y-3" noValidate>
       <label className="block text-sm text-rose-800/80">
         Custom habit name
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            setError(null);
+          }}
           placeholder="e.g. Skincare"
-          className="mt-1 w-full rounded-2xl border border-rose-100 bg-white px-3 py-2.5 text-sm text-rose-950 outline-none ring-rose-200 focus:ring-2"
+          maxLength={MAX_NAME_LENGTH}
+          aria-invalid={liveError ? true : undefined}
+          aria-describedby={liveError || error ? "custom-habit-error" : undefined}
+          className={`mt-1 w-full rounded-2xl border bg-white px-3 py-2.5 text-sm text-rose-950 outline-none focus:ring-2 ${
+            liveError || error
+              ? "border-red-300 ring-red-200"
+              : "border-rose-100 ring-rose-200"
+          }`}
         />
+        <span className="mt-1 block text-right text-[10px] text-rose-800/40">
+          {name.length}/{MAX_NAME_LENGTH}
+        </span>
       </label>
-      <Button type="submit" disabled={busy || !name.trim()} className="w-full">
+      {liveError || error ? (
+        <p id="custom-habit-error" className="text-xs text-red-600">
+          {error ?? liveError}
+        </p>
+      ) : null}
+      <Button
+        type="submit"
+        disabled={busy || !trimmed || Boolean(liveError)}
+        className="w-full"
+      >
         {busy ? "Saving…" : "Add custom habit"}
       </Button>
       {message ? <p className="text-xs text-rose-800/70">{message}</p> : null}

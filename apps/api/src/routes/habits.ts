@@ -1,6 +1,7 @@
 import {
   createHabitDefinitionSchema,
   upsertHabitLogSchema,
+  uniqueSlug,
 } from "@life/shared";
 import { and, eq, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
@@ -68,16 +69,12 @@ export function habitRoutes(app: FastifyInstance) {
     }
 
     const userId = await ensureDefaultUser();
-    const slug = parsed.data.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
 
     const [row] = await db
       .insert(habitDefinitions)
       .values({
         userId,
-        slug: `${slug}-${crypto.randomUUID().slice(0, 8)}`,
+        slug: uniqueSlug(parsed.data.name, crypto.randomUUID()),
         name: parsed.data.name,
         category: parsed.data.category,
         trackingMethod: parsed.data.trackingMethod,

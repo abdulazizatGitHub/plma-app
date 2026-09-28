@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -62,14 +63,16 @@ export function TodayDashboard() {
           {loading
             ? "Loading habits…"
             : syncOnline
-              ? "Synced with Supabase — tap Refresh after logging (phases 04+)."
+              ? "Synced with Supabase — tap Refresh after logging."
               : "Offline — showing cached habits."}
         </p>
       </Card>
 
       <ul className="space-y-2">
-        {rows.map((item) => (
-          <li key={item.key}>
+        {rows.map((item) => {
+          const linkHref =
+            item.key === "prayer" || item.key === "quran" ? "/prayer" : null;
+          const row = (
             <Card className="flex items-center justify-between py-3">
               <span className="text-sm font-medium text-rose-950/90">
                 {item.label}
@@ -82,8 +85,19 @@ export function TodayDashboard() {
                 {item.value}
               </span>
             </Card>
-          </li>
-        ))}
+          );
+          return (
+            <li key={item.key}>
+              {linkHref ? (
+                <Link href={linkHref} className="block">
+                  {row}
+                </Link>
+              ) : (
+                row
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

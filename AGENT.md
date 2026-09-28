@@ -21,7 +21,7 @@
 
 ## Current status
 
-- **Active phase:** [Phase 03 — Shell & home](./docs/phases/phase-03-shell-home.md)
+- **Active phase:** [Phase 05 — Health](./docs/phases/phase-05-health.md)
 - **Database:** Supabase (session pooler) — see [DATABASE_SETUP.md](./docs/DATABASE_SETUP.md)
 - **Stack:** Node + TS (Fastify), Next.js + TS, Tailwind, Postgres, SQLite (sql.js offline), Serwist PWA
 

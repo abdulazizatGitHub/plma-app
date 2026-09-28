@@ -1,4 +1,5 @@
 import type { HabitDefinitionDto, HabitLogDto } from "@life/shared";
+import { countPrayersByStatus, isFriday, isQuranLogDone, todayLocalDate } from "@life/shared";
 
 export type DashboardRow = {
   key: string;
@@ -6,17 +7,6 @@ export type DashboardRow = {
   value: string;
   done: boolean;
 };
-
-function todayLocalDate(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function isFriday(d = new Date()) {
-  return d.getDay() === 5;
-}
 
 function defBySlug(defs: HabitDefinitionDto[], slug: string) {
   return defs.find((d) => d.slug === slug);
@@ -30,33 +20,29 @@ function prayerSummary(defs: HabitDefinitionDto[], logs: HabitLogDto[]) {
   const def = defBySlug(defs, "prayer");
   if (!def) return { value: "—", done: false, completed: 0, total: 5 };
   const log = logForDef(logs, def.id);
-  const prayers = (log?.payload?.prayers as Record<string, string>) ?? {};
-  const names = ["fajr", "zuhr", "asr", "maghrib", "isha"];
-  const completed = names.filter((p) => prayers[p] === "completed").length;
+  const counts = countPrayersByStatus(log?.payload);
   return {
-    value: `${completed}/5`,
-    done: completed === 5,
-    completed,
+    value: `${counts.completed}/5`,
+    done: counts.completed === 5,
+    completed: counts.completed,
     total: 5,
   };
 }
 
-function quranSummary(defs: HabitDefinitionDto[], logs: HabitLogDto[]) {
+function quranSummary(defs: HabitDefinitionDto[], logs: HabitLogDto[], date: string) {
   const mulk = defBySlug(defs, "quran-mulk");
   const kahf = defBySlug(defs, "quran-kahf");
-  const friday = isFriday();
+  const friday = isFriday(date);
   let done = 0;
   let total = 0;
 
   if (mulk) {
     total += 1;
-    const log = logForDef(logs, mulk.id);
-    if (log?.payload?.completed === true) done += 1;
+    if (isQuranLogDone(logForDef(logs, mulk.id)?.payload)) done += 1;
   }
   if (kahf && friday) {
     total += 1;
-    const log = logForDef(logs, kahf.id);
-    if (log?.payload?.completed === true) done += 1;
+    if (isQuranLogDone(logForDef(logs, kahf.id)?.payload)) done += 1;
   }
 
   const value =
@@ -65,7 +51,7 @@ function quranSummary(defs: HabitDefinitionDto[], logs: HabitLogDto[]) {
       : friday
         ? `${done}/${total}`
         : mulk
-          ? logForDef(logs, mulk.id)?.payload?.completed
+          ? isQuranLogDone(logForDef(logs, mulk.id)?.payload)
             ? "1/1"
             : "0/1"
           : "0/1";
@@ -125,7 +111,7 @@ export function buildTodayDashboard(
   const dayLogs = logs.filter((l) => l.logDate === date);
 
   const prayer = prayerSummary(definitions, dayLogs);
-  const quran = quranSummary(definitions, dayLogs);
+  const quran = quranSummary(definitions, dayLogs, date);
   const steps = counterSummary(
     defBySlug(definitions, "steps"),
     dayLogs,

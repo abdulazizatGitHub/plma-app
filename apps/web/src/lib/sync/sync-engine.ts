@@ -1,6 +1,11 @@
 "use client";
 
-import type { HabitDefinitionDto, HabitLogDto } from "@life/shared";
+import {
+  createHabitDefinitionSchema,
+  uniqueSlug,
+  type HabitDefinitionDto,
+  type HabitLogDto,
+} from "@life/shared";
 import type { Database } from "sql.js";
 import {
   getLocalDb,
@@ -12,7 +17,7 @@ import {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const PENDING_USER = "00000000-0000-0000-0000-000000000001";
 
-function upsertDefinition(db: Database, item: HabitDefinitionDto) {
+export function upsertDefinition(db: Database, item: HabitDefinitionDto) {
   runPersisted(
     db,
     `INSERT INTO habit_definitions (
@@ -50,7 +55,7 @@ function upsertDefinition(db: Database, item: HabitDefinitionDto) {
   }
 }
 
-function upsertLog(db: Database, item: HabitLogDto) {
+export function upsertLog(db: Database, item: HabitLogDto) {
   runPersisted(
     db,
     `INSERT INTO habit_logs (
@@ -75,7 +80,7 @@ function upsertLog(db: Database, item: HabitLogDto) {
   );
 }
 
-function enqueue(
+export function enqueue(
   db: Database,
   entityType: "habit_definition" | "habit_log",
   entityId: string,
@@ -189,21 +194,31 @@ export function getLocalDefinitions(db: Database): HabitDefinitionDto[] {
   return items;
 }
 
+export function validateCustomHabitName(name: string): string | null {
+  const result = createHabitDefinitionSchema.shape.name.safeParse(name);
+  if (result.success) return null;
+  const issue = result.error.issues[0];
+  if (issue?.code === "too_small") return "Habit name can't be empty.";
+  if (issue?.code === "too_big") return "Habit name must be 120 characters or fewer.";
+  return "Enter a valid habit name.";
+}
+
 export async function createLocalCustomHabit(name: string): Promise<HabitDefinitionDto> {
+  const trimmed = name.trim();
+  const validationError = validateCustomHabitName(trimmed);
+  if (validationError) throw new Error(validationError);
+
   const db = await getLocalDb();
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  const slug = `${name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")}-${id.slice(0, 8)}`;
+  const slug = uniqueSlug(trimmed, id);
   const userId = getMeta(db, "user_id") ?? PENDING_USER;
 
   const dto: HabitDefinitionDto = {
     id,
     userId,
     slug,
-    name,
+    name: trimmed,
     category: "custom",
     trackingMethod: "boolean",
     frequency: "daily",
@@ -217,6 +232,43 @@ export async function createLocalCustomHabit(name: string): Promise<HabitDefinit
 
   upsertDefinition(db, dto);
   enqueue(db, "habit_definition", id, dto as unknown as Record<string, unknown>);
+  return dto;
+}
+
+/**
+ * Writes a habit log to the local SQLite store and enqueues it for sync.
+ * Always assigns a fresh id — the (habit_definition_id, log_date) unique
+ * index resolves the upsert, and the pre-existing row's id/created_at are
+ * preserved by the UPDATE branch (see upsertLog).
+ */
+export async function saveHabitLogLocally(
+  habitDefinitionId: string,
+  logDate: string,
+  payload: Record<string, unknown>,
+): Promise<HabitLogDto> {
+  const db = await getLocalDb();
+  const userId = getMeta(db, "user_id") ?? PENDING_USER;
+  let deviceId = getMeta(db, "device_id");
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    setMeta(db, "device_id", deviceId);
+  }
+  const now = new Date().toISOString();
+
+  const dto: HabitLogDto = {
+    id: crypto.randomUUID(),
+    userId,
+    habitDefinitionId,
+    logDate,
+    payload,
+    deviceId,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+  };
+
+  upsertLog(db, dto);
+  enqueue(db, "habit_log", dto.id, dto as unknown as Record<string, unknown>);
   return dto;
 }
 
