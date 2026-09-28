@@ -10,12 +10,9 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-xs font-medium uppercase tracking-widest text-rose-400">
-          Life tracker
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-rose-950">{today}</h1>
-        <p className="mt-1 text-sm text-rose-800/65">
-          Your calm space for habits, faith, and goals.
+        <h1 className="font-display text-2xl font-medium text-ink">{today}</h1>
+        <p className="mt-1 text-sm text-ink-muted">
+          Habits, faith, and goals, one day at a time.
         </p>
       </header>
       <TodayDashboard />

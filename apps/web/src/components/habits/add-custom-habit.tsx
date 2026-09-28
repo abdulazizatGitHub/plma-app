@@ -44,7 +44,7 @@ export function AddCustomHabit() {
 
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="mt-3 space-y-3" noValidate>
-      <label className="block text-sm text-rose-800/80">
+      <label className="block text-sm text-ink-muted">
         Custom habit name
         <input
           value={name}
@@ -56,18 +56,16 @@ export function AddCustomHabit() {
           maxLength={MAX_NAME_LENGTH}
           aria-invalid={liveError ? true : undefined}
           aria-describedby={liveError || error ? "custom-habit-error" : undefined}
-          className={`mt-1 w-full rounded-2xl border bg-white px-3 py-2.5 text-sm text-rose-950 outline-none focus:ring-2 ${
-            liveError || error
-              ? "border-red-300 ring-red-200"
-              : "border-rose-100 ring-rose-200"
+          className={`mt-1 w-full rounded-xl border bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:ring-2 focus:ring-accent/40 ${
+            liveError || error ? "border-danger" : "border-line"
           }`}
         />
-        <span className="mt-1 block text-right text-[10px] text-rose-800/40">
+        <span className="mt-1 block text-right text-[10px] text-ink-muted/70">
           {name.length}/{MAX_NAME_LENGTH}
         </span>
       </label>
       {liveError || error ? (
-        <p id="custom-habit-error" className="text-xs text-red-600">
+        <p id="custom-habit-error" className="text-xs text-danger">
           {error ?? liveError}
         </p>
       ) : null}
@@ -78,7 +76,7 @@ export function AddCustomHabit() {
       >
         {busy ? "Saving…" : "Add custom habit"}
       </Button>
-      {message ? <p className="text-xs text-rose-800/70">{message}</p> : null}
+      {message ? <p className="text-xs text-ink-muted">{message}</p> : null}
     </form>
   );
 }

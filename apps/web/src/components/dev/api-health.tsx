@@ -51,7 +51,7 @@ export function ApiHealth() {
 
   if (error) {
     return (
-      <p className="mt-2 text-sm text-amber-800">
+      <p className="mt-2 text-sm text-warning">
         API offline — run <code className="text-xs">npm run dev</code> at repo
         root. ({error})
       </p>
@@ -59,16 +59,13 @@ export function ApiHealth() {
   }
 
   if (!lines) {
-    return <p className="mt-2 text-sm text-rose-800/60">Checking API…</p>;
+    return <p className="mt-2 text-sm text-ink-muted">Checking API…</p>;
   }
 
   return (
     <ul className="mt-2 space-y-1 text-sm">
       {lines.map((line) => (
-        <li
-          key={line.label}
-          className={line.ok ? "text-emerald-700" : "text-amber-800"}
-        >
+        <li key={line.label} className={line.ok ? "text-success" : "text-warning"}>
           {line.label}: {line.detail}
         </li>
       ))}

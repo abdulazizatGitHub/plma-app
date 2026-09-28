@@ -79,7 +79,13 @@ describe("buildTodayDashboard — empty state", () => {
     const { rows, completionPercent } = buildTodayDashboard([], [], MONDAY);
     expect(completionPercent).toBe(0);
     const prayerRow = rows.find((r) => r.key === "prayer");
-    expect(prayerRow).toEqual({ key: "prayer", label: "Prayer", value: "—", done: false });
+    expect(prayerRow).toEqual({
+      key: "prayer",
+      label: "Prayer",
+      value: "—",
+      done: false,
+      count: { completed: 0, total: 5 },
+    });
   });
 
   it("returns 0% completion when there are definitions but zero logs", () => {

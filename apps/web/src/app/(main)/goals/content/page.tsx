@@ -4,15 +4,14 @@ export default function ContentGoalsPage() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-semibold text-rose-950">Content</h1>
-        <p className="text-sm text-rose-800/65">
-          Pipeline and analytics — Phase 09.
-        </p>
+        <h1 className="font-display text-2xl font-medium text-ink">Content</h1>
+        <p className="mt-1 text-sm text-ink-muted">Pipeline and analytics arrive in Phase 09.</p>
       </header>
       <Card>
         <CardTitle>Coming soon</CardTitle>
-        <p className="mt-2 text-sm text-rose-800/70">
-          Idea → To Shoot → Editing → Ready → Scheduled → Uploaded
+        <p className="mt-2 text-sm text-ink-muted">
+          Idea, to shoot, editing, ready, scheduled, uploaded — each video moves through these
+          stages.
         </p>
       </Card>
     </div>

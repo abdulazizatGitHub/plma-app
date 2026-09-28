@@ -10,9 +10,11 @@ import {
   type PrayerName,
   type PrayerStatus,
 } from "@life/shared";
+import { BookOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Card, CardTitle } from "@/components/ui/card";
+import { StatNumber } from "@/components/ui/stat-number";
 import { getLocalHabitLogs } from "@/lib/db/habit-logs-local";
 import { getLocalDb } from "@/lib/db/local-db";
 import {
@@ -37,9 +39,9 @@ const NEXT_STATUS: Record<PrayerStatus, PrayerStatus> = {
 };
 
 const STATUS_STYLES: Record<PrayerStatus, string> = {
-  pending: "bg-rose-50 text-rose-800/60 border-rose-100",
-  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  missed: "bg-rose-100 text-rose-700 border-rose-200",
+  pending: "bg-surface-sunken text-ink-muted border-line",
+  completed: "bg-success/15 text-success border-success/40",
+  missed: "bg-danger/10 text-danger border-danger/30",
 };
 
 function defBySlug(defs: HabitDefinitionDto[], slug: string) {
@@ -128,7 +130,7 @@ export function PrayerTracker() {
   if (loading && definitions.length === 0) {
     return (
       <Card>
-        <p className="text-sm text-rose-800/70">Loading prayer & Quran tracker…</p>
+        <p className="text-sm text-ink-muted">Loading prayer & Quran tracker…</p>
       </Card>
     );
   }
@@ -136,7 +138,7 @@ export function PrayerTracker() {
   if (!prayerDef) {
     return (
       <Card>
-        <p className="text-sm text-rose-800/70">
+        <p className="text-sm text-ink-muted">
           Waiting to sync your habits — connect once online, then come back.
         </p>
       </Card>
@@ -147,7 +149,7 @@ export function PrayerTracker() {
     <div className="space-y-4">
       <Card>
         <CardTitle>Today&apos;s prayers</CardTitle>
-        <p className="mt-1 text-xs text-rose-800/60">Tap to cycle: pending → completed → missed.</p>
+        <p className="mt-1 text-xs text-ink-muted">Tap to cycle: pending → completed → missed.</p>
         <div className="mt-3 grid grid-cols-5 gap-2">
           {PRAYER_NAMES.map((name) => {
             const status = prayerPayload.prayers[name];
@@ -168,66 +170,77 @@ export function PrayerTracker() {
         </div>
       </Card>
 
-      <Card>
-        <CardTitle>Quran</CardTitle>
-        <div className="mt-3 space-y-2">
-          <button
-            type="button"
-            disabled={!mulkDef || saving === "quran-mulk"}
-            onClick={() => void toggleQuran(mulkDef, mulkDone)}
-            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
-              mulkDone ? STATUS_STYLES.completed : STATUS_STYLES.pending
+      <Card className="divide-y divide-line py-0">
+        <button
+          type="button"
+          disabled={!mulkDef || saving === "quran-mulk"}
+          onClick={() => void toggleQuran(mulkDef, mulkDone)}
+          className="flex w-full items-center gap-3 py-3 text-sm font-medium text-ink transition-colors disabled:opacity-50"
+        >
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+              mulkDone ? "bg-success/15 text-success" : "bg-surface-sunken text-ink-muted"
             }`}
           >
-            <span>Surah Mulk (nightly)</span>
-            <span>{mulkDone ? "Done" : "Not yet"}</span>
-          </button>
+            <BookOpen className="h-4 w-4" />
+          </span>
+          <span className="flex-1 text-left">Surah Mulk (nightly)</span>
+          <span className={mulkDone ? "text-success" : "text-ink-muted"}>
+            {mulkDone ? "Done" : "Not yet"}
+          </span>
+        </button>
 
-          <button
-            type="button"
-            disabled={!friday || !kahfDef || saving === "quran-kahf"}
-            onClick={() => void toggleQuran(kahfDef, kahfDone)}
-            aria-disabled={!friday}
-            title={friday ? undefined : "Surah Kahf is tracked on Fridays only"}
-            className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+        <button
+          type="button"
+          disabled={!friday || !kahfDef || saving === "quran-kahf"}
+          onClick={() => void toggleQuran(kahfDef, kahfDone)}
+          aria-disabled={!friday}
+          title={friday ? undefined : "Surah Kahf is tracked on Fridays only"}
+          className="flex w-full items-center gap-3 py-3 text-sm font-medium text-ink transition-colors disabled:opacity-50"
+        >
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
               !friday
-                ? "border-rose-100 bg-rose-50/50 text-rose-800/40"
+                ? "bg-surface-sunken text-ink-muted/50"
                 : kahfDone
-                  ? STATUS_STYLES.completed
-                  : STATUS_STYLES.pending
+                  ? "bg-success/15 text-success"
+                  : "bg-surface-sunken text-ink-muted"
             }`}
           >
-            <span>Surah Kahf (Fridays)</span>
-            <span>{friday ? (kahfDone ? "Done" : "Not yet") : "N/A today"}</span>
-          </button>
-        </div>
+            <BookOpen className="h-4 w-4" />
+          </span>
+          <span className={`flex-1 text-left ${!friday ? "text-ink-muted" : ""}`}>
+            Surah Kahf (Fridays)
+          </span>
+          <span className={friday && kahfDone ? "text-success" : "text-ink-muted"}>
+            {friday ? (kahfDone ? "Done" : "Not yet") : "N/A today"}
+          </span>
+        </button>
       </Card>
 
       {report ? (
         <Card>
-          <div className="flex items-center justify-between">
-            <CardTitle>Monthly prayer report</CardTitle>
-            <span className="text-xs font-semibold text-rose-700">
-              {report.completionPercent}%
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <StatNumber
+              value={`${report.completionPercent}%`}
+              label={`${report.totalCompleted} of ${report.totalPossible} prayers this month`}
+              size="md"
+            />
           </div>
-          <p className="mt-1 text-xs text-rose-800/60">
-            {report.totalCompleted} of {report.totalPossible} prayers completed this month.
-          </p>
-          <div className="mt-3 grid grid-cols-7 gap-1.5">
+          <div className="mt-4 grid grid-cols-7 gap-1.5">
             {report.days.map((day) => {
               const dayNum = Number(day.date.slice(-2));
               const bg =
                 day.completed === day.total
-                  ? "bg-emerald-400"
+                  ? "bg-success text-success-ink"
                   : day.completed > 0
-                    ? "bg-amber-300"
-                    : "bg-rose-100";
+                    ? "bg-warning text-warning-ink"
+                    : "bg-surface-sunken text-ink-muted";
               return (
                 <div
                   key={day.date}
                   title={`${day.date}: ${day.completed}/${day.total}`}
-                  className={`flex h-8 items-center justify-center rounded-lg text-[10px] font-medium text-rose-950/70 ${bg}`}
+                  className={`flex h-8 items-center justify-center rounded-lg text-[10px] font-medium ${bg}`}
                 >
                   {dayNum}
                 </div>

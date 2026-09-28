@@ -4,8 +4,8 @@
   "description": "Personal life management, habits, and consistency tracking",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fdf2f8",
-  "theme_color": "#f9a8d4",
+  "background_color": "#fbf2ef",
+  "theme_color": "#9c3b4e",
   "orientation": "portrait-primary",
   "icons": [
     {

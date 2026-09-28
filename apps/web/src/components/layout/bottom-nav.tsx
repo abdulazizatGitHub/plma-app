@@ -23,7 +23,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-rose-100/90 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
       aria-label="Main"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around px-1 pt-1">
@@ -37,10 +37,9 @@ export function BottomNav() {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                aria-current={active ? "page" : undefined}
                 className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl text-[11px] font-medium transition-colors ${
-                  active
-                    ? "text-rose-500"
-                    : "text-rose-900/45 hover:text-rose-700"
+                  active ? "text-accent" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 <Icon

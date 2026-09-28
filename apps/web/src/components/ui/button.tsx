@@ -1,11 +1,10 @@
 import type { ButtonHTMLAttributes } from "react";
 
 const variants = {
-  primary:
-    "bg-rose-400 text-white hover:bg-rose-500 active:bg-rose-600 shadow-sm shadow-rose-200/80",
+  primary: "bg-accent text-accent-ink hover:opacity-90 active:opacity-80 shadow-sm",
   secondary:
-    "bg-white text-rose-900 border border-rose-100 hover:bg-rose-50 active:bg-rose-100",
-  ghost: "bg-transparent text-rose-700 hover:bg-rose-50 active:bg-rose-100",
+    "bg-surface text-ink border border-line hover:bg-surface-sunken active:bg-surface-sunken",
+  ghost: "bg-transparent text-ink-muted hover:bg-surface-sunken active:bg-surface-sunken",
 } as const;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -21,7 +20,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex min-h-11 items-center justify-center rounded-2xl px-4 text-sm font-medium transition-colors disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-medium transition-colors disabled:opacity-50 ${variants[variant]} ${className}`}
       {...props}
     />
   );

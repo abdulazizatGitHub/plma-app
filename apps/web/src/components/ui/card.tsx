@@ -5,7 +5,7 @@ type CardProps = HTMLAttributes<HTMLDivElement>;
 export function Card({ className = "", ...props }: CardProps) {
   return (
     <div
-      className={`rounded-3xl border border-rose-100/80 bg-white/90 p-4 shadow-sm shadow-rose-100/50 backdrop-blur-sm ${className}`}
+      className={`rounded-2xl border border-line bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${className}`}
       {...props}
     />
   );
@@ -17,7 +17,7 @@ export function CardTitle({
 }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={`text-sm font-semibold tracking-wide text-rose-900/90 ${className}`}
+      className={`text-sm font-semibold tracking-wide text-ink ${className}`}
       {...props}
     />
   );

@@ -6,6 +6,7 @@ export type DashboardRow = {
   label: string;
   value: string;
   done: boolean;
+  count?: { completed: number; total: number };
 };
 
 function defBySlug(defs: HabitDefinitionDto[], slug: string) {
@@ -138,7 +139,13 @@ export function buildTodayDashboard(
   );
 
   const rows: DashboardRow[] = [
-    { key: "prayer", label: "Prayer", value: prayer.value, done: prayer.done },
+    {
+      key: "prayer",
+      label: "Prayer",
+      value: prayer.value,
+      done: prayer.done,
+      count: { completed: prayer.completed, total: prayer.total },
+    },
     { key: "quran", label: "Quran", value: quran.value, done: quran.done },
     { key: "steps", label: "Steps", value: steps.value, done: steps.done },
     { key: "water", label: "Water", value: water.value, done: water.done },

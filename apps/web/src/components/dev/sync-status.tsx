@@ -9,19 +9,17 @@ export function SyncStatus() {
 
   return (
     <div className="mt-3 space-y-2 text-sm">
-      <p className="text-rose-800/80">
+      <p className="text-ink-muted">
         Local SQLite: {localDbReady ? "ready" : "initializing…"}
       </p>
-      <p className="text-rose-800/80">
+      <p className="text-ink-muted">
         Habit templates cached:{" "}
-        <span className="font-medium tabular-nums">{habitDefinitions}</span>
+        <span className="font-medium tabular-nums text-ink">{habitDefinitions}</span>
       </p>
-      <p className={syncOnline ? "text-emerald-700" : "text-amber-800"}>
+      <p className={syncOnline ? "text-success" : "text-warning"}>
         Cloud sync: {syncOnline ? "online" : "offline or API unavailable"}
       </p>
-      {lastSyncError ? (
-        <p className="text-amber-800">{lastSyncError}</p>
-      ) : null}
+      {lastSyncError ? <p className="text-warning">{lastSyncError}</p> : null}
       <Button variant="secondary" className="w-full" onClick={() => void refresh()}>
         Sync now
       </Button>
