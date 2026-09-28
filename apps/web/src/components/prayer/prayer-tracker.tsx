@@ -10,7 +10,7 @@ import {
   type PrayerName,
   type PrayerStatus,
 } from "@life/shared";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Check, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Card, CardTitle } from "@/components/ui/card";
@@ -38,14 +38,23 @@ const NEXT_STATUS: Record<PrayerStatus, PrayerStatus> = {
   missed: "pending",
 };
 
-const STATUS_STYLES: Record<PrayerStatus, string> = {
-  pending: "bg-surface-sunken text-ink-muted border-line",
-  completed: "bg-success/15 text-success border-success/40",
-  missed: "bg-danger/10 text-danger border-danger/30",
+const BEAD_STYLES: Record<PrayerStatus, string> = {
+  pending: "border-line bg-surface text-ink-muted",
+  completed: "border-success bg-success text-success-ink",
+  missed: "border-danger bg-danger/15 text-danger",
 };
+
+const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"];
 
 function defBySlug(defs: HabitDefinitionDto[], slug: string) {
   return defs.find((d) => d.slug === slug);
+}
+
+/** Index (0 = Monday) of the weekday `dateStr`'s month starts on, for calendar-grid padding. */
+function leadingBlanksForMonth(monthStr: string): number {
+  const [year, month] = monthStr.split("-").map(Number);
+  const jsWeekday = new Date(year, month - 1, 1).getDay(); // 0 = Sunday
+  return (jsWeekday + 6) % 7; // 0 = Monday
 }
 
 export function PrayerTracker() {
@@ -149,8 +158,9 @@ export function PrayerTracker() {
     <div className="space-y-4">
       <Card>
         <CardTitle>Today&apos;s prayers</CardTitle>
-        <p className="mt-1 text-xs text-ink-muted">Tap to cycle: pending → completed → missed.</p>
-        <div className="mt-3 grid grid-cols-5 gap-2">
+        <p className="mt-1 text-xs text-ink-muted">Tap a prayer to cycle its status.</p>
+        <div className="relative mt-5 flex justify-between px-1">
+          <div className="absolute top-5 right-5 left-5 h-px bg-line" aria-hidden />
           {PRAYER_NAMES.map((name) => {
             const status = prayerPayload.prayers[name];
             return (
@@ -160,10 +170,21 @@ export function PrayerTracker() {
                 disabled={saving === name}
                 onClick={() => void cyclePrayer(name)}
                 aria-pressed={status === "completed"}
-                className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-2xl border px-1 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${STATUS_STYLES[status]}`}
+                aria-label={`${PRAYER_LABELS[name]}: ${status}`}
+                className="relative z-10 flex flex-col items-center gap-1.5 disabled:opacity-50"
               >
-                <span>{PRAYER_LABELS[name]}</span>
-                <span className="text-[10px] capitalize">{status}</span>
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${BEAD_STYLES[status]}`}
+                >
+                  {status === "completed" ? (
+                    <Check className="h-4 w-4" />
+                  ) : status === "missed" ? (
+                    <X className="h-4 w-4" />
+                  ) : null}
+                </span>
+                <span className="text-[11px] font-medium text-ink-muted">
+                  {PRAYER_LABELS[name]}
+                </span>
               </button>
             );
           })}
@@ -178,11 +199,11 @@ export function PrayerTracker() {
           className="flex w-full items-center gap-3 py-3 text-sm font-medium text-ink transition-colors disabled:opacity-50"
         >
           <span
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-              mulkDone ? "bg-success/15 text-success" : "bg-surface-sunken text-ink-muted"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+              mulkDone ? "bg-success text-success-ink" : "bg-surface-sunken text-ink-muted"
             }`}
           >
-            <BookOpen className="h-4 w-4" />
+            {mulkDone ? <Check className="h-4 w-4" /> : <BookOpen className="h-4 w-4" />}
           </span>
           <span className="flex-1 text-left">Surah Mulk (nightly)</span>
           <span className={mulkDone ? "text-success" : "text-ink-muted"}>
@@ -199,15 +220,19 @@ export function PrayerTracker() {
           className="flex w-full items-center gap-3 py-3 text-sm font-medium text-ink transition-colors disabled:opacity-50"
         >
           <span
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
               !friday
                 ? "bg-surface-sunken text-ink-muted/50"
                 : kahfDone
-                  ? "bg-success/15 text-success"
+                  ? "bg-success text-success-ink"
                   : "bg-surface-sunken text-ink-muted"
             }`}
           >
-            <BookOpen className="h-4 w-4" />
+            {friday && kahfDone ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <BookOpen className="h-4 w-4" />
+            )}
           </span>
           <span className={`flex-1 text-left ${!friday ? "text-ink-muted" : ""}`}>
             Surah Kahf (Fridays)
@@ -220,16 +245,23 @@ export function PrayerTracker() {
 
       {report ? (
         <Card>
-          <div className="flex items-start justify-between gap-2">
-            <StatNumber
-              value={`${report.completionPercent}%`}
-              label={`${report.totalCompleted} of ${report.totalPossible} prayers this month`}
-              size="md"
-            />
+          <StatNumber
+            value={`${report.completionPercent}%`}
+            label={`${report.totalCompleted} of ${report.totalPossible} prayers this month`}
+            size="md"
+          />
+          <div className="mt-5 grid grid-cols-7 gap-1.5 text-center text-[10px] font-medium text-ink-muted">
+            {WEEKDAY_LABELS.map((w, i) => (
+              <span key={i}>{w}</span>
+            ))}
           </div>
-          <div className="mt-4 grid grid-cols-7 gap-1.5">
+          <div className="mt-1.5 grid grid-cols-7 gap-1.5">
+            {Array.from({ length: leadingBlanksForMonth(month) }, (_, i) => (
+              <div key={`blank-${i}`} />
+            ))}
             {report.days.map((day) => {
               const dayNum = Number(day.date.slice(-2));
+              const isToday = day.date === today;
               const bg =
                 day.completed === day.total
                   ? "bg-success text-success-ink"
@@ -240,7 +272,9 @@ export function PrayerTracker() {
                 <div
                   key={day.date}
                   title={`${day.date}: ${day.completed}/${day.total}`}
-                  className={`flex h-8 items-center justify-center rounded-lg text-[10px] font-medium ${bg}`}
+                  className={`flex h-8 items-center justify-center rounded-lg text-[10px] font-medium ${bg} ${
+                    isToday ? "ring-2 ring-accent ring-offset-1 ring-offset-surface" : ""
+                  }`}
                 >
                   {dayNum}
                 </div>

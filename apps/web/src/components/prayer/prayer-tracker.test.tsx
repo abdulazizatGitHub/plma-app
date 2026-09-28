@@ -101,11 +101,11 @@ describe("PrayerTracker", () => {
     render(<PrayerTracker />);
 
     await waitFor(() => expect(screen.getByText("Fajr")).toBeInTheDocument());
-    expect(screen.getAllByText("pending")).toHaveLength(5);
+    expect(screen.getByRole("button", { name: /fajr: pending/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /: pending/i })).toHaveLength(5);
 
-    const fajrButton = screen.getByText("Fajr").closest("button");
-    expect(fajrButton).not.toBeNull();
-    await user.click(fajrButton!);
+    const fajrButton = screen.getByRole("button", { name: /fajr: pending/i });
+    await user.click(fajrButton);
 
     await waitFor(() => expect(saveHabitLogLocally).toHaveBeenCalledTimes(1));
     const [defId, date, payload] = saveHabitLogLocally.mock.calls[0];

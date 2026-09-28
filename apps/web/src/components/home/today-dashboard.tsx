@@ -13,7 +13,6 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
-import { Card } from "@/components/ui/card";
 import { DotCluster } from "@/components/ui/dot-cluster";
 import { ListDivider, ListRow } from "@/components/ui/list-row";
 import { StatNumber } from "@/components/ui/stat-number";
@@ -68,32 +67,30 @@ export function TodayDashboard() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="flex items-start justify-between gap-2">
-          <StatNumber
-            value={loading ? "–" : `${completionPercent}%`}
-            label="completed today"
-          />
-          <button
-            type="button"
-            onClick={() => void onRefresh()}
-            className="mt-1 text-xs font-medium text-accent hover:opacity-80"
-          >
-            Refresh
-          </button>
-        </div>
-        <p className="mt-3 text-xs text-ink-muted">
-          {loading
-            ? "Loading habits…"
-            : syncOnline
-              ? "Synced — tap Refresh after logging elsewhere."
-              : "Offline — showing cached habits."}
-        </p>
-      </Card>
+    <div>
+      <div className="flex items-end justify-between gap-3">
+        <StatNumber
+          value={loading ? "–" : `${completionPercent}%`}
+          label="completed today"
+        />
+        <button
+          type="button"
+          onClick={() => void onRefresh()}
+          className="mb-1.5 shrink-0 text-xs font-medium text-accent hover:opacity-80"
+        >
+          Refresh
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-ink-muted">
+        {loading
+          ? "Loading habits…"
+          : syncOnline
+            ? "Synced — tap Refresh after logging elsewhere."
+            : "Offline — showing cached habits."}
+      </p>
 
-      <Card className="divide-y divide-line py-0">
-        {rows.map((item, i) => {
+      <div className="mt-6 border-t-2 border-ink/10">
+        {rows.map((item) => {
           const Icon = ROW_ICONS[item.key];
           const row = (
             <ListRow
@@ -116,18 +113,18 @@ export function TodayDashboard() {
           );
           return (
             <div key={item.key}>
-              {i > 0 ? <ListDivider /> : null}
               {LINKED_ROWS.has(item.key) ? (
-                <Link href="/prayer" className="block -mx-4 px-4">
+                <Link href="/prayer" className="block">
                   {row}
                 </Link>
               ) : (
                 row
               )}
+              <ListDivider />
             </div>
           );
         })}
-      </Card>
+      </div>
     </div>
   );
 }
