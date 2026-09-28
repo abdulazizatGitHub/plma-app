@@ -8,7 +8,7 @@ Last updated: **2026-09-28**
 |-----------|--------|
 | Phase 01 | Done |
 | Phase 02 | Done — Supabase session pooler + migrations |
-| Phase 03 | Done (pending manual browser confirmation — see phase doc) — home wired to synced habits |
+| Phase 03 | Done — home wired to synced habits |
 
 ---
 
@@ -18,7 +18,7 @@ Last updated: **2026-09-28**
 |-------|-----|--------|------------|
 | 01 | [foundation](./docs/phases/phase-01-foundation.md) | Done | Yes |
 | 02 | [data-sync](./docs/phases/phase-02-data-sync.md) | Done | Yes |
-| 03 | [shell-home](./docs/phases/phase-03-shell-home.md) | Done (verify in browser) | Yes |
+| 03 | [shell-home](./docs/phases/phase-03-shell-home.md) | Done | Yes |
 | 04+ | … | Not started | — |
 
 ---
