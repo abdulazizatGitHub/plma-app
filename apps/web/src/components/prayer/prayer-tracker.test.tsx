@@ -79,7 +79,7 @@ describe("PrayerTracker", () => {
     );
   });
 
-  it("renders all five prayer buttons and the Quran toggles once definitions load", async () => {
+  it("renders an explicit Prayed button for all five prayers plus the Quran rows", async () => {
     mockDefinitions = [
       makeDef("def-prayer", "prayer"),
       makeDef("def-mulk", "quran-mulk"),
@@ -87,42 +87,109 @@ describe("PrayerTracker", () => {
     ];
     render(<PrayerTracker />);
 
-    await waitFor(() => expect(screen.getByText("Fajr")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Mark Fajr as prayed" })).toBeInTheDocument(),
+    );
     for (const name of ["Fajr", "Zuhr", "Asr", "Maghrib", "Isha"]) {
-      expect(screen.getByText(name)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: `Mark ${name} as prayed` })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: `Mark ${name} as missed` })).toBeInTheDocument();
     }
-    expect(screen.getByText(/surah mulk/i)).toBeInTheDocument();
-    expect(screen.getByText(/surah kahf/i)).toBeInTheDocument();
+    expect(screen.getByText("Surah Mulk")).toBeInTheDocument();
+    expect(screen.getByText("Surah Kahf")).toBeInTheDocument();
   });
 
-  it("clicking a prayer button saves the next status via saveHabitLogLocally", async () => {
+  it("shows the first pending prayer as Next up", async () => {
+    mockDefinitions = [makeDef("def-prayer", "prayer")];
+    mockLogs = [
+      {
+        id: "log-1",
+        userId: USER_ID,
+        habitDefinitionId: "def-prayer",
+        logDate: "2026-09-28",
+        payload: {
+          prayers: {
+            fajr: "completed",
+            zuhr: "missed",
+            asr: "pending",
+            maghrib: "pending",
+            isha: "pending",
+          },
+        },
+        deviceId: null,
+        createdAt: "2026-09-28T00:00:00.000Z",
+        updatedAt: "2026-09-28T00:00:00.000Z",
+        deletedAt: null,
+      },
+    ];
+    render(<PrayerTracker />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Mark Asr as prayed (next up)" }),
+      ).toBeInTheDocument(),
+    );
+    // Logged prayers offer Undo instead of Prayed/Missed.
+    expect(screen.getByRole("button", { name: "Undo Fajr" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Undo Zuhr" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark Fajr as prayed" })).toBeNull();
+  });
+
+  it("clicking Prayed saves `completed` for that prayer only", async () => {
     mockDefinitions = [makeDef("def-prayer", "prayer")];
     const user = userEvent.setup();
     render(<PrayerTracker />);
 
-    await waitFor(() => expect(screen.getByText("Fajr")).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: /fajr: pending/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /: pending/i })).toHaveLength(5);
-
-    const fajrButton = screen.getByRole("button", { name: /fajr: pending/i });
+    const fajrButton = await screen.findByRole("button", { name: "Mark Fajr as prayed" });
     await user.click(fajrButton);
 
     await waitFor(() => expect(saveHabitLogLocally).toHaveBeenCalledTimes(1));
     const [defId, date, payload] = saveHabitLogLocally.mock.calls[0];
     const prayers = payload.prayers as Record<string, string>;
     expect(defId).toBe("def-prayer");
-    expect(date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(date).toBe("2026-09-28");
     expect(prayers.fajr).toBe("completed");
     // The other four prayers stay pending in the same write.
     expect(prayers.zuhr).toBe("pending");
   });
 
-  it("disables the Kahf toggle on a non-Friday and shows N/A", async () => {
+  it("clicking Missed saves `missed`", async () => {
+    mockDefinitions = [makeDef("def-prayer", "prayer")];
+    const user = userEvent.setup();
+    render(<PrayerTracker />);
+
+    await user.click(await screen.findByRole("button", { name: "Mark Isha as missed" }));
+
+    await waitFor(() => expect(saveHabitLogLocally).toHaveBeenCalledTimes(1));
+    const prayers = saveHabitLogLocally.mock.calls[0][2].prayers as Record<string, string>;
+    expect(prayers.isha).toBe("missed");
+  });
+
+  it("locks every prayer control while a save is in flight (no lost updates)", async () => {
+    mockDefinitions = [makeDef("def-prayer", "prayer")];
+    let release!: () => void;
+    saveHabitLogLocally.mockImplementationOnce(
+      () => new Promise((resolve) => (release = () => resolve({} as HabitLogDto))),
+    );
+    const user = userEvent.setup();
+    render(<PrayerTracker />);
+
+    await user.click(await screen.findByRole("button", { name: "Mark Fajr as prayed" }));
+    // A second prayer written now would be built from stale state and clobber Fajr.
+    expect(screen.getByRole("button", { name: "Mark Zuhr as prayed" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Mark Isha as missed" })).toBeDisabled();
+
+    release();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Mark Zuhr as prayed" })).toBeEnabled(),
+    );
+  });
+
+  it("disables the Kahf action on a non-Friday and says Fridays only", async () => {
     mockDefinitions = [makeDef("def-prayer", "prayer"), makeDef("def-kahf", "quran-kahf")];
     render(<PrayerTracker />);
 
-    await waitFor(() => expect(screen.getByText(/surah kahf/i)).toBeInTheDocument());
-    const kahfButton = screen.getByText(/surah kahf/i).closest("button");
+    const kahfButton = await screen.findByRole("button", { name: /mark surah kahf as read/i });
     expect(kahfButton).toBeDisabled();
+    expect(kahfButton).toHaveTextContent(/fridays only/i);
   });
 });

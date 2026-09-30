@@ -236,6 +236,29 @@ export async function createLocalCustomHabit(name: string): Promise<HabitDefinit
 }
 
 /**
+ * Merges `patch` into a habit definition's config (e.g. a steps goal or
+ * wake-up goal), writes it locally, and enqueues it. The push route
+ * already upserts definitions by id, so no API change is needed.
+ */
+export async function updateLocalDefinitionConfig(
+  habitDefinitionId: string,
+  patch: Record<string, unknown>,
+): Promise<HabitDefinitionDto> {
+  const db = await getLocalDb();
+  const current = getLocalDefinitions(db).find((d) => d.id === habitDefinitionId);
+  if (!current) throw new Error("Habit not found locally — sync once, then try again.");
+
+  const dto: HabitDefinitionDto = {
+    ...current,
+    config: { ...current.config, ...patch },
+    updatedAt: new Date().toISOString(),
+  };
+  upsertDefinition(db, dto);
+  enqueue(db, "habit_definition", dto.id, dto as unknown as Record<string, unknown>);
+  return dto;
+}
+
+/**
  * Writes a habit log to the local SQLite store and enqueues it for sync.
  * Always assigns a fresh id — the (habit_definition_id, log_date) unique
  * index resolves the upsert, and the pre-existing row's id/created_at are

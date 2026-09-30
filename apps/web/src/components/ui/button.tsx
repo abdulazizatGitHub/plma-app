@@ -20,7 +20,7 @@ export function Button({
   return (
     <button
       type={type}
-      className={`inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-medium transition-colors disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`transition-token press-pop inline-flex min-h-11 items-center justify-center rounded-(--radius-control) px-4 text-sm font-medium disabled:opacity-50 ${variants[variant]} ${className}`}
       {...props}
     />
   );

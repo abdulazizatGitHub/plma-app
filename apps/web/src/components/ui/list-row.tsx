@@ -13,7 +13,7 @@ export function ListRow({ icon, label, value, done, className = "" }: ListRowPro
     <div className={`flex items-center gap-3 py-3 ${className}`}>
       {icon ? (
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
+          className={`transition-token flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
             done ? "bg-success/15 text-success" : "bg-surface-sunken text-ink-muted"
           }`}
         >
@@ -21,7 +21,7 @@ export function ListRow({ icon, label, value, done, className = "" }: ListRowPro
         </span>
       ) : null}
       <span className="flex-1 text-sm font-medium text-ink">{label}</span>
-      <span className={`text-sm tabular-nums ${done ? "text-success" : "text-ink-muted"}`}>
+      <span className={`transition-token-fast text-sm tabular-nums ${done ? "text-success" : "text-ink-muted"}`}>
         {value}
       </span>
     </div>

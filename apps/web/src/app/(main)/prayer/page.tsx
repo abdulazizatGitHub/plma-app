@@ -1,14 +1,14 @@
 import { PrayerTracker } from "@/components/prayer/prayer-tracker";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function PrayerPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-medium text-ink">Prayer & Quran</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Mark today&apos;s prayers, Surah Mulk, and Surah Kahf on Fridays.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="01/ Faith"
+        title="Prayer & Quran"
+        description="Log each prayer as you go, plus Surah Mulk nightly and Kahf on Fridays."
+      />
       <PrayerTracker />
     </div>
   );

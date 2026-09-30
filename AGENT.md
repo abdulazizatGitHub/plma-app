@@ -21,7 +21,7 @@
 
 ## Current status
 
-- **Active phase:** [Phase 05 — Health](./docs/phases/phase-05-health.md)
+- **Active phase:** [Phase 06 — Reading, uni, custom habits](./docs/phases/phase-06-reading-uni-custom.md)
 - **Database:** Supabase (session pooler) — see [DATABASE_SETUP.md](./docs/DATABASE_SETUP.md)
 - **Stack:** Node + TS (Fastify), Next.js + TS, Tailwind, Postgres, SQLite (sql.js offline), Serwist PWA
 

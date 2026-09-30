@@ -50,40 +50,49 @@ function readStoredTheme() {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [themeName, setThemeNameState] = useState<ThemeName>(
-    () => readStoredTheme().name,
-  );
-  const [mode, setModeState] = useState<ThemeMode>(() => readStoredTheme().mode);
-  const [accent, setAccentState] = useState<string | null>(
-    () => readStoredTheme().accent,
-  );
-  const [prefersDark, setPrefersDark] = useState(
-    typeof window !== "undefined"
-      ? window.matchMedia("(prefers-color-scheme: dark)").matches
-      : false,
-  );
+  // Start from defaults on both server and client so hydration matches; the
+  // real stored values are read after mount. THEME_INIT_SCRIPT has already
+  // painted the correct theme, so nothing flashes in between.
+  const [themeName, setThemeNameState] = useState<ThemeName>(DEFAULT_THEME_NAME);
+  const [mode, setModeState] = useState<ThemeMode>(DEFAULT_THEME_MODE);
+  const [accent, setAccentState] = useState<string | null>(null);
+  const [prefersDark, setPrefersDark] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   const resolvedMode = resolveMode(mode, prefersDark);
 
   useEffect(() => {
+    const stored = readStoredTheme();
     const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    // One-time sync from localStorage/matchMedia after mount.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setThemeNameState(stored.name);
+    setModeState(stored.mode);
+    setAccentState(stored.accent);
+    setPrefersDark(mql.matches);
+    setHydrated(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
     const onChange = (e: MediaQueryListEvent) => setPrefersDark(e.matches);
     mql.addEventListener("change", onChange);
     return () => mql.removeEventListener("change", onChange);
   }, []);
 
   useEffect(() => {
+    // Until stored values are loaded, leave the init script's attributes alone.
+    if (!hydrated) return;
     const root = document.documentElement;
     root.setAttribute("data-theme", themeName);
     root.setAttribute("data-mode", resolvedMode);
     if (accent) {
       root.style.setProperty("--accent", accent);
       root.style.setProperty("--accent-ink", contrastInkFor(accent));
+      root.style.setProperty("--accent-text", accent);
     } else {
       root.style.removeProperty("--accent");
       root.style.removeProperty("--accent-ink");
+      root.style.removeProperty("--accent-text");
     }
-  }, [themeName, resolvedMode, accent]);
+  }, [hydrated, themeName, resolvedMode, accent]);
 
   const setThemeName = useCallback((name: ThemeName) => {
     setThemeNameState(name);

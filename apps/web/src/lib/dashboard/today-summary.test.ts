@@ -1,6 +1,10 @@
 import type { HabitDefinitionDto, HabitLogDto } from "@life/shared";
 import { describe, expect, it } from "vitest";
-import { buildHabitHistoryStrips, buildTodayDashboard } from "./today-summary";
+import {
+  buildHabitHistoryStrips,
+  buildTodayDashboard,
+  buildWeeklyCompletion,
+} from "./today-summary";
 
 const USER_ID = "123e4567-e89b-42d3-a456-556642440000";
 
@@ -56,7 +60,21 @@ const WATER_DEF = makeDef({
   trackingMethod: "counter",
   config: { goal: 8, unit: "glasses" },
 });
-const EXERCISE_DEF = makeDef({ id: "def-exercise", slug: "exercise" });
+const EXERCISE_DEF = makeDef({
+  id: "def-exercise",
+  slug: "exercise",
+  trackingMethod: "boolean_duration",
+});
+const SLEEP_DEF = makeDef({
+  id: "def-sleep",
+  slug: "sleep",
+  trackingMethod: "sleep_window",
+  config: { wakeGoal: "06:00" },
+});
+
+/** A local wall-clock instant, so assertions hold in any timezone. */
+const local = (y: number, mo: number, d: number, h: number, mi: number) =>
+  new Date(y, mo - 1, d, h, mi).toISOString();
 const MAKE_BED_DEF = makeDef({ id: "def-make-bed", slug: "make-bed" });
 const NO_PHONE_DEF = makeDef({ id: "def-no-phone", slug: "no-phone-hour" });
 
@@ -67,6 +85,7 @@ const ALL_DEFS = [
   STEPS_DEF,
   WATER_DEF,
   EXERCISE_DEF,
+  SLEEP_DEF,
   MAKE_BED_DEF,
   NO_PHONE_DEF,
 ];
@@ -347,6 +366,12 @@ describe("buildTodayDashboard — completion percentage", () => {
         logDate: MONDAY,
         payload: { completed: true },
       }),
+      makeLog({
+        id: "log-18b",
+        habitDefinitionId: SLEEP_DEF.id,
+        logDate: MONDAY,
+        payload: { bedAt: local(2026, 9, 27, 23, 0), wakeAt: local(2026, 9, 28, 6, 0) },
+      }),
     ];
     const { completionPercent, rows } = buildTodayDashboard(ALL_DEFS, allDone, MONDAY);
     expect(completionPercent).toBe(100);
@@ -434,5 +459,143 @@ describe("buildHabitHistoryStrips", () => {
   it("supports a custom window length", () => {
     const strips = buildHabitHistoryStrips(ALL_DEFS, [], 3, MONDAY);
     expect(strips.exercise).toHaveLength(3);
+  });
+});
+
+describe("buildTodayDashboard — direct-action metadata for prayer and quran", () => {
+  it("exposes the prayer definition id and per-prayer statuses", () => {
+    const log = makeLog({
+      id: "act-1",
+      habitDefinitionId: PRAYER_DEF.id,
+      logDate: MONDAY,
+      payload: {
+        prayers: {
+          fajr: "completed",
+          zuhr: "missed",
+          asr: "pending",
+          maghrib: "pending",
+          isha: "pending",
+        },
+      },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [log], MONDAY).rows.find((r) => r.key === "prayer");
+    expect(row?.habitDefinitionId).toBe(PRAYER_DEF.id);
+    expect(row?.prayers).toEqual({
+      fajr: "completed",
+      zuhr: "missed",
+      asr: "pending",
+      maghrib: "pending",
+      isha: "pending",
+    });
+  });
+
+  it("exposes Mulk/Kahf ids, done-state, and whether today is Friday", () => {
+    const mulkDone = makeLog({
+      id: "act-2",
+      habitDefinitionId: MULK_DEF.id,
+      logDate: MONDAY,
+      payload: { completed: true },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [mulkDone], MONDAY).rows.find(
+      (r) => r.key === "quran",
+    );
+    expect(row?.quran).toEqual({
+      mulkId: MULK_DEF.id,
+      mulkDone: true,
+      kahfId: KAHF_DEF.id,
+      kahfDone: false,
+      friday: false,
+    });
+  });
+
+  it("omits quran action metadata when neither Quran habit is configured", () => {
+    const row = buildTodayDashboard([], [], MONDAY).rows.find((r) => r.key === "quran");
+    expect(row?.quran).toBeUndefined();
+  });
+});
+
+describe("buildTodayDashboard — exercise details", () => {
+  it("shows duration and type when logged, and exposes them for the UI", () => {
+    const log = makeLog({
+      id: "ex-1",
+      habitDefinitionId: EXERCISE_DEF.id,
+      logDate: MONDAY,
+      payload: { completed: true, durationMinutes: 30, type: "run" },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [log], MONDAY).rows.find(
+      (r) => r.key === "exercise",
+    );
+    expect(row).toMatchObject({ value: "30 min · Run", done: true });
+    expect(row?.exercise).toEqual({ durationMinutes: 30, type: "run" });
+  });
+
+  it("still counts a bare { completed: true } as done (the Home quick action)", () => {
+    const log = makeLog({
+      id: "ex-2",
+      habitDefinitionId: EXERCISE_DEF.id,
+      logDate: MONDAY,
+      payload: { completed: true },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [log], MONDAY).rows.find(
+      (r) => r.key === "exercise",
+    );
+    expect(row).toMatchObject({ value: "Completed", done: true });
+  });
+});
+
+describe("buildTodayDashboard — sleep", () => {
+  it("is not done until last night is logged, and exposes the wake goal", () => {
+    const row = buildTodayDashboard(ALL_DEFS, [], MONDAY).rows.find((r) => r.key === "sleep");
+    expect(row).toMatchObject({ value: "Not logged", done: false, habitDefinitionId: SLEEP_DEF.id });
+    expect(row?.sleep).toEqual({ wakeGoal: "06:00", logged: null });
+  });
+
+  it("reports duration, clock times, and whether the wake goal was met", () => {
+    const log = makeLog({
+      id: "sl-1",
+      habitDefinitionId: SLEEP_DEF.id,
+      logDate: MONDAY,
+      payload: { bedAt: local(2026, 9, 27, 23, 10), wakeAt: local(2026, 9, 28, 6, 30) },
+    });
+    const row = buildTodayDashboard(ALL_DEFS, [log], MONDAY).rows.find((r) => r.key === "sleep");
+    expect(row).toMatchObject({ value: "7h 20m", done: true });
+    expect(row?.sleep?.logged).toEqual({
+      durationMinutes: 440,
+      bedClock: "23:10",
+      wakeClock: "06:30",
+      wokeByGoal: false,
+    });
+  });
+
+  it("falls back to 06:00 when the configured wake goal is malformed", () => {
+    const badGoal = makeDef({ id: "def-sleep-2", slug: "sleep", config: { wakeGoal: "6am" } });
+    const row = buildTodayDashboard([badGoal], [], MONDAY).rows.find((r) => r.key === "sleep");
+    expect(row?.sleep?.wakeGoal).toBe("06:00");
+  });
+});
+
+describe("buildWeeklyCompletion", () => {
+  it("returns 7 days oldest-first ending on endDate, with that day's completion %", () => {
+    const exerciseYesterday = makeLog({
+      id: "wk-1",
+      habitDefinitionId: EXERCISE_DEF.id,
+      logDate: "2026-09-27",
+      payload: { completed: true },
+    });
+    const week = buildWeeklyCompletion(ALL_DEFS, [exerciseYesterday], 7, MONDAY);
+    expect(week.map((d) => d.date)).toEqual([
+      "2026-09-22",
+      "2026-09-23",
+      "2026-09-24",
+      "2026-09-25",
+      "2026-09-26",
+      "2026-09-27",
+      "2026-09-28",
+    ]);
+    expect(week[5].value).toBe(
+      buildTodayDashboard(ALL_DEFS, [exerciseYesterday], "2026-09-27").completionPercent,
+    );
+    expect(week[5].value).toBeGreaterThan(0);
+    expect(week[6].value).toBe(0);
   });
 });

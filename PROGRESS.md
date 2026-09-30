@@ -1,6 +1,6 @@
 # Progress tracker
 
-Last updated: **2026-09-28**
+Last updated: **2026-09-30**
 
 ## Overall
 
@@ -9,7 +9,8 @@ Last updated: **2026-09-28**
 | Phase 01 | Done |
 | Phase 02 | Done — Supabase session pooler + migrations |
 | Phase 03 | Done — home wired to synced habits |
-| Phase 04 | Done (pending manual browser check) — prayer & Quran logging + monthly report |
+| Phase 04 | Done — prayer & Quran logging + monthly report (browser-verified 2026-09-30) |
+| Phase 05 | Done — steps, water, exercise, sleep + `/health` |
 
 ---
 
@@ -20,21 +21,22 @@ Last updated: **2026-09-28**
 | 01 | [foundation](./docs/phases/phase-01-foundation.md) | Done | Yes |
 | 02 | [data-sync](./docs/phases/phase-02-data-sync.md) | Done | Yes |
 | 03 | [shell-home](./docs/phases/phase-03-shell-home.md) | Done | Yes |
-| 04 | [prayer-quran](./docs/phases/phase-04-prayer-quran.md) | Done | Yes (see verification note) |
-| 05+ | … | Not started | — |
+| 04 | [prayer-quran](./docs/phases/phase-04-prayer-quran.md) | Done | Yes |
+| 05 | [health](./docs/phases/phase-05-health.md) | Done | Yes |
+| 06+ | … | Not started | — |
 
 ---
 
 ## Current sprint
 
-- **Active:** Phase 05 — health (steps, water, exercise, sleep)
-- **Next:** Phase 06 — reading, university, custom habits
+- **Active:** Phase 06 — reading, university, custom habits
+- **Next:** Phase 07 — make bed, no phone, plan tomorrow
 
 ---
 
 ## Testing & tooling
 
-- Vitest across `packages/shared`, `apps/api`, `apps/web` (106 tests) — `npm run test`
+- Vitest across `packages/shared`, `apps/api`, `apps/web` (185 tests) — `npm run test`
 - ESLint (typescript-eslint, `no-explicit-any` as error) — `npm run lint`
 - `tsc --noEmit` per workspace — `npm run typecheck`
 
@@ -50,3 +52,8 @@ Last updated: **2026-09-28**
 | Prayer logging (5x daily, tap-to-cycle) | 04 | Done |
 | Quran Mulk (nightly) / Kahf (Friday-only) | 04 | Done |
 | Monthly prayer report | 04 | Done |
+| Research-derived redesign (palettes, Space Grotesk, tile Home, explicit prayer actions) | 03/04 | Done |
+| Steps: manual entry, quick add, editable goal, week/month stats | 05 | Done |
+| Water: glass-by-glass (6/8), editable goal, week/month stats | 05 | Done |
+| Exercise: type + duration, consistency stats | 05 | Done |
+| Sleep: bed/wake → duration, 06:00 wake goal, averages + consistency | 05 | Done |

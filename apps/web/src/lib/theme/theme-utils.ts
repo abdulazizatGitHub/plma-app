@@ -1,10 +1,10 @@
-export const THEME_NAMES = ["rose", "slate", "sage", "lavender"] as const;
+export const THEME_NAMES = ["clay", "volt", "studio", "ember"] as const;
 export type ThemeName = (typeof THEME_NAMES)[number];
 
 export const THEME_MODES = ["light", "dark", "system"] as const;
 export type ThemeMode = (typeof THEME_MODES)[number];
 
-export const DEFAULT_THEME_NAME: ThemeName = "rose";
+export const DEFAULT_THEME_NAME: ThemeName = "clay";
 export const DEFAULT_THEME_MODE: ThemeMode = "system";
 
 export const STORAGE_KEYS = {

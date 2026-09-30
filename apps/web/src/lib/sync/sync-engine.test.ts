@@ -118,6 +118,7 @@ const {
   syncWhenOnline,
   countLocalDefinitions,
   getLocalDefinitions,
+  updateLocalDefinitionConfig,
   validateCustomHabitName,
 } = await import("./sync-engine");
 
@@ -193,6 +194,30 @@ describe("saveHabitLogLocally", () => {
     const first = await saveHabitLogLocally("def-1", "2026-09-28", {});
     const second = await saveHabitLogLocally("def-1", "2026-09-29", {});
     expect(first.deviceId).toBe(second.deviceId);
+  });
+});
+
+describe("updateLocalDefinitionConfig", () => {
+  it("merges the patch into existing config, bumps updatedAt, and enqueues the definition", async () => {
+    const created = await createLocalCustomHabit("Steps-like");
+    state.syncQueue = [];
+    // Seed some existing config to prove it's merged, not replaced.
+    await updateLocalDefinitionConfig(created.id, { unit: "steps", goal: 10000 });
+    state.syncQueue = [];
+
+    const updated = await updateLocalDefinitionConfig(created.id, { goal: 8000 });
+
+    expect(updated.config).toEqual({ unit: "steps", goal: 8000 });
+    expect(Date.parse(updated.updatedAt)).toBeGreaterThanOrEqual(Date.parse(created.updatedAt));
+    const stored = getLocalDefinitions(fakeDb as never).find((d) => d.id === created.id);
+    expect(stored?.config).toEqual({ unit: "steps", goal: 8000 });
+    expect(state.syncQueue).toHaveLength(1);
+    expect(state.syncQueue[0].entity_type).toBe("habit_definition");
+  });
+
+  it("throws for an unknown definition without writing anything", async () => {
+    await expect(updateLocalDefinitionConfig("missing", { goal: 1 })).rejects.toThrow(/not found/i);
+    expect(state.syncQueue).toHaveLength(0);
   });
 });
 

@@ -124,3 +124,52 @@ Use this template for each decision:
 ---
 
 <!-- Add new decisions below this line, newest first within each phase or chronologically as preferred. -->
+
+### 2026-09-30 — Phase 05 health: payloads, sleep dating, goals in definition config
+
+- **Context:** Phase 05 (steps, water, exercise, sleep) needed log shapes, week/month stats, and editable goals. Sleep crosses midnight, and goals had to be configurable in-app (CRD: "configurable without redeploy").
+- **Decision:**
+  - **No new tables.** Health habits use the generic `habit_logs.payload` path, like prayer/Quran. Zod payload schemas and all aggregations live in `packages/shared/src/health-tracking.ts`, so any future server-side stats share one tested implementation.
+  - **Sleep** is `{ bedAt, wakeAt }` in UTC instants (per IMPLEMENTATION.md), **logged on the wake-up date**. So "today's sleep" means last night. A bedtime later on the clock than the wake time is placed on the previous day.
+  - **Goals** (steps `goal`, water `goal`, sleep `wakeGoal`) live in `habit_definitions.config` and are edited via a new `updateLocalDefinitionConfig`. It queues the definition through the existing push, which already upserts `config`, so no API change was needed.
+  - **Weeks start Monday** for stats. The 7-day bar charts are rolling ("Last 7 days").
+  - **Sleep counts toward daily completion** once it's logged. The Home exercise toggle preserves duration/type.
+  - The file was named `health-tracking.ts` because `health.ts` is already the API health-check schema.
+- **Alternatives considered:**
+  - A dedicated `sleep_logs` table (deferred; no stats-performance need yet).
+  - Storing sleep as local `HH:MM` strings (rejected; it violates the UTC-instant standard and is ambiguous across DST).
+  - A per-user settings table for goals (rejected; definition config already syncs).
+- **Consequences:** Editing past nights and days waits for the Calendar day detail (Phase 10). Phase 11 analytics should reuse `summarizeCounter` / `summarizeExercise` / `summarizeSleep`.
+- **Related:** [phase-05-health.md](./docs/phases/phase-05-health.md)
+
+### 2026-09-30 — Research-derived redesign: palettes, type, tile Home, explicit Prayer actions
+
+- **Context:** Owner rejected two incremental passes as visually unchanged. Their specific complaints: invented accent colors, the Fraunces serif, side color bars on cards, unclear actions, a hidden tap-to-cycle prayer interaction, and a progress ring that was invisible in dark mode. The research in `docs/design-references/` (10 award-winning sites, tokens extracted from their shipped CSS) was supposed to drive the design and hadn't.
+- **Decision:**
+  - **Palettes come from extracted tokens, not invention.** The four presets replace rose/slate/sage/lavender:
+    - `clay` (default): by-kin
+    - `volt`: Lusion
+    - `studio`: Iventions
+    - `ember`: Minh Pham
+
+    Values marked `(d)` in `globals.css` are derived only where WCAG AA required it. A new `--accent-text` token is the AA-safe accent for text; `--accent` is for fills only.
+  - **Category chips:** fixed pastels (Iventions ×4, Bruno Simon ×2, Lusion ×1) with dark `--cat-ink` icons, identical in every preset and mode.
+  - **Type:** Space Grotesk for UI/display and Space Mono for uppercase labels. Geist and Fraunces are removed.
+  - **Never use side color bars** (`border-l-*` accents) on cards. Category is shown by the chip; a completed tile fills with its pastel.
+  - **Home:**
+    - a large daily `ProgressRing` plus 7-day `WeeklyBars`
+    - an "Up next" card with one primary action
+    - numbered sections (`01/ FAITH`, …) of 2-column tiles, each with a labelled ≥44px action
+  - **Prayer page:**
+    - a large 5-segment ring (prayed/missed/pending), a streak chip, and weekly bars
+    - "Next up" with Prayed/Missed buttons
+    - an explicit per-prayer list with Prayed/Missed/Undo, replacing tap-to-cycle
+    - a month heatmap with a legend
+- **Also fixed:**
+  - `/` is statically prerendered, so the server-computed date froze at build time. The date is now computed client-side.
+  - `ThemeProvider` read localStorage during render, which caused a hydration mismatch (the wrong mode showed as selected). It now reads storage after mount.
+  - Prayer buttons stayed enabled during an in-flight save, so a second tap built its payload from stale state and overwrote the first. All prayer controls now lock while a save is pending.
+  - Saves no longer await the cloud sync: the local write shows immediately and sync runs in the background.
+- **Alternatives considered:** Keeping the presets and only restyling (rejected by owner). A single fixed palette (rejected, since it removes the theme picker). A 2-column list with inline actions instead of tiles (owner chose tiles).
+- **Consequences:** Stored `life_theme_name` values from the old presets are no longer valid and fall back to `clay` (validated in both `ThemeProvider` and the pre-paint init script). `DotCluster` and `StatNumber` were removed as unused.
+- **Related:** `docs/design-references/INDEX.md`, `apps/web/src/app/globals.css`

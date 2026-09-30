@@ -27,7 +27,7 @@ export function BottomNav() {
       aria-label="Main"
     >
       <ul
-        className="glass-nav flex max-w-lg flex-1 items-stretch justify-around gap-0.5 rounded-[28px] px-1.5 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
+        className="glass-nav flex max-w-lg flex-1 items-stretch justify-around gap-0.5 rounded-(--radius-sheet) px-1.5 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]"
       >
         {tabs.map(({ href, label, icon: Icon }) => {
           const active =
@@ -40,12 +40,14 @@ export function BottomNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-13 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium transition-colors ${
-                  active ? "bg-accent/15 text-accent" : "text-ink-muted hover:text-ink"
+                className={`transition-token flex min-h-13 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-medium ${
+                  active ? "bg-accent text-accent-ink shadow-sm" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 <Icon
-                  className={`h-5 w-5 ${active ? "stroke-[2.5px]" : ""}`}
+                  className={`transition-token h-5 w-5 ${
+                    active ? "scale-110 ease-(--ease-spring) stroke-[2.5px]" : ""
+                  }`}
                   aria-hidden
                 />
                 <span>{label}</span>

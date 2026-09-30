@@ -1,12 +1,10 @@
+import { PageHeader } from "@/components/ui/page-header";
 import { PhaseNotice } from "@/components/ui/phase-notice";
 
 export default function ProgressPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-2xl font-medium text-ink">Progress</h1>
-        <p className="mt-1 text-sm text-ink-muted">Charts and consistency over time.</p>
-      </header>
+      <PageHeader eyebrow="Progress" title="Progress" description="Charts and consistency over time." />
       <PhaseNotice
         phase="11"
         title="Analytics"

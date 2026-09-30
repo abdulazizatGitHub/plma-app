@@ -6,3 +6,6 @@ dist
 *.log
 .DS_Store
 life_pg_data
+
+# Local-only design research (extracted from third-party sites; not shipped)
+docs/design-references/

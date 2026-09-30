@@ -4,11 +4,15 @@ import { Check } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { THEME_MODES, THEME_NAMES } from "@/lib/theme/theme-utils";
 
-const THEME_SWATCHES: Record<(typeof THEME_NAMES)[number], { label: string; swatch: string }> = {
-  rose: { label: "Rose", swatch: "#9c3b4e" },
-  slate: { label: "Slate", swatch: "#3e5c56" },
-  sage: { label: "Sage", swatch: "#55703a" },
-  lavender: { label: "Lavender", swatch: "#5b4b8a" },
+/** Canvas + accent of each preset's signature palette (see globals.css). */
+const THEME_SWATCHES: Record<
+  (typeof THEME_NAMES)[number],
+  { label: string; source: string; canvas: string; accent: string }
+> = {
+  clay: { label: "Clay", source: "by-kin", canvas: "#f4f2ed", accent: "#ff6542" },
+  volt: { label: "Volt", source: "Lusion", canvas: "#f0f1fa", accent: "#1a2ffb" },
+  studio: { label: "Studio", source: "Iventions", canvas: "#f3efeb", accent: "#8072ff" },
+  ember: { label: "Ember", source: "Minh Pham", canvas: "#0d0d0d", accent: "#eb5939" },
 };
 
 const MODE_LABELS: Record<(typeof THEME_MODES)[number], string> = {
@@ -21,17 +25,17 @@ export function ThemePicker() {
   const { themeName, mode, accent, setThemeName, setMode, setAccent } = useTheme();
 
   return (
-    <div className="mt-3 space-y-4">
+    <div className="mt-3 space-y-5">
       <div>
-        <p className="mb-2 text-xs font-medium text-ink-muted">Appearance</p>
-        <div className="flex gap-1.5 rounded-xl bg-surface-sunken p-1">
+        <p className="label-mono mb-2 text-ink-muted">Mode</p>
+        <div className="flex gap-1.5 rounded-(--radius-control) bg-surface-sunken p-1">
           {THEME_MODES.map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMode(m)}
               aria-pressed={mode === m}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
+              className={`press-pop transition-token min-h-10 flex-1 rounded-(--radius-chip) text-sm font-medium ${
                 mode === m ? "bg-surface text-ink shadow-sm" : "text-ink-muted"
               }`}
             >
@@ -42,10 +46,10 @@ export function ThemePicker() {
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium text-ink-muted">Theme</p>
-        <div className="grid grid-cols-4 gap-2">
+        <p className="label-mono mb-2 text-ink-muted">Theme</p>
+        <div className="grid grid-cols-2 gap-2">
           {THEME_NAMES.map((name) => {
-            const { label, swatch } = THEME_SWATCHES[name];
+            const { label, source, canvas, accent: swatch } = THEME_SWATCHES[name];
             const active = themeName === name;
             return (
               <button
@@ -53,20 +57,25 @@ export function ThemePicker() {
                 type="button"
                 onClick={() => setThemeName(name)}
                 aria-pressed={active}
-                className="flex flex-col items-center gap-1.5"
+                className={`press-pop transition-token flex items-center gap-3 rounded-(--radius-control) border p-2.5 text-left ${
+                  active ? "border-ink bg-surface-sunken" : "border-line"
+                }`}
               >
                 <span
-                  className="flex h-10 w-10 items-center justify-center rounded-full border-2"
-                  style={{
-                    backgroundColor: swatch,
-                    borderColor: active ? swatch : "transparent",
-                    outline: active ? `2px solid ${swatch}` : undefined,
-                    outlineOffset: active ? 2 : undefined,
-                  }}
+                  className="relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full border border-line"
+                  style={{ backgroundColor: canvas }}
+                  aria-hidden
                 >
-                  {active ? <Check className="h-4 w-4" style={{ color: "#fff" }} /> : null}
+                  <span
+                    className="absolute inset-y-0 right-0 w-1/2"
+                    style={{ backgroundColor: swatch }}
+                  />
                 </span>
-                <span className="text-[11px] text-ink-muted">{label}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">{label}</span>
+                  <span className="label-mono block text-ink-muted">{source}</span>
+                </span>
+                {active ? <Check className="h-4 w-4 text-ink" aria-hidden /> : null}
               </button>
             );
           })}
@@ -75,22 +84,22 @@ export function ThemePicker() {
 
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-medium text-ink-muted">Accent color</p>
-          <p className="text-[11px] text-ink-muted/80">Overrides the theme&apos;s accent everywhere</p>
+          <p className="text-sm font-medium text-ink">Accent color</p>
+          <p className="text-xs text-ink-muted">Overrides the theme&apos;s accent everywhere</p>
         </div>
         <div className="flex items-center gap-2">
           <input
             type="color"
             aria-label="Custom accent color"
-            value={accent ?? THEME_SWATCHES[themeName].swatch}
+            value={accent ?? THEME_SWATCHES[themeName].accent}
             onChange={(e) => setAccent(e.target.value)}
-            className="h-9 w-9 cursor-pointer rounded-lg border border-line bg-transparent p-0.5"
+            className="h-10 w-10 cursor-pointer rounded-(--radius-chip) border border-line bg-transparent p-0.5"
           />
           {accent ? (
             <button
               type="button"
               onClick={() => setAccent(null)}
-              className="text-xs font-medium text-accent hover:opacity-80"
+              className="text-sm font-medium text-accent-text hover:opacity-80"
             >
               Reset
             </button>

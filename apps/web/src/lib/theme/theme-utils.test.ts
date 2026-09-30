@@ -10,13 +10,14 @@ import {
 
 describe("isThemeName", () => {
   it("accepts the four known theme names", () => {
-    for (const name of ["rose", "slate", "sage", "lavender"]) {
+    for (const name of ["clay", "volt", "studio", "ember"]) {
       expect(isThemeName(name)).toBe(true);
     }
   });
 
-  it("rejects unknown values, empty string, and null", () => {
+  it("rejects unknown values, retired preset names, empty string, and null", () => {
     expect(isThemeName("teal")).toBe(false);
+    expect(isThemeName("rose")).toBe(false);
     expect(isThemeName("")).toBe(false);
     expect(isThemeName(null)).toBe(false);
   });
