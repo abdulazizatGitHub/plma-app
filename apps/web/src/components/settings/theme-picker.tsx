@@ -27,7 +27,7 @@ export function ThemePicker() {
   return (
     <div className="mt-3 space-y-5">
       <div>
-        <p className="label-mono mb-2 text-ink-muted">Mode</p>
+        <p className="mb-2 text-sm font-medium text-ink">Mode</p>
         <div className="flex gap-1.5 rounded-(--radius-control) bg-surface-sunken p-1">
           {THEME_MODES.map((m) => (
             <button
@@ -46,7 +46,7 @@ export function ThemePicker() {
       </div>
 
       <div>
-        <p className="label-mono mb-2 text-ink-muted">Theme</p>
+        <p className="mb-2 text-sm font-medium text-ink">Theme</p>
         <div className="grid grid-cols-2 gap-2">
           {THEME_NAMES.map((name) => {
             const { label, source, canvas, accent: swatch } = THEME_SWATCHES[name];

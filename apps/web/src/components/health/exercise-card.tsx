@@ -16,7 +16,7 @@ import { Card } from "@/components/ui/card";
 import { Stat } from "@/components/ui/stat";
 import { WeeklyBars } from "@/components/ui/weekly-bars";
 import { exerciseTypeLabel } from "@/lib/dashboard/today-summary";
-import { CHIP, CHIP_OFF, CHIP_ON, periodLabel, todayPayload, type HealthCardProps } from "./health-card-types";
+import { CHIP, CHIP_OFF, CHIP_ON, todayPayload, type HealthCardProps } from "./health-card-types";
 
 const DURATIONS = [15, 30, 45, 60, 90];
 
@@ -65,7 +65,6 @@ export function ExerciseCard(props: HealthCardProps) {
       <ExerciseForm key={JSON.stringify(logged)} logged={logged} {...props} />
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">{periodLabel(period)}</p>
         <div className="grid grid-cols-3 gap-3">
           <Stat value={`${summary.activeDays}/${dates.length}`} label="Active days" />
           <Stat value={String(summary.totalMinutes)} label="Minutes" />
@@ -74,8 +73,8 @@ export function ExerciseCard(props: HealthCardProps) {
       </div>
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">Last 7 days · minutes</p>
         <WeeklyBars days={week} max={weekMax} formatValue={(v) => `${v} min`} />
+        <p className="mt-2 text-xs text-ink-muted">Last 7 days · minutes</p>
       </div>
     </Card>
   );
@@ -106,7 +105,7 @@ function ExerciseForm({
   return (
     <div className="mt-5 space-y-4">
       <fieldset>
-        <legend className="label-mono mb-2 text-ink">Type</legend>
+        <legend className="mb-2 text-sm font-medium text-ink">Type</legend>
         <div className="grid grid-cols-4 gap-2">
           {EXERCISE_TYPES.map((t) => (
             <button
@@ -123,7 +122,7 @@ function ExerciseForm({
       </fieldset>
 
       <fieldset>
-        <legend className="label-mono mb-2 text-ink">Duration</legend>
+        <legend className="mb-2 text-sm font-medium text-ink">Duration</legend>
         <div className="grid grid-cols-5 gap-2">
           {DURATIONS.map((m) => (
             <button

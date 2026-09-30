@@ -5,7 +5,7 @@ import { PhaseNotice } from "@/components/ui/phase-notice";
 export default function GoalsPage() {
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Goals" title="Goals" description="Weekly, monthly, and content plans live here." />
+      <PageHeader title="Goals" description="Weekly, monthly, and content plans live here." />
       <PhaseNotice
         phase="08"
         title="Weekly & monthly goals"

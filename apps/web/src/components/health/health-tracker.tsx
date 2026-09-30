@@ -6,7 +6,6 @@ import {
   type HabitLogDto,
   type HealthPeriod,
 } from "@life/shared";
-import { Dumbbell, Footprints, GlassWater, MoonStar, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useState, type ComponentType } from "react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Card } from "@/components/ui/card";
@@ -30,15 +29,13 @@ import { WaterCard } from "./water-card";
 const SECTIONS: {
   slug: string;
   id: string;
-  index: string;
   title: string;
-  icon: LucideIcon;
   Card: ComponentType<HealthCardProps>;
 }[] = [
-  { slug: "steps", id: "steps", index: "01", title: "Steps", icon: Footprints, Card: StepsCard },
-  { slug: "water", id: "water", index: "02", title: "Water", icon: GlassWater, Card: WaterCard },
-  { slug: "exercise", id: "exercise", index: "03", title: "Exercise", icon: Dumbbell, Card: ExerciseCard },
-  { slug: "sleep", id: "sleep", index: "04", title: "Sleep", icon: MoonStar, Card: SleepCard },
+  { slug: "steps", id: "steps", title: "Steps", Card: StepsCard },
+  { slug: "water", id: "water", title: "Water", Card: WaterCard },
+  { slug: "exercise", id: "exercise", title: "Exercise", Card: ExerciseCard },
+  { slug: "sleep", id: "sleep", title: "Sleep", Card: SleepCard },
 ];
 
 export function HealthTracker() {
@@ -131,16 +128,19 @@ export function HealthTracker() {
 
   return (
     <div className="space-y-7">
-      <PeriodToggle value={period} onChange={setPeriod} />
+      {/* Sticky so the period for every stat row stays visible while scrolling. */}
+      <div className="sticky top-[env(safe-area-inset-top)] z-20 -mx-4 bg-canvas px-4 py-2">
+        <PeriodToggle value={period} onChange={setPeriod} />
+      </div>
       {error ? (
         <p role="alert" className="rounded-(--radius-control) bg-danger/15 px-3.5 py-2.5 text-sm text-danger">
           {error}
         </p>
       ) : null}
-      {present.map(({ id, index, title, icon, Card: SectionCard, def }) =>
+      {present.map(({ id, title, Card: SectionCard, def }) =>
         def ? (
           <section key={id} id={id} className="scroll-mt-4 space-y-3">
-            <SectionLabel index={index} title={title} icon={icon} />
+            <SectionLabel title={title} />
             <SectionCard
               def={def}
               logs={logs}

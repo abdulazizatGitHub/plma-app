@@ -23,7 +23,7 @@ import { Stat } from "@/components/ui/stat";
 import { WeeklyBars } from "@/components/ui/weekly-bars";
 import { DEFAULT_WAKE_GOAL } from "@/lib/dashboard/today-summary";
 import { GoalEditor } from "./goal-editor";
-import { CHIP, CHIP_ON, periodLabel, todayPayload, type HealthCardProps } from "./health-card-types";
+import { CHIP, CHIP_ON, todayPayload, type HealthCardProps } from "./health-card-types";
 
 const DEFAULT_BEDTIME = "23:00";
 
@@ -67,7 +67,6 @@ export function SleepCard(props: HealthCardProps) {
       <SleepForm key={JSON.stringify(logged)} logged={logged} wakeGoal={wakeGoal} {...props} />
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">{periodLabel(period)}</p>
         <div className="grid grid-cols-2 gap-x-3 gap-y-4">
           <Stat
             value={summary.averageMinutes !== null ? formatDuration(summary.averageMinutes) : "—"}
@@ -86,8 +85,8 @@ export function SleepCard(props: HealthCardProps) {
       </div>
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">Last 7 nights</p>
         <WeeklyBars days={week} max={weekMax} formatValue={(v) => (v ? formatDuration(v) : "none")} />
+        <p className="mt-2 text-xs text-ink-muted">Last 7 nights</p>
       </div>
 
       <div className="mt-5">
@@ -184,7 +183,7 @@ function SleepForm({
     >
       <div className="grid grid-cols-2 gap-2">
         <label htmlFor={bedId} className="block">
-          <span className="label-mono flex items-center gap-1.5 text-ink-muted">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
             <Bed className="h-3.5 w-3.5" aria-hidden />
             Bedtime
           </span>
@@ -197,7 +196,7 @@ function SleepForm({
           />
         </label>
         <label htmlFor={wakeId} className="block">
-          <span className="label-mono flex items-center gap-1.5 text-ink-muted">
+          <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
             <AlarmClock className="h-3.5 w-3.5" aria-hidden />
             Woke up
           </span>

@@ -20,7 +20,6 @@ import {
   CHIP_ON,
   compactNumber,
   numberConfig,
-  periodLabel,
   todayPayload,
   type HealthCardProps,
 } from "./health-card-types";
@@ -70,7 +69,6 @@ export function StepsCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
         </ProgressRing>
 
         <div className="w-full space-y-3">
-          <p className="label-mono text-ink">Quick add</p>
           <div className="grid grid-cols-3 gap-2">
             {QUICK_ADD.map((n) => (
               <button
@@ -91,7 +89,7 @@ export function StepsCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
               submitExact();
             }}
           >
-            <label htmlFor={inputId} className="label-mono text-ink-muted">
+            <label htmlFor={inputId} className="text-sm font-medium text-ink">
               Set today&apos;s total
             </label>
             <div className="mt-1.5 flex gap-2">
@@ -133,7 +131,6 @@ export function StepsCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
       </p>
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">{periodLabel(period)}</p>
         <div className="grid grid-cols-3 gap-3">
           <Stat value={compactNumber(summary.average)} label="Avg / day" />
           <Stat value={`${summary.daysAtGoal}/${dates.length}`} label="Days at goal" />
@@ -142,8 +139,8 @@ export function StepsCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
       </div>
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">Last 7 days</p>
         <WeeklyBars days={week} max={goal} formatValue={(v) => `${v.toLocaleString()} steps`} />
+        <p className="mt-2 text-xs text-ink-muted">Last 7 days</p>
       </div>
 
       <div className="mt-5">

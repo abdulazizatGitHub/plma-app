@@ -4,7 +4,7 @@ import { PhaseNotice } from "@/components/ui/phase-notice";
 export default function ProgressPage() {
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Progress" title="Progress" description="Charts and consistency over time." />
+      <PageHeader title="Progress" description="Charts and consistency over time." />
       <PhaseNotice
         phase="11"
         title="Analytics"

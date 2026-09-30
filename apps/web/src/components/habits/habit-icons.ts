@@ -1,6 +1,5 @@
 import type { PrayerName } from "@life/shared";
 import {
-  Activity,
   BedDouble,
   BookMarked,
   BookOpen,
@@ -9,7 +8,6 @@ import {
   GlassWater,
   GraduationCap,
   HandHeart,
-  Leaf,
   Moon,
   MoonStar,
   PhoneOff,
@@ -40,9 +38,3 @@ export const PRAYER_ICONS: Record<PrayerName, LucideIcon> = {
   maghrib: Sunset,
   isha: Moon,
 };
-
-export const SECTION_ICONS = {
-  faith: HandHeart,
-  body: Activity,
-  mind: Leaf,
-} as const;

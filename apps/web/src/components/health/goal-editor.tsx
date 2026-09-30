@@ -57,7 +57,7 @@ export function GoalEditor({
     return (
       <div className="flex items-center justify-between gap-3 rounded-(--radius-control) bg-surface-sunken px-3.5 py-2">
         <div>
-          <p className="label-mono text-ink-muted">{label}</p>
+          <p className="text-xs text-ink-muted">{label}</p>
           <p className="text-sm font-semibold text-ink tabular-nums">{format(value)}</p>
         </div>
         <button
@@ -82,7 +82,7 @@ export function GoalEditor({
         submit();
       }}
     >
-      <label htmlFor={inputId} className="label-mono text-ink-muted">
+      <label htmlFor={inputId} className="text-sm font-medium text-ink">
         {label}
       </label>
       <div className="mt-1.5 flex gap-2">

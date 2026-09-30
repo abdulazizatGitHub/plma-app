@@ -21,10 +21,6 @@ export function numberConfig(value: unknown, fallback: number): number {
   return Number.isInteger(n) && n > 0 ? n : fallback;
 }
 
-export function periodLabel(period: HealthPeriod): string {
-  return period === "week" ? "This week" : "This month";
-}
-
 /** 6240 → "6.2k", 12000 → "12k", 800 → "800". */
 export function compactNumber(n: number): string {
   if (n >= 10_000) return `${Math.round(n / 1000)}k`;

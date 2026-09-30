@@ -8,7 +8,7 @@ import { Card, CardTitle } from "@/components/ui/card";
 export default function MorePage() {
   return (
     <div className="space-y-4">
-      <PageHeader eyebrow="Settings" title="More" description="Appearance, settings, and quick add — reminders arrive in Phase 12." />
+      <PageHeader title="More" description="Appearance, settings, and quick add — reminders arrive in Phase 12." />
       <Card>
         <CardTitle>Appearance</CardTitle>
         <ThemePicker />

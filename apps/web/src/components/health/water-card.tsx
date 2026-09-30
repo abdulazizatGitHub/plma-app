@@ -17,7 +17,6 @@ import {
   CHIP_OFF,
   CHIP_ON,
   numberConfig,
-  periodLabel,
   todayPayload,
   type HealthCardProps,
 } from "./health-card-types";
@@ -99,7 +98,6 @@ export function WaterCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
       ) : null}
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">{periodLabel(period)}</p>
         <div className="grid grid-cols-3 gap-3">
           <Stat value={String(summary.average)} label="Avg / day" />
           <Stat value={`${summary.daysAtGoal}/${dates.length}`} label="Days at goal" />
@@ -108,8 +106,8 @@ export function WaterCard({ def, logs, today, period, busy, onLog, onGoal }: Hea
       </div>
 
       <div className="mt-5 border-t border-line pt-5">
-        <p className="label-mono mb-3 text-ink">Last 7 days</p>
         <WeeklyBars days={week} max={goal} formatValue={(v) => `${v} glasses`} />
+        <p className="mt-2 text-xs text-ink-muted">Last 7 days</p>
       </div>
 
       <div className="mt-5">

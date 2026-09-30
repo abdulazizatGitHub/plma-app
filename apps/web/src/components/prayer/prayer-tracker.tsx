@@ -212,19 +212,15 @@ export function PrayerTracker() {
         </div>
 
         <div className="mt-6 border-t border-line pt-5">
-          <div className="mb-3 flex items-baseline justify-between">
-            <p className="label-mono text-ink">This week</p>
-            <p className="label-mono text-ink-muted">
-              {weekTotal}/{week.length * 5}
-            </p>
-          </div>
           <WeeklyBars days={week} max={5} formatValue={(v) => `${v}/5`} />
+          <p className="mt-2 text-xs text-ink-muted">
+            Last 7 days · {weekTotal} of {week.length * 5} prayed
+          </p>
         </div>
       </Card>
 
       {/* Next up */}
       <div className="shadow-float rounded-(--radius-sheet) bg-ink p-5 text-canvas">
-        <p className="label-mono opacity-70">{next ? "Next up" : "Today"}</p>
         {next ? (
           <>
             <NextUpTitle name={next} />
@@ -252,7 +248,7 @@ export function PrayerTracker() {
             </div>
           </>
         ) : (
-          <div className="mt-3 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <span className="flex h-12 w-12 items-center justify-center rounded-(--radius-control) bg-canvas/10">
               <PartyPopper className="h-6 w-6" aria-hidden />
             </span>
@@ -268,7 +264,7 @@ export function PrayerTracker() {
 
       {/* Today's prayers */}
       <section className="space-y-3">
-        <SectionLabel index="02" title="Today" />
+        <SectionLabel title="Today" />
         <Card className="divide-y divide-line py-1">
           {PRAYER_NAMES.map((name) => {
             const status = prayerPayload.prayers[name];
@@ -333,7 +329,7 @@ export function PrayerTracker() {
 
       {/* Quran */}
       <section className="space-y-3">
-        <SectionLabel index="03" title="Quran" />
+        <SectionLabel title="Quran" />
         <Card className="divide-y divide-line py-1">
           <QuranRow
             title="Surah Mulk"
@@ -357,7 +353,7 @@ export function PrayerTracker() {
       {/* Month */}
       {report ? (
         <section className="space-y-3">
-          <SectionLabel index="04" title={monthName(month)} />
+          <SectionLabel title={monthName(month)} />
           <Card className="shadow-float p-5">
             <div className="grid grid-cols-3 gap-3">
               <Stat value={`${report.completionPercent}%`} label="Completed" />
@@ -414,13 +410,16 @@ export function PrayerTracker() {
 function NextUpTitle({ name }: { name: PrayerName }) {
   const Icon = PRAYER_ICONS[name];
   return (
-    <div className="mt-3 flex items-center gap-3">
+    <div className="flex items-center gap-3">
       <span className="flex h-12 w-12 items-center justify-center rounded-(--radius-control) bg-canvas/10">
         <Icon className="h-6 w-6" aria-hidden />
       </span>
-      <p className="font-display text-[2.5rem] leading-none font-semibold tracking-[-0.04em]">
-        {PRAYER_LABELS[name]}
-      </p>
+      <div>
+        <p className="font-display text-[2.5rem] leading-none font-semibold tracking-[-0.04em]">
+          {PRAYER_LABELS[name]}
+        </p>
+        <p className="mt-1 text-sm opacity-70">Next prayer</p>
+      </div>
     </div>
   );
 }

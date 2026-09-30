@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { HABIT_ICONS, PRAYER_ICONS, SECTION_ICONS } from "@/components/habits/habit-icons";
+import { HABIT_ICONS, PRAYER_ICONS } from "@/components/habits/habit-icons";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Card } from "@/components/ui/card";
 import { CategoryBadge } from "@/components/ui/category-badge";
@@ -64,15 +64,10 @@ const SUBTITLES: Record<string, string> = {
   "no-phone": "One screen-free hour",
 };
 
-const SECTIONS: { index: string; title: string; icon: LucideIcon; keys: string[] }[] = [
-  { index: "01", title: "Faith", icon: SECTION_ICONS.faith, keys: ["prayer", "quran"] },
-  {
-    index: "02",
-    title: "Body",
-    icon: SECTION_ICONS.body,
-    keys: ["steps", "water", "exercise", "sleep"],
-  },
-  { index: "03", title: "Home & Mind", icon: SECTION_ICONS.mind, keys: ["make-bed", "no-phone"] },
+const SECTIONS: { title: string; keys: string[] }[] = [
+  { title: "Faith", keys: ["prayer", "quran"] },
+  { title: "Body", keys: ["steps", "water", "exercise", "sleep"] },
+  { title: "Home & Mind", keys: ["make-bed", "no-phone"] },
 ];
 
 const BOOLEAN_KEYS = new Set(["exercise", "make-bed", "no-phone"]);
@@ -86,12 +81,11 @@ const STATUS_COLOR: Record<PrayerStatus, string | null> = {
 
 function dateLabel(date: string): string {
   const [y, m, d] = date.split("-").map(Number);
-  const value = new Date(y, m - 1, d);
-  const weekday = new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(value);
-  const dayMonth = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" }).format(
-    value,
-  );
-  return `${weekday} · ${dayMonth}`;
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(y, m - 1, d));
 }
 
 export function TodayDashboard() {
@@ -190,17 +184,21 @@ export function TodayDashboard() {
   return (
     <div className="space-y-7">
       <PageHeader
-        eyebrow={today ? dateLabel(today) : "Today"}
         title="Today"
+        description={today ? dateLabel(today) : undefined}
         actions={
-          <div className="flex items-center gap-3">
-            <span className="label-mono flex items-center gap-1.5 text-ink-muted">
+          <div className="flex items-center gap-2">
+            <span
+              className="flex h-11 w-11 items-center justify-center text-ink-muted"
+              role="img"
+              aria-label={syncOnline ? "Synced" : "Offline"}
+              title={syncOnline ? "Synced" : "Offline"}
+            >
               {syncOnline ? (
-                <Cloud className="h-3.5 w-3.5" aria-hidden />
+                <Cloud className="h-5 w-5" aria-hidden />
               ) : (
-                <CloudOff className="h-3.5 w-3.5" aria-hidden />
+                <CloudOff className="h-5 w-5" aria-hidden />
               )}
-              {syncOnline ? "Synced" : "Offline"}
             </span>
             <button
               type="button"
@@ -233,11 +231,8 @@ export function TodayDashboard() {
                 </span>
               </ProgressRing>
               <div className="w-full flex-1">
-                <div className="mb-3 flex items-baseline justify-between">
-                  <p className="label-mono text-ink">This week</p>
-                  <p className="label-mono text-ink-muted">Avg {weekAverage}%</p>
-                </div>
                 <WeeklyBars days={weekly} max={100} formatValue={(v) => `${v}%`} />
+                <p className="mt-2 text-xs text-ink-muted">Last 7 days · avg {weekAverage}%</p>
               </div>
             </div>
           </Card>
@@ -254,8 +249,8 @@ export function TodayDashboard() {
           />
 
           {SECTIONS.map((section) => (
-            <section key={section.index} className="space-y-3">
-              <SectionLabel index={section.index} title={section.title} icon={section.icon} />
+            <section key={section.title} className="space-y-3">
+              <SectionLabel title={section.title} />
               <div className="grid grid-cols-2 gap-3">
                 {section.keys
                   .map((key) => byKey.get(key))
@@ -413,8 +408,7 @@ function UpNext({
 
   return (
     <div className="shadow-float rounded-(--radius-sheet) bg-ink p-5 text-canvas">
-      <p className="label-mono opacity-70">{item ? "Up next" : synced ? "All done" : "Not synced"}</p>
-      <div className="mt-3 flex items-center gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-(--radius-control) bg-canvas/10">
           <Icon className="h-6 w-6" aria-hidden />
         </span>
@@ -424,7 +418,7 @@ function UpNext({
           </p>
           <p className="mt-1 text-sm opacity-70">
             {item
-              ? item.subtitle
+              ? `Up next · ${item.subtitle}`
               : synced
                 ? "Every habit is logged. See you tomorrow."
                 : "Connect once online so your habits load."}
