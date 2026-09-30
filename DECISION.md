@@ -125,6 +125,27 @@ Use this template for each decision:
 
 <!-- Add new decisions below this line, newest first within each phase or chronologically as preferred. -->
 
+### 2026-09-30 — Multi-user accounts and per-user customization (supersedes "Single-user sync v1")
+
+- **Context:** The owner confirmed the app is for **multiple people with their own accounts**, and that nothing (habits, goals, targets, Home, detail pages) should be the same for everyone. The code assumed one built-in "Owner":
+  - all 9 system habits are auto-seeded
+  - Home is a hardcoded list
+  - custom habits never appear on Home
+- **Decision:**
+  - **Accounts first (Phase 06A).** Identity comes from a verified session. All data is scoped by user, and sync push must verify ownership of every referenced habit.
+  - **Customization next (Phase 06B).** New users start empty and pick from a template catalog or create their own. Home and detail pages render the user's own habits. Users can save private templates.
+  - **Template library later (Phase 14),** with the owner's rules recorded as LIB-01…05 in CLIENT_REQUIREMENTS Addendum A. **Provenance is stored from 06B onward** so the "no republishing adopted templates" rule (LIB-04) can be enforced when publishing ships.
+  - Original Phase 06 (reading/university/custom habits) folds into 06B; reading and university become templates on the same engine.
+- **Alternatives considered:**
+  - Single owner with full customization (rejected by owner).
+  - Keeping the 9 defaults pre-added and removable (rejected; users start empty and choose).
+- **Consequences:**
+  - Supersedes the 2026-09-27 "Single-user sync v1" decision.
+  - `ensureDefaultUser` and the shared `SYNC_API_KEY` stop being the identity mechanism.
+  - The existing Owner's data is kept and claimable.
+  - Auth provider choice is pending owner input.
+- **Related:** [phase-06a-accounts.md](./docs/phases/phase-06a-accounts.md), [phase-06b-customization.md](./docs/phases/phase-06b-customization.md), [phase-14-template-library.md](./docs/phases/phase-14-template-library.md)
+
 ### 2026-09-30 — Phase 05 health: payloads, sleep dating, goals in definition config
 
 - **Context:** Phase 05 (steps, water, exercise, sleep) needed log shapes, week/month stats, and editable goals. Sleep crosses midnight, and goals had to be configurable in-app (CRD: "configurable without redeploy").

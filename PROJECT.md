@@ -24,6 +24,7 @@ _Blockers prevent phase or release progress._
 
 | ID | Opened | Status | Severity | Summary | Steps / notes | Fix reference |
 |----|--------|--------|----------|---------|---------------|---------------|
+| BUG-002 | 2026-09-30 | open | critical (once multi-user) | Sync push doesn't verify ownership of `habitDefinitionId` / definition `id` | `POST /v1/sync/push` upserts logs and definitions by client-supplied ids without checking they belong to the caller. Harmless with one Owner. With accounts it lets one user write into another's habits. | Fix in Phase 06A (ownership check + test) |
 | BUG-001 | 2026-09-28 | fixed | major | Home dashboard hangs forever on "Loading habits…" | `postinstall` only copied `dist/sql-wasm.wasm`; webpack resolves sql.js's `browser` export to `sql-wasm-browser.js`, which fetches `sql-wasm-browser.wasm` (never present in `public/`) → 404 → WASM loader hangs silently, `getLocalDb()` never resolves | apps/web/package.json postinstall, commit ba755e4 |
 
 **Severity:** `critical` (data loss / security / unusable) · `major` · `minor` · `trivial`

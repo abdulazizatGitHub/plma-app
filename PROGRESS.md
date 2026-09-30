@@ -29,8 +29,9 @@ Last updated: **2026-09-30**
 
 ## Current sprint
 
-- **Active:** Phase 06 — reading, university, custom habits
-- **Next:** Phase 07 — make bed, no phone, plan tomorrow
+- **Active:** Phase 06A — accounts & data isolation (multi-user; see CLIENT_REQUIREMENTS Addendum A)
+- **Next:** Phase 06B — customization: templates, own habits, goals & targets (absorbs original Phase 06)
+- **Later:** Phase 14 — public template library (rules recorded as LIB-01…05)
 
 ---
 
