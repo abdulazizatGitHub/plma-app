@@ -14,6 +14,12 @@ declare const self: ServiceWorkerGlobalScope;
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
+  precacheOptions: {
+    // Detail pages are one precached shell each (/items/view?id=…): match them
+    // whatever their app parameters. `_rsc` is deliberately not listed, so
+    // Next's data requests never get the HTML shell.
+    ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^(id|add|kind|category|parent|date|time|title|priority)$/],
+  },
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,

@@ -47,6 +47,9 @@ export function useActions() {
       const changes = await build(ctx);
       for (const c of changes) store.save(c.entity, c.row as unknown as Parameters<LocalStore["save"]>[1]);
       syncSoon();
+      // Persist now, not on the 250 ms timer: a save followed by a full page
+      // load (reload, or "Back" into another document) would otherwise lose it.
+      await store.flush();
     },
     [store, user, syncSoon],
   );

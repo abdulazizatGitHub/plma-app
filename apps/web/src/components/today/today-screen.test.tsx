@@ -101,6 +101,9 @@ describe("TodayScreen", () => {
     renderToday();
     const tomorrow = addDays(todayLocalDate(), 1);
     const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${tomorrow}T12:00:00`));
+    await screen.findByRole("button", { name: "Next week" });
+    // On a Sunday, tomorrow is in next week's strip.
+    if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Next week" }));
     fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^${label}`) }));
     fireEvent.click(await screen.findByRole("button", { name: "Add a task" }));
     fireEvent.change(screen.getByLabelText(/What needs doing/), { target: { value: "Shoot at Café X" } });
