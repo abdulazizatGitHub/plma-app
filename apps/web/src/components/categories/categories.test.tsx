@@ -118,7 +118,7 @@ describe("Categories page", () => {
   });
 });
 
-describe("Routines on Today", () => {
+describe("New kinds on Today", () => {
   it("ticking every sub-item completes the routine", async () => {
     const gym = item({ type: "group", title: "Gym — Push day" });
     store.save("items", gym);
@@ -133,5 +133,35 @@ describe("Routines on Today", () => {
     for (const title of ["Bench", "OHP", "Dips"]) fireEvent.click(within(routine).getByRole("checkbox", { name: title }));
     await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Gym — Push day")).toBeInTheDocument());
     expect(screen.getByRole("img", { name: /% of today done/ })).toHaveAttribute("data-value", "100");
+  });
+
+  it("a checklist expands to its steps; ticking them all completes it", async () => {
+    store.save("items", item({ title: "Video", tracking: { v: 1, kind: "checklist", steps: ["Script", "Shoot"] } }));
+    render(
+      <AddSheetProvider>
+        <TodayScreen />
+      </AddSheetProvider>,
+    );
+    expect(await screen.findByText("0/2 steps")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show steps" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Script" }));
+    expect(await screen.findByText("1/2 steps")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Video")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Shoot" }));
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Video")).toBeInTheDocument());
+  });
+
+  it("a timed habit logs minutes toward its target", async () => {
+    store.save("items", item({ title: "Stretch", tracking: { v: 1, kind: "duration", targetMin: 10 } }));
+    render(
+      <AddSheetProvider>
+        <TodayScreen />
+      </AddSheetProvider>,
+    );
+    const plus = await screen.findByRole("button", { name: "Increase Stretch by 5" });
+    fireEvent.click(plus);
+    expect(await screen.findByText("5 / 10 min")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Increase Stretch by 5" }));
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Stretch")).toBeInTheDocument());
   });
 });

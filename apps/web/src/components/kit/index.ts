@@ -22,3 +22,4 @@ export { PopoverMenu, PopoverMenuDivider, PopoverMenuItem } from "./popover-menu
 export { Tag, type TagTone } from "./tag";
 export { Toast, type ToastData } from "./toast";
 export { ColorPicker, IconPicker, Pill, PillGroup } from "./pickers";
+export { Heatmap, monthDates, shiftMonth, type HeatMark } from "./heatmap";

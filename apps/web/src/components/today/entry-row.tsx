@@ -90,6 +90,12 @@ type EntryRowProps = {
   dueLabel?: string;
 };
 
+/**
+ * Checklists left open, by day + entry. A tick moves the row to another section
+ * (To Do → In Progress), which remounts it; this keeps it open across the move.
+ */
+const openChecklists = new Set<string>();
+
 /** The checklist's steps as small tick rows (TRK-04). */
 function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
   const run = useActions();
@@ -129,7 +135,15 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
 export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowProps) {
   const run = useActions();
   const router = useRouter();
-  const [showSteps, setShowSteps] = useState(false);
+  const openKey = `${date}|${entry.key}`;
+  const [showSteps, setShowStepsState] = useState(() => openChecklists.has(openKey));
+  const setShowSteps = (update: (v: boolean) => boolean) =>
+    setShowStepsState((v) => {
+      const next = update(v);
+      if (next) openChecklists.add(openKey);
+      else openChecklists.delete(openKey);
+      return next;
+    });
   const open = () => router.push(`/items/view?id=${entry.item.id}`);
   const state = entryState(entry);
   const visible: ItemState = state === "not_today" ? "todo" : state;
