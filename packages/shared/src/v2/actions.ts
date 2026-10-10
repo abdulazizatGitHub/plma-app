@@ -1,6 +1,6 @@
 import type { DayEntry } from "./day.js";
 import { MOVED_SLOT_PREFIX } from "./day.js";
-import type { Item, Occurrence } from "./entities.js";
+import type { Category, Item, Occurrence } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
 import { entryState } from "./progress.js";
 
@@ -9,7 +9,7 @@ import { entryState } from "./progress.js";
  * rows to save locally (and sync); nothing here touches storage.
  */
 
-export type Change = { entity: "items"; row: Item } | { entity: "occurrences"; row: Occurrence };
+export type Change = { entity: "categories"; row: Category } | { entity: "items"; row: Item } | { entity: "occurrences"; row: Occurrence };
 
 export type ActionContext = { userId: string; now: string; deviceId: string | null };
 
@@ -39,20 +39,66 @@ async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext,
 const occ = (row: Occurrence): Change => ({ entity: "occurrences", row });
 const item = (row: Item): Change => ({ entity: "items", row });
 
-/** One tap: done ↔ not done. Quantities jump to their target (or back to 0). */
+/** Checklist ticks stored on the occurrence, padded to the item's steps. */
+export function checklistSteps(entry: DayEntry): boolean[] {
+  const t = entry.item.tracking;
+  if (t.kind !== "checklist") return [];
+  const saved = entry.occurrence?.detail?.steps;
+  const list = Array.isArray(saved) ? saved : [];
+  return t.steps.map((_, i) => list[i] === true);
+}
+
+/**
+ * One tap: done ↔ not done. Quantities and durations jump to their target (or
+ * back to 0); checklists tick or clear every step.
+ */
 export async function toggleDone(entry: DayEntry, date: string, ctx: ActionContext): Promise<Change[]> {
   const done = entryState(entry) === "done";
   const t = entry.item.tracking;
-  const value = t.kind === "quantity" ? (done ? 0 : (t.target ?? entry.occurrence?.value ?? 0)) : entry.occurrence?.value ?? null;
+  const value =
+    t.kind === "quantity"
+      ? done ? 0 : (t.target ?? entry.occurrence?.value ?? 0)
+      : t.kind === "duration"
+        ? done ? 0 : (t.targetMin ?? entry.occurrence?.value ?? 0)
+        : (entry.occurrence?.value ?? null);
+  const detail = t.kind === "checklist" ? { ...entry.occurrence?.detail, steps: t.steps.map(() => !done) } : (entry.occurrence?.detail ?? null);
   return [
     occ(
       await occurrenceWith(entry, date, ctx, {
         status: done ? "todo" : "done",
         value,
+        detail,
         completedAt: done ? null : ctx.now,
       }),
     ),
   ];
+}
+
+/** Tick one checklist step; all ticked → done, some → in progress (TRK-04). */
+export async function toggleChecklistStep(entry: DayEntry, date: string, index: number, ctx: ActionContext): Promise<Change[]> {
+  const steps = checklistSteps(entry);
+  if (index < 0 || index >= steps.length) return [];
+  steps[index] = !steps[index];
+  const ticked = steps.filter(Boolean).length;
+  const status = ticked === steps.length ? "done" : ticked > 0 ? "in_progress" : "todo";
+  return [
+    occ(
+      await occurrenceWith(entry, date, ctx, {
+        status,
+        detail: { ...entry.occurrence?.detail, steps },
+        completedAt: status === "done" ? ctx.now : null,
+      }),
+    ),
+  ];
+}
+
+/** Minutes logged for a duration item; status follows the target (TRK-03). */
+export async function setDuration(entry: DayEntry, date: string, minutes: number, ctx: ActionContext): Promise<Change[]> {
+  const t = entry.item.tracking;
+  const target = t.kind === "duration" ? t.targetMin : undefined;
+  const value = Math.max(0, Math.round(minutes));
+  const status = target !== undefined && value >= target ? "done" : value > 0 ? "in_progress" : "todo";
+  return [occ(await occurrenceWith(entry, date, ctx, { value, status, completedAt: status === "done" ? ctx.now : null }))];
 }
 
 /** Stepper / typed value for quantity items; status follows the target. */
@@ -92,6 +138,12 @@ export async function moveTo(entry: DayEntry, from: string, to: string | null, c
   if (isOneOff(it)) {
     const changes: Change[] = [item({ ...it, schedule: { ...it.schedule, kind: "once", date: to }, updatedAt: ctx.now })];
     if (entry.occurrence) changes.push(occ({ ...entry.occurrence, date: to, updatedAt: ctx.now, deviceId: ctx.deviceId }));
+    // A one-off routine takes its sub-items (and their ticks) with it.
+    for (const child of entry.children ?? []) {
+      const c = child.item;
+      if (c.schedule.kind === "once") changes.push(item({ ...c, schedule: { ...c.schedule, date: to }, updatedAt: ctx.now }));
+      if (child.occurrence) changes.push(occ({ ...child.occurrence, date: to, updatedAt: ctx.now, deviceId: ctx.deviceId }));
+    }
     return changes;
   }
   if (to === null) throw new Error("Only one-off tasks can be pending; skip a repeating item instead.");

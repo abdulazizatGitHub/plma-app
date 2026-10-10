@@ -19,10 +19,17 @@ export function entryState(entry: DayEntry): EntryState {
   const o = entry.occurrence;
   if (o?.status === "skipped" || o?.status === "moved") return "not_today";
   const t = entry.item.tracking;
-  if (t.kind === "quantity") {
+  if (t.kind === "quantity" || t.kind === "duration") {
     const value = o?.value ?? 0;
-    if (t.target !== undefined && value >= t.target) return "done";
-    if (value > 0) return "in_progress";
+    const target = t.kind === "quantity" ? t.target : t.targetMin;
+    if (target !== undefined && value >= target) return "done";
+    if (value > 0 && o?.status !== "done") return "in_progress";
+  }
+  if (t.kind === "checklist" && o?.status !== "done") {
+    const saved = o?.detail?.steps;
+    const ticked = Array.isArray(saved) ? t.steps.filter((_, i) => saved[i] === true).length : 0;
+    if (ticked === t.steps.length) return "done";
+    if (ticked > 0) return "in_progress";
   }
   if (o?.status === "done") return "done";
   if (o?.status === "in_progress") return "in_progress";
