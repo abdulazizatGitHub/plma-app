@@ -1,9 +1,10 @@
-import { syncPullQueryV2Schema } from "@life/shared";
+import { packById, syncPullQueryV2Schema } from "@life/shared";
 import type { FastifyInstance } from "fastify";
 import type { Sql } from "postgres";
 import { requireAuth, type TokenVerifier } from "../lib/auth.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
+import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
 
 /**
  * Authenticated v1 API (SYSTEM_DESIGN §6). Identity comes only from the
@@ -46,6 +47,22 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier) {
         }
         throw err;
       }
+    });
+
+    // Starter packs (Phase 3). The app applies them offline; this is the server path.
+    app.get("/v1/templates", () => ({ templates: packSummaries() }));
+
+    app.post<{ Params: { id: string } }>("/v1/templates/:id/apply", async (request, reply) => {
+      const userId = request.auth!.id;
+      if (!packById(request.params.id)) {
+        return reply.status(404).send({ error: { code: "not_found", message: "No such starter pack." } });
+      }
+      const body = packPushBody(request.params.id, userId, await existingCategories(sql, userId));
+      if (!body) return { applied: false, reason: "already_adopted" };
+      const plan = await planPush(userId, body, lookup);
+      if (!plan.ok) return reply.status(plan.status).send({ error: { code: plan.code, message: plan.message } });
+      const { accepted } = await applyPush(sql, userId, plan.rows);
+      return { applied: true, accepted };
     });
 
     done();
