@@ -170,3 +170,66 @@ export function useNextSortOrder() {
     return items.reduce((max, i) => Math.max(max, i.sortOrder), 0) + 1;
   }, [store]);
 }
+
+/** Every live category, archived ones included (Categories → Archived). */
+export function useAllCategories(): Category[] {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => (store ? (store.query("categories", `WHERE "deleted_at" IS NULL ORDER BY "sort_order"`) as unknown as Category[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, version],
+  );
+}
+
+export function useCategory(id: string | null): Category | null {
+  const all = useAllCategories();
+  return useMemo(() => all.find((c) => c.id === id) ?? null, [all, id]);
+}
+
+/** Every live item, archived ones included; `ready` is false until the store opens. */
+export function useAllItems(): { items: Item[]; ready: boolean } {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => ({ items: store ? readItems(store) : [], ready: Boolean(store) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, version],
+  );
+}
+
+export function useItem(id: string | null): { item: Item | null; children: Item[]; ready: boolean } {
+  const { items, ready } = useAllItems();
+  return useMemo(() => {
+    const item = items.find((i) => i.id === id) ?? null;
+    const children = item ? items.filter((i) => i.parentId === item.id).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+    return { item, children, ready };
+  }, [items, id, ready]);
+}
+
+/** Occurrences of an item (and its sub-items) between two dates, for history. */
+export function useItemOccurrences(itemIds: string[], from: string, to: string): Occurrence[] {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  const key = itemIds.join(",");
+  return useMemo(() => {
+    if (!store || !itemIds.length) return [];
+    const marks = itemIds.map(() => "?").join(",");
+    return store.query(
+      "occurrences",
+      `WHERE "item_id" IN (${marks}) AND "date" >= ? AND "date" <= ? AND "deleted_at" IS NULL`,
+      [...itemIds, from, to],
+    ) as unknown as Occurrence[];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, version, key, from, to]);
+}
+
+/** Next sort order for a new category (end of the list). */
+export function useNextCategoryOrder() {
+  const { store } = useStore();
+  return useCallback(() => {
+    if (!store) return 0;
+    const all = store.query("categories", `WHERE "deleted_at" IS NULL`) as unknown as Category[];
+    return all.reduce((max, c) => Math.max(max, c.sortOrder + 1), 0);
+  }, [store]);
+}

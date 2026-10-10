@@ -4,7 +4,7 @@ import type { DayEntry } from "./day.js";
  * Status buckets and the day % (REQUIREMENTS_V2 TRK-05, FLX-04).
  *   required = not optional, not skipped/moved (pending tasks have no day)
  *   pct      = done ÷ required; nothing required → 100%
- * Group parents (Daily prayers) are not counted themselves; their children are.
+ * Group parents are not counted in the % themselves; their children are.
  */
 
 export type EntryState = "todo" | "in_progress" | "done" | "not_today";
@@ -56,6 +56,7 @@ export function dayProgress(entries: DayEntry[]): DayProgress {
     if (state === "done") done += 1;
   }
   const counts: Record<EntryState, number> = { todo: 0, in_progress: 0, done: 0, not_today: 0 };
-  for (const e of entries) if (!e.children) counts[entryState(e)] += 1;
+  // Prayer sets show as chips, not rows; routines are rows like any item.
+  for (const e of entries) if (!e.children || e.item.meta.prayerSet !== true) counts[entryState(e)] += 1;
   return { required, done, pct: required ? Math.round((done / required) * 100) : 100, counts };
 }

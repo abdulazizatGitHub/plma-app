@@ -136,7 +136,7 @@ describe("buildDay and dayProgress", () => {
   });
 
   it("counts group children, not the group itself (prayers)", async () => {
-    const group = item({ type: "group", title: "Daily prayers" });
+    const group = item({ type: "group", title: "Daily prayers", meta: { prayerSet: true } });
     const kids = ["Fajr", "Zuhr", "Asr", "Maghrib", "Isha"].map((t, i) => item({ title: t, parentId: group.id, sortOrder: i }));
     const items = [group, ...kids];
     const occs: Occurrence[] = [];
@@ -148,6 +148,13 @@ describe("buildDay and dayProgress", () => {
     const after = buildDay(items, occs, FRI);
     expect(entryState(after[0])).toBe("in_progress");
     expect(dayProgress(after)).toMatchObject({ required: 5, done: 1, pct: 20, counts: { todo: 0, in_progress: 0, done: 0 } });
+  });
+
+  it("counts a routine as one row in the tiles, and its sub-items in the %", () => {
+    const gym = item({ type: "group", title: "Gym" });
+    const kids = ["Bench", "OHP"].map((t, i) => item({ title: t, parentId: gym.id, sortOrder: i }));
+    const day = buildDay([gym, ...kids], [], FRI);
+    expect(dayProgress(day)).toMatchObject({ required: 2, done: 0, counts: { todo: 1, in_progress: 0, done: 0 } });
   });
 });
 

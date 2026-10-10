@@ -93,5 +93,10 @@ export const CATEGORY_TONES = [
   "lime",
   "pink",
   "sky",
+  "teal",
+  "yellow",
 ] as const;
 export type CategoryTone = (typeof CATEGORY_TONES)[number];
+
+/** Saturated tones stay the same in dark mode, so they keep dark ink on top. */
+export const toneInkClass = (tone: CategoryTone) => (tone === "sky" || tone === "teal" || tone === "yellow" ? "text-on-fill" : "text-ink");

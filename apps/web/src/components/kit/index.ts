@@ -9,7 +9,7 @@ export { PrayerRow, type PrayerChip, type PrayerChipStatus } from "./prayer-row"
 export { QuantityRow, QuantityStepper, parseQuantity, quantityState } from "./quantity-stepper";
 export { Ring, type RingSegment } from "./ring";
 export { SegmentedTabs } from "./segmented-tabs";
-export { Sheet, SheetAction } from "./sheet";
+export { ConfirmSheet, Sheet, SheetAction } from "./sheet";
 export { StatusTile, StatusTiles, type ItemState } from "./status-tile";
 export { TaskCheck } from "./task-check";
 export { TaskRow, type Priority } from "./task-row";
@@ -21,3 +21,4 @@ export { ThemeSwatches } from "./theme-swatches";
 export { PopoverMenu, PopoverMenuDivider, PopoverMenuItem } from "./popover-menu";
 export { Tag, type TagTone } from "./tag";
 export { Toast, type ToastData } from "./toast";
+export { ColorPicker, IconPicker, Pill, PillGroup } from "./pickers";

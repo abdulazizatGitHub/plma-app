@@ -74,3 +74,43 @@ export function SheetAction({ icon, label, onClick, tone = "default" }: { icon?:
     </button>
   );
 }
+
+/** "Are you sure?" for destructive actions (delete). */
+export function ConfirmSheet({
+  open,
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean;
+  title: string;
+  body: ReactNode;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <Sheet open={open} onClose={onClose} title={title}>
+      <div className="space-y-4">
+        <div className="text-[13px] text-ink-2">{body}</div>
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="min-h-10 flex-1 rounded-(--radius-control) bg-track text-[13px] font-medium text-ink hover:bg-border">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className="min-h-10 flex-1 rounded-(--radius-control) bg-todo text-[13px] font-semibold text-on-fill"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}

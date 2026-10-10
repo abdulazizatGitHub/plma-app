@@ -88,3 +88,23 @@ export const quantity: Validator = (v) => {
   if (!/^\d+$/.test(v)) return "Numbers only.";
   return Number(v) > MAX_QUANTITY ? `Max ${MAX_QUANTITY.toLocaleString("en-US")}.` : null;
 };
+
+export const categoryName: Validator = (v) => {
+  const t = v.trim();
+  if (!t) return "Give the category a name.";
+  return t.length > 60 ? "Keep it under 60 characters." : null;
+};
+
+/** A whole number between min and max (digits-only inputs). */
+export const wholeNumber =
+  (label: string, min: number, max: number): Validator =>
+  (v) => {
+    if (!v.trim()) return `${label} is required.`;
+    if (!/^\d+$/.test(v)) return `${label} must be a whole number.`;
+    const n = Number(v);
+    return n < min || n > max ? `${label} must be between ${min.toLocaleString()} and ${max.toLocaleString()}.` : null;
+  };
+
+/** Optional end date that can't be before the start date. */
+export const endNotBefore = (from: string, until: string): string | null =>
+  from && until && until < from ? "The end date is before the start date." : null;

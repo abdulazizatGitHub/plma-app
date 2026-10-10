@@ -1,6 +1,6 @@
 "use client";
 
-import { bringBack, entryState, moveTo, todayLocalDate, type Category, type DayEntry, type EntryState } from "@life/shared";
+import { bringBack, entryState, isPrayerGroup, moveTo, todayLocalDate, type Category, type DayEntry, type EntryState } from "@life/shared";
 import { CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -8,7 +8,7 @@ import { Button, DateStrip, Ring, StatusTiles, addDays, weekStart, type ItemStat
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useDay, useDays, useOverdue, usePending, useUpcoming } from "@/lib/v2/use-day";
-import { EntryRow } from "./entry-row";
+import { DayEntryRow } from "./day-entry-row";
 import { PrayerGroup } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
 
@@ -86,14 +86,15 @@ export function TodayScreen() {
     return <div className="skeleton h-40" aria-busy="true" aria-label="Loading today" />;
   }
 
-  const groups = entries.filter((e) => e.children);
-  const rows = entries.filter((e) => !e.children).sort(byTime);
+  // Prayers keep their own row up top; routines sort into the buckets like any item.
+  const groups = entries.filter((e) => e.children && isPrayerGroup(e.item));
+  const rows = entries.filter((e) => !(e.children && isPrayerGroup(e.item))).sort(byTime);
   const bucket = (s: EntryState) => rows.filter((e) => entryState(e) === s);
   const notToday = bucket("not_today");
   const nothing = ready && rows.length === 0 && groups.length === 0;
   const categoryOf = (e: DayEntry) => (e.item.categoryId ? byId.get(e.item.categoryId) : undefined);
   const row = (e: DayEntry, own?: string, dueLabel?: string) => (
-    <EntryRow
+    <DayEntryRow
       key={`${own ?? date}|${e.key}`}
       entry={e}
       date={own ?? date}

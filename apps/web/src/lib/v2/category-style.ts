@@ -1,5 +1,24 @@
 import type { Category } from "@life/shared";
-import { BookOpen, Briefcase, Dumbbell, GraduationCap, Heart, Moon, Sparkles, Tag, Video, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  Briefcase,
+  Code,
+  Droplet,
+  Dumbbell,
+  GraduationCap,
+  Heart,
+  Leaf,
+  Moon,
+  Music,
+  Sparkles,
+  Sun,
+  Tag,
+  Users,
+  Video,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 import { CATEGORY_TONES, type CategoryTone } from "@/lib/theme/tokens";
 
 /** Icon names stored on categories → lucide icons. Unknown names fall back to a tag. */
@@ -12,7 +31,20 @@ const ICONS: Record<string, LucideIcon> = {
   heart: Heart,
   video: Video,
   briefcase: Briefcase,
+  brain: Brain,
+  leaf: Leaf,
+  droplet: Droplet,
+  music: Music,
+  code: Code,
+  wallet: Wallet,
+  sun: Sun,
+  users: Users,
+  tag: Tag,
 };
+
+/** Icons offered by the category editor, in picker order. */
+export const CATEGORY_ICON_KEYS = Object.keys(ICONS);
+export const iconFor = (key: string): LucideIcon => ICONS[key] ?? Tag;
 
 export const categoryIcon = (c: Pick<Category, "icon"> | undefined): LucideIcon => (c ? (ICONS[c.icon] ?? Tag) : Tag);
 

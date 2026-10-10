@@ -129,7 +129,7 @@ describe("TodayScreen", () => {
   });
 
   it("toggles one prayer from the prayer row, in any order", async () => {
-    const group = item({ type: "group", title: "Daily prayers" });
+    const group = item({ type: "group", title: "Daily prayers", meta: { prayerSet: true } });
     store.save("items", group);
     for (const t of ["Fajr", "Zuhr", "Asr"]) store.save("items", item({ title: t, parentId: group.id }));
     renderToday();

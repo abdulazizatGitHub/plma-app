@@ -16,6 +16,8 @@ const TONE: Record<ChipTone, string> = {
   lime: "bg-cat-lime text-ink",
   pink: "bg-cat-pink text-ink",
   sky: "bg-cat-sky text-on-fill",
+  teal: "bg-cat-teal text-on-fill",
+  yellow: "bg-cat-yellow text-on-fill",
 };
 
 /** Small rounded label. Color only where it carries meaning (status, category). */

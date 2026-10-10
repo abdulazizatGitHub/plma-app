@@ -1,9 +1,9 @@
 "use client";
 
 import { todayLocalDate, type Category, type Item, type TaskDraft } from "@life/shared";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, SegmentedTabs, TextField, addDays } from "@/components/kit";
+import { Button, Pill, SegmentedTabs, TextField, addDays } from "@/components/kit";
 import { useForm } from "@/lib/forms/use-form";
 import { isoDate, taskTitle } from "@/lib/forms/validators";
 
@@ -23,21 +23,6 @@ function choiceFor(date: string | null, today: string): DateChoice {
   if (date === today) return "today";
   if (date === addDays(today, 1)) return "tomorrow";
   return "pick";
-}
-
-function Pill({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      className={`transition-token flex min-h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium ${
-        selected ? "bg-primary text-on-fill" : "bg-track text-ink hover:bg-border"
-      }`}
-    >
-      {children}
-    </button>
-  );
 }
 
 type TaskFormProps = {

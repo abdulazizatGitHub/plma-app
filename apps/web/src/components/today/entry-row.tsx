@@ -1,8 +1,19 @@
 "use client";
 
-import { describeSchedule, entryState, setQuantity, toggleDone, type Category, type DayEntry } from "@life/shared";
-import { AlertTriangle, CalendarClock, Clock3, Flag, Play, Repeat2 } from "lucide-react";
-import type { ReactNode } from "react";
+import {
+  checklistSteps,
+  describeSchedule,
+  entryState,
+  setDuration,
+  setQuantity,
+  toggleChecklistStep,
+  toggleDone,
+  type Category,
+  type DayEntry,
+} from "@life/shared";
+import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Play, Repeat2, Timer } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
@@ -43,9 +54,24 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string): Rea
       </Tag>,
     );
   }
+  if (t.kind === "duration") {
+    tags.push(
+      <Tag key="dur" icon={<Timer />}>
+        {o?.value ?? 0}
+        {t.targetMin ? ` / ${t.targetMin}` : ""} min
+      </Tag>,
+    );
+  }
+  if (t.kind === "checklist") {
+    tags.push(
+      <Tag key="steps" icon={<ListChecks />}>
+        {checklistSteps(entry).filter(Boolean).length}/{t.steps.length} steps
+      </Tag>,
+    );
+  }
   if (item.priority === "critical") tags.push(<Tag key="pri" tone="todo" icon={<Flag />}>Critical</Tag>);
   else if (item.priority === "high") tags.push(<Tag key="pri" tone="progress" icon={<Flag />}>High</Tag>);
-  if (o?.status === "in_progress" && o.startedAt && t.kind !== "quantity") {
+  if (o?.status === "in_progress" && o.startedAt && t.kind !== "quantity" && t.kind !== "duration") {
     const d = new Date(o.startedAt);
     tags.push(<Tag key="started" icon={<Play />}>Started {formatTime(`${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`)}</Tag>);
   }
@@ -64,9 +90,47 @@ type EntryRowProps = {
   dueLabel?: string;
 };
 
-/** A task row: quantity items get the stepper, everything else the one-tap check. */
+/** The checklist's steps as small tick rows (TRK-04). */
+function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
+  const run = useActions();
+  const t = entry.item.tracking;
+  if (t.kind !== "checklist") return null;
+  const ticks = checklistSteps(entry);
+  return (
+    <ul className="mt-1.5 space-y-0.5" aria-label={`${entry.item.title} steps`}>
+      {t.steps.map((step, i) => (
+        <li key={i}>
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={ticks[i]}
+            onClick={() => void run((ctx) => toggleChecklistStep(entry, date, i, ctx))}
+            className="flex min-h-8 w-full items-center gap-2 rounded-lg px-1 text-left text-[13px] text-ink hover:bg-track"
+          >
+            <span
+              aria-hidden
+              className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-[5px] border ${ticks[i] ? "border-done bg-done text-on-fill" : "border-border"}`}
+            >
+              {ticks[i] ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+            </span>
+            <span className={ticks[i] ? "text-ink-2 line-through" : ""}>{step}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * One row on Today: quantity and duration items get the stepper, checklists
+ * expand to their steps, everything else is the one-tap check. Tapping the
+ * title opens the item.
+ */
 export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowProps) {
   const run = useActions();
+  const router = useRouter();
+  const [showSteps, setShowSteps] = useState(false);
+  const open = () => router.push(`/items/view?id=${entry.item.id}`);
   const state = entryState(entry);
   const visible: ItemState = state === "not_today" ? "todo" : state;
   const t = entry.item.tracking;
@@ -84,6 +148,23 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
         target={t.target}
         unit={t.unit}
         priority={entry.item.priority}
+        onOpen={open}
+        onMore={(anchor) => onMore(entry, anchor)}
+      />
+    );
+  }
+  if (t.kind === "duration") {
+    return (
+      <QuantityRow
+        title={entry.item.title}
+        tags={tags}
+        value={entry.occurrence?.value ?? 0}
+        onChange={(v) => void run((ctx) => setDuration(entry, date, v, ctx))}
+        step={5}
+        target={t.targetMin}
+        unit="min"
+        priority={entry.item.priority}
+        onOpen={open}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -95,7 +176,23 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       state={visible}
       priority={entry.item.priority}
       onToggle={() => void run((ctx) => toggleDone(entry, date, ctx))}
+      onOpen={open}
       onMore={(anchor) => onMore(entry, anchor)}
-    />
+    >
+      {t.kind === "checklist" ? (
+        <>
+          <button
+            type="button"
+            aria-expanded={showSteps}
+            onClick={() => setShowSteps((v) => !v)}
+            className="mt-0.5 flex min-h-7 items-center gap-1 text-[12px] font-medium text-link"
+          >
+            {showSteps ? "Hide steps" : "Show steps"}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showSteps ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+          {showSteps ? <ChecklistSteps entry={entry} date={date} /> : null}
+        </>
+      ) : null}
+    </TaskRow>
   );
 }
