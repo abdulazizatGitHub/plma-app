@@ -105,6 +105,19 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
                 : { date: defaultDate ?? todayLocalDate() }
             }
             submitLabel={editing ? "Save" : "Add task"}
+            onMoreOptions={(draft) => {
+              close();
+              const q = new URLSearchParams();
+              if (editing) q.set("id", editing.id);
+              else {
+                if (draft.title.trim()) q.set("title", draft.title.trim());
+                q.set("date", draft.date ?? "none");
+                if (draft.time) q.set("time", draft.time);
+                if (draft.categoryId) q.set("category", draft.categoryId);
+                q.set("priority", draft.priority);
+              }
+              router.push(`/items/edit?${q.toString()}`);
+            }}
             onSubmit={(draft) => {
               void run((ctx) =>
                 editing ? updateTask(editing, draft, ctx) : createTask(crypto.randomUUID(), draft, nextSortOrder(), ctx),

@@ -33,10 +33,12 @@ type TaskFormProps = {
   showDate?: boolean;
   submitLabel: string;
   onSubmit: (draft: TaskDraft) => void;
+  /** Opens the full editor with what was typed so far. */
+  onMoreOptions?: (draft: TaskDraft) => void;
 };
 
 /** Quick add / edit for tasks: title, day + optional time, category, importance. */
-export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit }: TaskFormProps) {
+export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions }: TaskFormProps) {
   const today = todayLocalDate();
   const form = useForm(
     {
@@ -117,6 +119,18 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
       <Button type="submit" size="lg" className="w-full" disabled={!form.isValid}>
         {submitLabel}
       </Button>
+      {onMoreOptions ? (
+        <button
+          type="button"
+          onClick={() => {
+            const date = dateFor(choice);
+            onMoreOptions({ title: form.values.title, date, time: date ? form.values.time || null : null, categoryId, priority });
+          }}
+          className="flex min-h-8 w-full items-center justify-center text-[12px] font-medium text-link"
+        >
+          More options — repeat, count, checklist, routine
+        </button>
+      ) : null}
       <DisabledHint
         show={!form.isValid}
         message={form.errors.title ? "Give the task a name to continue." : form.errors.picked ? "Pick a valid date to continue." : "Fix the time to continue."}
