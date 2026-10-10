@@ -1,220 +1,210 @@
 @import "tailwindcss";
 
 /*
- * Theme presets. Each palette is lifted from the verified CSS tokens of a
- * site studied in docs/design-references/ — not invented. Values marked
- * (d) are derived only where WCAG AA contrast required it.
+ * v2 tokens, sampled from the owner's reference images in `UI Images/`
+ * (median of a 7×7 pixel patch per element; see docs/design/DESIGN_SYSTEM_V2.md).
+ * Values marked (d) are derived — no reference covers them (dark mode) or a
+ * sampled value failed WCAG AA for text. Mirrored in src/lib/theme/tokens.ts,
+ * whose test checks this file stays in sync and every text pair passes AA.
  *
- * `--accent` is for fills (buttons, rings, active nav); `--accent-text`
- * is the AA-safe variant for text and links on the canvas.
- *
- * Never reach for a raw hex in components — use these tokens so preset and
- * light/dark switching stays a CSS-variable swap.
+ * Text on status/primary fills is always --ink (dark) except on
+ * --primary-strong, which carries white text.
  */
-
-/* clay — by-kin.com (docs/design-references/01-by-kin) */
-:root,
-[data-theme="clay"][data-mode="light"] {
-  --canvas: #f4f2ed;
-  --surface: #ffffff;
-  --surface-sunken: #ebe8e0; /* (d) */
-  --ink: #111214;
-  --ink-muted: #4f4a3b;
-  --line: #dcd8ce; /* (d) */
-  --accent: #ff6542;
-  --accent-ink: #111214;
-  --accent-text: #b84930;
-}
-
-[data-theme="clay"][data-mode="dark"] {
-  --canvas: #111214;
-  --surface: #1a1b1d; /* (d) */
-  --surface-sunken: #242527;
-  --ink: #f4f2ed;
-  --ink-muted: #999896;
-  --line: #2e2f31; /* (d) */
-  --accent: #ff6542;
-  --accent-ink: #111214;
-  --accent-text: #ff6542;
-}
-
-/* volt — lusion.co (docs/design-references/07-lusion) */
-[data-theme="volt"][data-mode="light"] {
-  --canvas: #f0f1fa;
-  --surface: #ffffff;
-  --surface-sunken: #e4e6ef;
-  --ink: #121416;
-  --ink-muted: #34393f;
-  --line: #d7d9e4; /* (d) */
-  --accent: #1a2ffb;
-  --accent-ink: #ffffff;
-  --accent-text: #071bdf;
-}
-
-[data-theme="volt"][data-mode="dark"] {
-  --canvas: #121416;
-  --surface: #1b1e23; /* (d) */
-  --surface-sunken: #2b2e3a;
-  --ink: #f0f1fa;
-  --ink-muted: #a9adbd; /* (d) */
-  --line: #2b2e3a;
-  --accent: #c1ff00;
-  --accent-ink: #121416;
-  --accent-text: #c1ff00;
-}
-
-/* studio — iventions.com (docs/design-references/02-iventions) */
-[data-theme="studio"][data-mode="light"] {
-  --canvas: #f3efeb;
-  --surface: #ffffff;
-  --surface-sunken: #eae3dc;
-  --ink: #1e1e1e;
-  --ink-muted: #404040;
-  --line: #1e1e1e33;
-  --accent: #8072ff;
-  --accent-ink: #1e1e1e;
-  --accent-text: #5a4bd6; /* (d) */
-}
-
-[data-theme="studio"][data-mode="dark"] {
-  --canvas: #141415;
-  --surface: #1e1e1e;
-  --surface-sunken: #2a2a2b; /* (d) */
-  --ink: #f3efeb;
-  --ink-muted: #b5b0ab; /* (d) */
-  --line: #404040;
-  --accent: #bfb8ff;
-  --accent-ink: #1e1e1e;
-  --accent-text: #bfb8ff;
-}
-
-/* ember — minhpham.design (docs/design-references/05-minh-pham) */
-[data-theme="ember"][data-mode="light"] {
-  --canvas: #f8f8f8;
-  --surface: #ffffff;
-  --surface-sunken: #ecebe8; /* (d) */
-  --ink: #0d0d0d;
-  --ink-muted: #4d4d4d;
-  --line: #dcd6cc; /* (d) */
-  --accent: #eb5939;
-  --accent-ink: #0d0d0d;
-  --accent-text: #b8401f; /* (d) */
-}
-
-[data-theme="ember"][data-mode="dark"] {
-  --canvas: #0d0d0d;
-  --surface: #161616; /* (d) */
-  --surface-sunken: #2a2a2a;
-  --ink: #f8f8f8;
-  --ink-muted: #b7ab98;
-  --line: #2a2a2a;
-  --accent: #eb5939;
-  --accent-ink: #0d0d0d;
-  --accent-text: #eb5939;
-}
-
-/* Status colors — shared by every preset, one set per mode. */
 :root,
 [data-mode="light"] {
-  --success: #3f7a52;
-  --success-ink: #f3f9f4;
-  --warning: #a87226;
-  --warning-ink: #fdf7ef;
-  --danger: #b0333b;
-  --danger-ink: #fdf2f2;
+  --bg: #f4f4f9;
+  --surface: #ffffff;
+  --track: #e5e5ef;
+  --border: #dbdce3;
+  --ink: #1b1a22;
+  --ink-2: #64656c;
+
+  --todo: #e66473;
+  --progress: #ebac80;
+  --done: #97bb7d;
+  --muted: #aa8b9a;
+  --primary: #7293f1;
+  --primary-strong: #4766d0; /* (d) AA with white text */
+  --link: #4766d0; /* blue text (links, active nav) */
+  --on-primary-strong: #ffffff;
+  --on-fill: #1b1a22;
+
+  --cat-mint: #d8e7e4;
+  --cat-lilac: #d7ccea;
+  --cat-peach: #e9cfc8;
+  --cat-lime: #e6ecca;
+  --cat-pink: #f6e4e2;
+  --cat-sky: #86cfe2;
+  --cat-teal: #2e9499;
+  --cat-yellow: #fdc703;
+
+  --shadow-card: 0 4px 16px rgb(27 26 34 / 6%);
 }
 
 [data-mode="dark"] {
-  --success: #7cbf8e;
-  --success-ink: #12261a;
-  --warning: #d9a94f;
-  --warning-ink: #2a2011;
-  --danger: #e17b82;
-  --danger-ink: #2a1315;
+  --bg: #1b1a22;
+  --surface: #25242e; /* (d) */
+  --track: #2f2e3a; /* (d) */
+  --border: #3a3946; /* (d) */
+  --ink: #f4f4f9;
+  --ink-2: #a9aab4; /* (d) */
+
+  /* Status, primary and accent fills keep their light values; text on them stays dark. */
+  --todo: #e66473;
+  --progress: #ebac80;
+  --done: #97bb7d;
+  --muted: #aa8b9a;
+  --primary: #7293f1;
+  --primary-strong: #4766d0;
+  --link: #7293f1; /* sampled primary reads AA on the dark canvas */
+  --on-primary-strong: #ffffff;
+  --on-fill: #1b1a22;
+
+  /* (d) pastels at 30% over the dark surface: same hue, no glare. */
+  --cat-mint: color-mix(in srgb, #d8e7e4 30%, #25242e);
+  --cat-lilac: color-mix(in srgb, #d7ccea 30%, #25242e);
+  --cat-peach: color-mix(in srgb, #e9cfc8 30%, #25242e);
+  --cat-lime: color-mix(in srgb, #e6ecca 30%, #25242e);
+  --cat-pink: color-mix(in srgb, #f6e4e2 30%, #25242e);
+  --cat-sky: #86cfe2;
+  --cat-teal: #2e9499;
+  --cat-yellow: #fdc703;
+
+  --shadow-card: none;
 }
 
 /*
- * Habit-category chips. Solid pastel fills with a dark icon, identical in
- * every preset and both modes (the pastels stay legible on dark canvases).
- * Iventions' category pastels, plus two from Bruno Simon and one from Lusion.
+ * Themes — one per owner reference image (DESIGN_SYSTEM_V2 §2a). Sky is the
+ * default (the blocks above). A theme changes the canvas (light mode only),
+ * primary fills, and link text; status and category colors never change, so
+ * To Do / Done read the same everywhere. (d) = derived for WCAG AA.
  */
-:root {
-  --cat-prayer: #ffddc4;
-  --cat-quran: #bfb8ff;
-  --cat-move: #e0ff98;
-  --cat-water: #d1f3f5;
-  --cat-rest: #ffceca;
-  --cat-focus: #ffc67b;
-  --cat-mind: #e4e6ef;
-  --cat-sleep: #ddd9ff; /* Iventions --primary-purple-50, without its alpha */
-  --cat-ink: #1e1e1e;
+/* Mauve — ref 2 (task manager) */
+[data-theme="mauve"] {
+  --primary: #aa8b9a;
+  --primary-strong: #906a7d; /* (d) */
+  --link: #896476; /* (d) */
+}
+[data-theme="mauve"][data-mode="dark"] {
+  --link: #aa8b9a;
 }
 
-/*
- * Motion tokens. Every transition resolves to one of these three curves.
- * See docs/design-references/INDEX.md, cross-cutting pattern #1.
- */
+/* Sunset — ref 3 (My Tasks: cream canvas, teal) */
+[data-theme="sunset"] {
+  --primary: #2e9499;
+  --primary-strong: #287f83; /* (d) */
+  --link: #277d81; /* (d) */
+}
+[data-theme="sunset"]:not([data-mode="dark"]) {
+  --bg: #fff9eb;
+}
+[data-theme="sunset"][data-mode="dark"] {
+  --link: #309ca1; /* (d) */
+}
+
+/* Lavender — ref 4 (pastel tracker; petal #5d477c) */
+[data-theme="lavender"] {
+  --primary: #927ab3; /* (d) petal hue, lightened for dark text on fills */
+  --primary-strong: #5d477c;
+  --link: #5d477c;
+}
+[data-theme="lavender"]:not([data-mode="dark"]) {
+  --bg: #f0e6e7;
+}
+[data-theme="lavender"][data-mode="dark"] {
+  --link: #9a85b9; /* (d) */
+}
+
+/* Motion and shape. */
 :root {
-  --ease-standard: cubic-bezier(0.165, 0.84, 0.44, 1); /* ease-out-quart */
+  --ease-standard: cubic-bezier(0.165, 0.84, 0.44, 1);
   --ease-snap: cubic-bezier(0.76, 0, 0.24, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* completion feedback only */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --duration-fast: 150ms;
   --duration-base: 250ms;
   --duration-slow: 600ms;
 
-  --radius-chip: 10px;
+  --radius-chip: 999px;
   --radius-control: 14px;
   --radius-card: 20px;
-  --radius-sheet: 28px;
+  --radius-sheet: 20px;
   --radius-pill: 999px;
 }
 
 @theme inline {
-  --color-canvas: var(--canvas);
+  --color-bg: var(--bg);
   --color-surface: var(--surface);
-  --color-surface-sunken: var(--surface-sunken);
+  --color-track: var(--track);
+  --color-border: var(--border);
   --color-ink: var(--ink);
-  --color-ink-muted: var(--ink-muted);
-  --color-line: var(--line);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-text: var(--accent-text);
-  --color-success: var(--success);
-  --color-success-ink: var(--success-ink);
-  --color-warning: var(--warning);
-  --color-warning-ink: var(--warning-ink);
-  --color-danger: var(--danger);
-  --color-danger-ink: var(--danger-ink);
-  --color-cat-prayer: var(--cat-prayer);
-  --color-cat-quran: var(--cat-quran);
-  --color-cat-move: var(--cat-move);
-  --color-cat-water: var(--cat-water);
-  --color-cat-rest: var(--cat-rest);
-  --color-cat-focus: var(--cat-focus);
-  --color-cat-mind: var(--cat-mind);
-  --color-cat-sleep: var(--cat-sleep);
-  --color-cat-ink: var(--cat-ink);
-  --font-sans: var(--font-space-grotesk);
-  --font-display: var(--font-space-grotesk);
-  --font-mono: var(--font-space-mono);
+  --color-ink-2: var(--ink-2);
+  --color-todo: var(--todo);
+  --color-progress: var(--progress);
+  --color-done: var(--done);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-link: var(--link);
+  --color-on-primary-strong: var(--on-primary-strong);
+  --color-on-fill: var(--on-fill);
+  --color-cat-mint: var(--cat-mint);
+  --color-cat-lilac: var(--cat-lilac);
+  --color-cat-peach: var(--cat-peach);
+  --color-cat-lime: var(--cat-lime);
+  --color-cat-pink: var(--cat-pink);
+  --color-cat-sky: var(--cat-sky);
+  --color-cat-teal: var(--cat-teal);
+  --color-cat-yellow: var(--cat-yellow);
+
+
+  --font-sans: var(--font-poppins);
+  --font-display: var(--font-poppins);
+  --font-mono: var(--font-poppins);
+}
+
+/*
+ * Tailwind v4's preflight gives buttons `cursor: default`. Everything clickable
+ * shows the pointer; anything disabled shows not-allowed (owner rule, 2026-10-09).
+ */
+@layer base {
+  button:not(:disabled),
+  a[href],
+  summary,
+  select,
+  label[for],
+  [role="button"],
+  [role="checkbox"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemradio"],
+  [role="option"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="date"] {
+    cursor: pointer;
+  }
+  :disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 body {
-  background: var(--canvas);
+  background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-family: var(--font-poppins), system-ui, sans-serif;
   transition:
     background-color var(--duration-fast) var(--ease-standard),
     color var(--duration-fast) var(--ease-standard);
 }
 
 * {
-  border-color: var(--line);
+  border-color: var(--border);
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--primary-strong);
   outline-offset: 2px;
 }
 
@@ -229,76 +219,38 @@ body {
   }
 }
 
-/*
- * Liquid Glass, restricted to the functional layer (bottom nav) per Apple's
- * HIG: "Glass on app backgrounds, cards, list rows, or content containers
- * is a defect." Never apply this class to content-layer surfaces.
- */
-.glass-nav {
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+/* v2 card: one elevation level; dark mode uses the border instead. */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+[data-mode="dark"] .card {
+  border: 1px solid var(--border);
 }
 
-@media (prefers-contrast: more), (forced-colors: active) {
-  .glass-nav {
-    background: var(--surface);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    border-color: var(--line);
-  }
-}
-
-/* Mono uppercase label — by-kin's Apercu Mono labels, Active Theory's readouts. */
-.label-mono {
-  font-family: var(--font-space-mono), ui-monospace, monospace;
-  font-size: 11px;
-  line-height: 1.3;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
+/* ---- shared utilities ---- */
 .transition-token {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
   transition-duration: var(--duration-base);
   transition-timing-function: var(--ease-standard);
 }
-
 .transition-token-fast {
   transition-duration: var(--duration-fast);
 }
-
-/*
- * Tactile press feedback; a control that is currently completed
- * (aria-pressed="true") settles with the spring curve instead.
- */
 .press-pop {
   transition: transform var(--duration-fast) var(--ease-standard);
 }
 .press-pop:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 .press-pop[aria-pressed="true"] {
   transition-timing-function: var(--ease-spring);
 }
-
 @media (prefers-reduced-motion: reduce) {
   .press-pop:active {
     transform: none;
   }
-}
-
-.shadow-float {
-  box-shadow:
-    0 20px 40px -16px color-mix(in srgb, var(--ink) 22%, transparent),
-    0 8px 16px -8px color-mix(in srgb, var(--ink) 14%, transparent);
-}
-
-.shadow-card {
-  box-shadow:
-    0 10px 24px -14px color-mix(in srgb, var(--ink) 18%, transparent),
-    0 2px 6px -2px color-mix(in srgb, var(--ink) 9%, transparent);
 }
 
 @keyframes skeleton-pulse {
@@ -312,12 +264,36 @@ body {
 }
 .skeleton {
   border-radius: var(--radius-card);
-  background: var(--surface-sunken);
+  background: var(--track);
   animation: skeleton-pulse 1.6s var(--ease-snap) infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
     opacity: 0.7;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.sheet-in {
+  animation: sheet-in var(--duration-base) var(--ease-standard);
+}
+/* Centred dialog on tablet/desktop: fade and rise instead of sliding from the edge. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+@media (min-width: 40rem) {
+  .sheet-in {
+    animation-name: dialog-in;
   }
 }

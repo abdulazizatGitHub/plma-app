@@ -1,27 +1,29 @@
+// Applies every pending Drizzle migration listed in drizzle/meta/_journal.json.
+// Used instead of `drizzle-kit migrate`, which exits 1 without output on Windows
+// (PROJECT.md B-001). Each migration runs in one transaction and is recorded in
+// drizzle.__drizzle_migrations by its tag, so re-running is safe.
 import dns from "node:dns";
 import fs from "node:fs";
-
-dns.setDefaultResultOrder("verbatim");
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { databaseUrl } from "./load-env.mjs";
 
+dns.setDefaultResultOrder("verbatim");
+
 if (!databaseUrl) {
-  console.error("DATABASE_URL missing in apps/api/.env");
+  console.error("DATABASE_URL missing (apps/api/.env or repo-root .env.local)");
   process.exit(1);
 }
 
 const apiRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
-const migrationPath = path.join(apiRoot, "drizzle", "0000_yielding_talos.sql");
-const sqlText = fs.readFileSync(migrationPath, "utf8");
+const journal = JSON.parse(fs.readFileSync(path.join(apiRoot, "drizzle/meta/_journal.json"), "utf8"));
 
-const statements = sqlText
-  .split("--> statement-breakpoint")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
-const sql = postgres(databaseUrl, { ssl: "require", max: 1 });
+const sql = postgres(databaseUrl, {
+  ssl: databaseUrl.includes("supabase") ? "require" : undefined,
+  max: 1,
+  prepare: !databaseUrl.includes(":6543"),
+});
 
 try {
   await sql.unsafe(`
@@ -33,32 +35,31 @@ try {
     );
   `);
 
-  const existing = await sql`
-    SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = '0000_yielding_talos'
-  `;
-
-  if (existing.length === 0) {
-    for (const statement of statements) {
-      await sql.unsafe(statement);
+  for (const { tag } of journal.entries) {
+    const [done] = await sql`SELECT 1 FROM drizzle.__drizzle_migrations WHERE hash = ${tag}`;
+    if (done) {
+      console.log(`✓ ${tag} (already applied)`);
+      continue;
     }
-    await sql`
-      INSERT INTO drizzle.__drizzle_migrations (hash, created_at)
-      VALUES ('0000_yielding_talos', ${Date.now()})
-    `;
-    console.log("Applied migration 0000_yielding_talos");
-  } else {
-    console.log("Migration 0000_yielding_talos already applied");
+    const statements = fs
+      .readFileSync(path.join(apiRoot, "drizzle", `${tag}.sql`), "utf8")
+      .split("--> statement-breakpoint")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    await sql.begin(async (tx) => {
+      for (const statement of statements) await tx.unsafe(statement);
+      await tx`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES (${tag}, ${Date.now()})`;
+    });
+    console.log(`+ ${tag} (applied ${statements.length} statements)`);
   }
 
   const tables = await sql`
-    SELECT table_name FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name IN ('users', 'habit_definitions', 'habit_logs')
-    ORDER BY table_name
+    SELECT c.relname AS name, c.relrowsecurity AS rls
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'
+    ORDER BY c.relname
   `;
-  console.log(
-    "Public tables:",
-    tables.map((r) => r.table_name).join(", "),
-  );
+  console.log("Public tables:", tables.map((t) => `${t.name}${t.rls ? "" : " (RLS OFF!)"}`).join(", "));
 } finally {
   await sql.end();
 }

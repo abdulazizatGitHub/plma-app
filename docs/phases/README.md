@@ -1,26 +1,19 @@
 # Phase requirements
 
-## Index
+## v2 (current, from 2026-10-07)
+
+See [v2/README.md](./v2/README.md) and [DEVELOPMENT_PLAN](../plan/DEVELOPMENT_PLAN.md). Requirements: [REQUIREMENTS_V2](../requirements/REQUIREMENTS_V2.md).
+
+## v1 (done)
 
 | Phase | File | Status |
 |-------|------|--------|
 | 01 | [phase-01-foundation.md](./phase-01-foundation.md) | Done |
 | 02 | [phase-02-data-sync.md](./phase-02-data-sync.md) | Done |
-| 03 | [phase-03-shell-home.md](./phase-03-shell-home.md) | Done |
-| 04 | [phase-04-prayer-quran.md](./phase-04-prayer-quran.md) | Done |
-| 05 | [phase-05-health.md](./phase-05-health.md) | Done |
-| 06A | [phase-06a-accounts.md](./phase-06a-accounts.md) | Next — accounts & data isolation |
-| 06B | [phase-06b-customization.md](./phase-06b-customization.md) | Not started — templates, own habits/goals/targets |
-| 06 | [phase-06-reading-uni-custom.md](./phase-06-reading-uni-custom.md) | Folded into 06B (reading/uni become templates) |
-| 07 | [phase-07-personal-habits.md](./phase-07-personal-habits.md) | Not started |
-| 08 | [phase-08-tasks-goals.md](./phase-08-tasks-goals.md) | Not started |
-| 09 | [phase-09-content.md](./phase-09-content.md) | Not started |
-| 10 | [phase-10-calendar.md](./phase-10-calendar.md) | Not started |
-| 11 | [phase-11-analytics.md](./phase-11-analytics.md) | Not started |
-| 12 | [phase-12-notifications-quickadd.md](./phase-12-notifications-quickadd.md) | Not started |
-| 13 | [phase-13-polish-deploy.md](./phase-13-polish-deploy.md) | Not started |
-| 14 | [phase-14-template-library.md](./phase-14-template-library.md) | Later — public templates, stars, adoption rules |
+| 03 | [phase-03-shell-home.md](./phase-03-shell-home.md) | Done; its UI is replaced in v2 Phase 2 |
+| 04 | [phase-04-prayer-quran.md](./phase-04-prayer-quran.md) | Done; logic kept, UI replaced in v2 Phase 4 |
+| 05 | [phase-05-health.md](./phase-05-health.md) | Done; logic kept, UI replaced in v2 Phase 3 |
 
-See [CLIENT_REQUIREMENTS.md](../requirements/CLIENT_REQUIREMENTS.md) for full CRD, including Addendum A (accounts, customization, template library).
+## Superseded (v1 plan, not built)
 
-Naming and template rules unchanged from original README — each phase file includes Goal, Scope, Requirements, Acceptance criteria, Tasks.
+Phases 06A, 06B, and 06–14 were moved to [archive/](./archive/) on 2026-10-07. Their content was folded into v2. The mapping is in [REQUIREMENTS_V2 §1.2](../requirements/REQUIREMENTS_V2.md#12-documented-but-not-built).

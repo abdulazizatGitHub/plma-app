@@ -64,3 +64,18 @@ Owner direction, recorded verbatim in intent. **Supersedes** the original "perso
 - **LIB-03** When a user adopts a template, they may add **their own extra** goals, habits, and tasks **alongside** it. The adopted template's own items stay as published.
 - **LIB-04** A user who adopted someone else's template **cannot** add items to that template and publish it as their own template. This counts as cheating and must be prevented.
 - **LIB-05** Provenance is **recorded** for everything that came from a template: the source template, its author, the version adopted, and when. This is recorded from the moment templates exist (Phase 06B), not only once the library ships, so that LIB-04 can be enforced retroactively.
+
+## Addendum B — v2 direction (2026-10-07)
+
+The owner gave new requirements:
+
+- a simple UI based on `UI Images/`
+- Today as To Do / In Progress / Done
+- user-defined categories and items
+- flexible days
+- prayer anchors, plans, reminders, rewards, and social features
+
+Where these conflict with this document, the reconciled set in [REQUIREMENTS_V2.md](./REQUIREMENTS_V2.md) **takes precedence**.
+
+- Addendum A rules ACC-01…03 and LIB-01…05 are kept.
+- CUS-01…04 are folded into the CAT and ITM requirements.

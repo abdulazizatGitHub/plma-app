@@ -1,0 +1,257 @@
+"use client";
+
+import { bringBack, entryState, moveTo, todayLocalDate, type Category, type DayEntry, type EntryState } from "@life/shared";
+import { CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Button, DateStrip, Ring, StatusTiles, addDays, weekStart, type ItemState } from "@/components/kit";
+import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
+import { useActions, useCategories, useDay, useDays, useOverdue, usePending, useUpcoming } from "@/lib/v2/use-day";
+import { EntryRow } from "./entry-row";
+import { PrayerGroup } from "./prayer-group";
+import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
+
+const SECTIONS: { state: ItemState; title: string }[] = [
+  { state: "todo", title: "To Do" },
+  { state: "in_progress", title: "In Progress" },
+  { state: "done", title: "Done" },
+];
+const DONE_PREVIEW = 3;
+
+/** Timed tasks first, by time; then the rest in their saved order. */
+const byTime = (a: DayEntry, b: DayEntry) => {
+  const ta = a.item.schedule.kind === "once" ? (a.item.schedule.time ?? "99:99") : "99:99";
+  const tb = b.item.schedule.kind === "once" ? (b.item.schedule.time ?? "99:99") : "99:99";
+  return ta.localeCompare(tb) || a.item.sortOrder - b.item.sortOrder;
+};
+
+function Section({ title, count, action, children }: { title: string; count: number; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="space-y-1.5" aria-label={title}>
+      <h2 className="flex items-baseline gap-1.5 text-[15px] font-semibold text-ink">
+        {title}
+        <span className="text-[12px] font-normal text-ink-2">{count}</span>
+        {action ? <span className="ml-auto">{action}</span> : null}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/** v2 Home: one day's To Do / In Progress / Done, plus Overdue and Upcoming (TOD-01…05, FLX-01…05). */
+export function TodayScreen() {
+  // Computed on the client: a prerendered page would freeze the build date.
+  const [today, setToday] = useState<string | null>(null);
+  const [date, setDate] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ItemState | null>(null);
+  const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [showNotToday, setShowNotToday] = useState(false);
+  const { openAdd, setDefaultDate, registerShowDay } = useAddSheet();
+  const run = useActions();
+
+  useEffect(() => {
+    const t = todayLocalDate();
+    setToday(t); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
+    setDate(t);
+  }, []);
+  useEffect(() => {
+    setDefaultDate(date);
+    return () => setDefaultDate(null);
+  }, [date, setDefaultDate]);
+  useEffect(() => {
+    // The "View" button on the add confirmation jumps here.
+    registerShowDay((d) => {
+      setDate(d);
+      setFilter(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    return () => registerShowDay(null);
+  }, [registerShowDay]);
+
+  const day = date ?? "1970-01-01";
+  const { entries, progress, ready } = useDay(day);
+  const week = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart(day), i)), [day]);
+  const weekDays = useDays(week);
+  const marked = useMemo(() => new Set(week.filter((d) => (weekDays.get(d)?.entries.length ?? 0) > 0)), [week, weekDays]);
+  const categories = useCategories();
+  const byId = useMemo(() => new Map<string, Category>(categories.map((c) => [c.id, c])), [categories]);
+  const pending = usePending();
+  const isToday = date !== null && date === today;
+  const upcoming = useUpcoming(isToday ? today : null);
+  const overdue = useOverdue(isToday ? today : null);
+
+  if (!today || !date) {
+    return <div className="skeleton h-40" aria-busy="true" aria-label="Loading today" />;
+  }
+
+  const groups = entries.filter((e) => e.children);
+  const rows = entries.filter((e) => !e.children).sort(byTime);
+  const bucket = (s: EntryState) => rows.filter((e) => entryState(e) === s);
+  const notToday = bucket("not_today");
+  const nothing = ready && rows.length === 0 && groups.length === 0;
+  const categoryOf = (e: DayEntry) => (e.item.categoryId ? byId.get(e.item.categoryId) : undefined);
+  const row = (e: DayEntry, own?: string, dueLabel?: string) => (
+    <EntryRow
+      key={`${own ?? date}|${e.key}`}
+      entry={e}
+      date={own ?? date}
+      category={categoryOf(e)}
+      dueLabel={dueLabel}
+      onMore={(entry, anchor) => setMenuFor({ entry, anchor, date: own })}
+    />
+  );
+  const goTo = (d: string) => {
+    setDate(d);
+    setFilter(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <div className="space-y-5">
+      <header className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-ink">{dayLabel(date, today)}</h1>
+          <p className="text-[12px] text-ink-2">{longDate(date)}</p>
+        </div>
+        <Ring label={`${progress.pct}% of ${dayLabel(date, today).toLowerCase()} done`} value={progress.pct} size={48} stroke={5}>
+          <span className="text-[12px] font-semibold text-ink">{progress.pct}%</span>
+        </Ring>
+      </header>
+
+      <div className="space-y-1.5">
+        <DateStrip selected={date} today={today} marked={marked} onSelect={goTo} />
+        {!isToday ? (
+          <div className="flex justify-center">
+            <button type="button" onClick={() => goTo(today)} className="min-h-8 rounded-full bg-track px-3 text-[12px] font-medium text-ink hover:bg-border">
+              Back to today
+            </button>
+          </div>
+        ) : null}
+      </div>
+
+      <StatusTiles
+        counts={{ todo: progress.counts.todo, in_progress: progress.counts.in_progress, done: progress.counts.done }}
+        selected={filter}
+        onSelect={setFilter}
+      />
+
+      {overdue.length && !filter ? (
+        <Section title="Overdue" count={overdue.length}>
+          {overdue.map((e) => {
+            const was = e.item.schedule.kind === "once" ? (e.item.schedule.date ?? date) : date;
+            return (
+              <div key={e.key}>
+                {row(e, was, `Was due ${shortDate(was)}`)}
+                <div className="-mt-0.5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void run((ctx) => moveTo(e, was, today, ctx))}
+                    className="min-h-7 rounded-full px-2.5 text-[12px] font-medium text-link hover:bg-track"
+                  >
+                    Move to today
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </Section>
+      ) : null}
+
+      {groups.map((g) => (
+        <PrayerGroup key={g.key} entry={g} date={date} />
+      ))}
+
+      {nothing ? (
+        <div className="card flex flex-col items-center gap-2 px-5 py-6 text-center">
+          <p className="text-[14px] font-medium text-ink">Nothing planned for {dayLabel(date, today).toLowerCase()}.</p>
+          <p className="text-[12px] text-ink-2">Add something, or enjoy the free day — it still counts as 100%.</p>
+          <Button onClick={openAdd} className="mt-1">
+            <Plus className="h-4 w-4" aria-hidden /> Add a task
+          </Button>
+        </div>
+      ) : (
+        SECTIONS.filter((s) => !filter || filter === s.state).map(({ state, title }) => {
+          const list = bucket(state);
+          if (!list.length) return null;
+          const shown = state === "done" && !showAllDone && !filter ? list.slice(0, DONE_PREVIEW) : list;
+          return (
+            <Section key={state} title={title} count={list.length}>
+              {shown.map((e) => row(e))}
+              {shown.length < list.length ? (
+                <button type="button" onClick={() => setShowAllDone(true)} className="min-h-9 w-full rounded-xl text-[12px] font-medium text-link">
+                  Show all {list.length}
+                </button>
+              ) : null}
+            </Section>
+          );
+        })
+      )}
+
+      {notToday.length && !filter ? (
+        <section aria-label="Not today">
+          <button
+            type="button"
+            aria-expanded={showNotToday}
+            onClick={() => setShowNotToday((v) => !v)}
+            className="min-h-9 text-[13px] font-medium text-ink-2 hover:text-ink"
+          >
+            Not today · {notToday.length}
+          </button>
+          {showNotToday ? (
+            <ul className="mt-1 space-y-1.5">
+              {notToday.map((e) => (
+                <li key={e.key} className="card flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] text-ink-2">{e.item.title}</p>
+                    <p className="text-[12px] text-ink-2">
+                      {e.occurrence?.status === "moved" && e.occurrence.movedTo ? `Moved to ${shortDate(e.occurrence.movedTo)}` : "Skipped"}
+                    </p>
+                  </div>
+                  {e.occurrence?.status === "skipped" ? (
+                    <Button size="sm" variant="secondary" onClick={() => void run((ctx) => bringBack(e, date, ctx))}>
+                      <Undo2 className="h-3.5 w-3.5" aria-hidden /> Bring back
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
+      {upcoming.length && !filter ? (
+        <Section title="Upcoming" count={upcoming.reduce((n, g) => n + g.entries.length, 0)}>
+          <div className="space-y-3">
+            {upcoming.map((g) => (
+              <div key={g.date} className="space-y-1.5">
+                <button
+                  type="button"
+                  onClick={() => goTo(g.date)}
+                  className="flex min-h-7 w-full items-center gap-1 text-left text-[12px] font-medium text-ink-2 hover:text-ink"
+                >
+                  {whenLabel(g.date, today)}
+                  <span className="text-ink-2">({g.entries.length})</span>
+                  <ChevronRight className="ml-auto h-4 w-4" aria-hidden />
+                </button>
+                {[...g.entries].sort(byTime).map((e) => row(e, g.date))}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {pending.length ? (
+        <Link href="/pending" className="card flex min-h-11 items-center gap-2.5 px-3 text-[14px] text-ink">
+          <CalendarClock className="h-4 w-4 text-ink-2" aria-hidden />
+          <span className="flex-1">Pending</span>
+          <span className="text-[12px] text-ink-2">{pending.length}</span>
+          <ChevronRight className="h-4 w-4 text-ink-2" aria-hidden />
+        </Link>
+      ) : null}
+
+      <RowActionsMenu key={menuFor ? `${menuFor.date ?? date}|${menuFor.entry.key}` : "none"} target={menuFor} date={date} today={today} onClose={() => setMenuFor(null)} />
+    </div>
+  );
+}

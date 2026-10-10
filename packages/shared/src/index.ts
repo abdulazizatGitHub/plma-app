@@ -1,18 +1,5 @@
 export { healthResponseSchema, type HealthResponse } from "./health.js";
 export {
-  createHabitDefinitionSchema,
-  habitDefinitionSchema,
-  habitLogSchema,
-  upsertHabitLogSchema,
-  type HabitDefinitionDto,
-  type HabitLogDto,
-} from "./habits.js";
-export {
-  syncPullQuerySchema,
-  syncPullResponseSchema,
-  syncPushBodySchema,
-} from "./sync.js";
-export {
   PRAYER_NAMES,
   prayerStatusSchema,
   prayerLogPayloadSchema,
@@ -70,3 +57,6 @@ export {
   isValidLocalDateString,
 } from "./date.js";
 export { slugify, uniqueSlug } from "./slug.js";
+
+// v2 domain (categories, items, occurrences, sync contracts)
+export * from "./v2/index.js";

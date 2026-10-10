@@ -2,17 +2,16 @@ import cors from "@fastify/cors";
 import { healthResponseSchema } from "@life/shared";
 import { sql } from "drizzle-orm";
 import Fastify from "fastify";
-import { db } from "./db/index.js";
-import { habitRoutes } from "./routes/habits.js";
-import { syncRoutes } from "./routes/sync.js";
-
-const port = Number(process.env.PORT ?? 4000);
-const host = process.env.HOST ?? "0.0.0.0";
+import { db, pg } from "./db/index.js";
+import { env } from "./env.js";
+import { createTokenVerifier } from "./lib/auth.js";
+import { apiRoutes } from "./routes/v1.js";
 
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
+  origin: env.corsOrigins,
+  allowedHeaders: ["Content-Type", "Authorization"],
 });
 
 app.get("/health", () => {
@@ -43,11 +42,15 @@ app.get("/health/db", async (_request, reply) => {
   }
 });
 
-await app.register(habitRoutes);
-await app.register(syncRoutes);
+if (!env.supabaseUrl) {
+  app.log.warn("NEXT_PUBLIC_SUPABASE_URL is not set — authenticated routes will reject every request");
+}
+
+const verify = createTokenVerifier({ supabaseUrl: env.supabaseUrl, jwtSecret: env.supabaseJwtSecret });
+await app.register(apiRoutes(pg, verify));
 
 try {
-  await app.listen({ port, host });
+  await app.listen({ port: env.port, host: env.host });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

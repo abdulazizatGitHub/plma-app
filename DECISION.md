@@ -144,7 +144,7 @@ Use this template for each decision:
   - `ensureDefaultUser` and the shared `SYNC_API_KEY` stop being the identity mechanism.
   - The existing Owner's data is kept and claimable.
   - Auth provider choice is pending owner input.
-- **Related:** [phase-06a-accounts.md](./docs/phases/phase-06a-accounts.md), [phase-06b-customization.md](./docs/phases/phase-06b-customization.md), [phase-14-template-library.md](./docs/phases/phase-14-template-library.md)
+- **Related:** [phase-06a-accounts.md](./docs/phases/archive/phase-06a-accounts.md), [phase-06b-customization.md](./docs/phases/archive/phase-06b-customization.md), [phase-14-template-library.md](./docs/phases/archive/phase-14-template-library.md) (archived 2026-10-07; folded into v2)
 
 ### 2026-09-30 — Phase 05 health: payloads, sleep dating, goals in definition config
 
@@ -194,3 +194,248 @@ Use this template for each decision:
 - **Alternatives considered:** Keeping the presets and only restyling (rejected by owner). A single fixed palette (rejected, since it removes the theme picker). A 2-column list with inline actions instead of tiles (owner chose tiles).
 - **Consequences:** Stored `life_theme_name` values from the old presets are no longer valid and fall back to `clay` (validated in both `ThemeProvider` and the pre-paint init script). `DotCluster` and `StatNumber` were removed as unused.
 - **Related:** `docs/design-references/INDEX.md`, `apps/web/src/app/globals.css`
+
+### 2026-10-07 — v2: reconcile new owner requirements; keep foundation, replace domain and UI
+
+- **Context:** The owner rejected the current UI and typography as not simple. They supplied 4 reference images (`UI Images/`) and a broader vision:
+  - Today shows To Do / In Progress / Done.
+  - Categories and items are user-defined.
+  - Days are flexible: skip, move, or mark pending, and 100% is still reachable.
+  - A custom prayer block, with items anchored to prayers.
+  - Multi-step content and university plans.
+  - Reminders, rewards, groups, leaderboards, challenges, and sharing.
+
+  Many points conflict with the CRD and phases 06–14. Full analysis: [REQUIREMENTS_V2](./docs/requirements/REQUIREMENTS_V2.md) §3 (C1–C14).
+- **Decision:**
+  - **Rebuild strategy.** Work on branch `v2`. Keep:
+    - the monorepo and Next/Fastify/Drizzle/Supabase
+    - Zod in the shared package, Serwist, and the sync pattern
+    - the test infrastructure and the pure calculators
+
+    Replace the data model and every screen. No revert and no from-scratch rewrite. See [SYSTEM_DESIGN §1](./docs/architecture/SYSTEM_DESIGN.md#1-rebuild-strategy).
+  - **Data model.** Category → Item → Occurrence.
+    - Items form a tree. Types: task, habit, goal, plan, group.
+    - An Occurrence is a dated instance and its log, with status todo, in_progress, done, skipped, moved, or missed.
+    - A pending item has `date = NULL`. Occurrences stay virtual until touched.
+    - `habit_definitions` and `habit_logs` are migrated, then dropped in R2.
+    - Supersedes the 2026-09-28 "no new tables" decision for prayer/Quran.
+  - **Progress rule.** % = done ÷ required. Required excludes optional, skipped, moved, and pending items. If nothing is required, the day is 100%.
+  - **Plans replace the fixed content pipeline** (old Phase 09). Steps are child items linked by `item_dependencies`. Cadence rules warn but never block.
+  - **Navigation:** Today · Categories · + · Progress · Profile. Calendar becomes the Today date strip.
+  - **Phases** are renumbered v2 0–12 under releases R0–R4 ([DEVELOPMENT_PLAN](./docs/plan/DEVELOPMENT_PLAN.md)). Old 06–14 moved to `docs/phases/archive/`.
+- **Alternatives considered:**
+  - Revert to an earlier commit: rejected, because no earlier UI matches the references.
+  - Start from scratch: rejected, because it would re-solve the auth, sync, PWA, and WASM issues already documented here.
+  - Extend `habit_logs` with nullable columns: rejected, because it can't cleanly express one-offs, moves, sub-items, or plan steps.
+- **Consequences:**
+  - The 06A/06B scope continues as v2 Phase 1 and Phase 3.
+  - The owner's history must round-trip through the migration with identical report numbers (Phase 1 acceptance).
+- **Related:** [PRD](./docs/product/PRD.md), [SYSTEM_DESIGN](./docs/architecture/SYSTEM_DESIGN.md)
+
+### 2026-10-07 — v2 visual direction from owner reference images (supersedes 2026-09-30 redesign)
+
+- **Context:** The owner rejected the Space Grotesk / award-site palette design and wants a simple interface like the 4 images in `UI Images/`.
+- **Decision:**
+  - **Tokens** are sampled from those images (median of 7×7 patches):
+
+    | Token | Value |
+    |-------|-------|
+    | Canvas | `#F4F4F9` |
+    | Cards | white |
+    | Ink / secondary ink | `#1B1A22` / `#64656C` |
+    | To Do | `#E66473` |
+    | In Progress | `#EBAC80` |
+    | Done | `#97BB7D` |
+    | Neutral | `#AA8B9A` |
+    | Primary | `#7293F1` |
+    | Buttons with white text | `#4766D0` (derived) |
+    | Categories | ref 4 pastels |
+
+  - **Font:** Poppins.
+  - **Dark mode:** derived values, marked `(d)`.
+  - **Text on status colors:** always ink.
+  - The "colors come from real sources" rule stays. The source is now `UI Images/`.
+  - Spec: [DESIGN_SYSTEM_V2](./docs/design/DESIGN_SYSTEM_V2.md).
+- **Alternatives considered:** Keep the current palettes with a calmer layout (the owner asked for a new direction). Invent a palette (violates the owner's standing rule).
+- **Consequences:**
+  - Removed in v2 Phase 2: the `globals.css` themes, `ThemePicker`, Space Grotesk / Space Mono, and the tile Home.
+  - The owner approves a UI kit page before any feature screens are built (v2 Phase 0).
+
+### 2026-10-07 — v2 platform choices: Supabase Auth, pg-boss, Web Push now / Capacitor later, adhan-js
+
+- **Context:** v2 needs:
+  - accounts (pending since 2026-09-30)
+  - scheduled reminders, repeating for critical items
+  - prayer times by location
+  - reminders that behave like alarms
+
+  Research (2026) found:
+  - iOS PWAs receive push only when installed to the Home Screen.
+  - EU standalone PWAs lost push in iOS 17.4.
+  - A PWA cannot ring an alarm.
+- **Decision:**
+  - **Supabase Auth.** Fastify verifies JWTs via JWKS.
+  - **pg-boss** runs the background jobs: reminders tick, escalation, rewards, streak rollover, and leaderboard snapshots.
+  - **Web Push (VAPID)** from v2 Phase 6.
+  - A **Capacitor** wrap in v2 Phase 11 for exact alarms and native sharing.
+  - **adhan-js** computes prayer times, shared by client and server.
+  - Points, badges, streaks, and leaderboards are computed **server-side only**, from an idempotent ledger.
+- **Alternatives considered:**
+  - Self-hosted Better Auth or Auth0: rejected, since we are already on Supabase.
+  - BullMQ + Redis: rejected, extra infrastructure for low volume.
+  - React Native now: rejected by the owner (PWA now, native later).
+  - Client-computed points: rejected, trivially cheatable.
+- **Consequences:**
+  - New environment variables: `SUPABASE_JWKS_URL`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`.
+  - iOS users must install the PWA to get reminders until Phase 11.
+
+### 2026-10-07 — Diagrams as rendered images, generated offline
+
+- **Context:** The owner said Mermaid inside markdown doesn't present well and asked for images or a PDF. The npm registry was unreachable from the build environment, so `@mermaid-js/mermaid-cli` couldn't be installed.
+- **Decision:**
+  - `docs/architecture/diagrams/src/diagrams.py` generates the diagrams, using a small SVG toolkit (`svgkit.py`).
+  - Locally installed headless Chrome or Edge rasterises them to PNG.
+  - Markdown embeds the PNGs.
+  - `docs/build_pack.py` compiles the v2 docs and diagrams into `docs/Life-v2-Design-Pack.pdf` the same way.
+- **Alternatives considered:** mermaid-cli (blocked by the network, and its auto-layout is weaker for dense ERDs). Hand-drawn Figma or FigJam (not versioned with the code).
+- **Consequences:**
+  - To edit a diagram, change the Python, re-run it, and commit the SVG and PNG.
+  - Requires Python 3 and Chrome or Edge; no npm packages.
+
+### 2026-10-09 — v2 Phase 0/1 implementation choices
+
+- **Context:** Building the UI kit and the foundation (accounts, v2 schema, sync, offline store) surfaced several choices not covered by the design docs.
+- **Decision:**
+  - **Env source of truth.** The repo-root `.env.local` is the owner's single source of secrets and wins over `apps/api/.env`. That file held a stale database password and fails auth. The web app fills missing vars from it in `next.config.ts` (via `node:util` `parseEnv`; `@next/env` caches its first directory, so it can't add a second).
+  - **RLS on every public table** (migration `0001_v2_core`). Without it, Supabase's auto REST API exposed all app tables to the public anon key (PROJECT.md BUG-003). The API connects as the table owner, so RLS doesn't affect it; it enforces ownership itself.
+  - **Token verification.** The API accepts HS256 (legacy JWT secret) and ES256/RS256 via the project JWKS. This project issues ES256, so JWKS is the live path.
+  - **Sync cursor.** The pull cursor is a server-side `synced_at` (not the client's `updated_at`), with a 10 s overlap window. Last-write-wins still compares the client `updated_at`. Upserts only touch rows owned by the caller.
+  - **Push safety.** Push is planned before writing:
+    - Schema-validate every row.
+    - Reject rows claiming another user (403).
+    - Reject ids owned by another account (409).
+    - Reject references to rows the caller doesn't own (422).
+
+    The client retries a refused batch row by row and sets aside only the bad rows (`outbox_rejected`), so one bad row can't block sync.
+  - **Old v1 API routes deleted** (`/v1/habits`, old `/v1/sync`, `ensureDefaultUser`, `SYNC_API_KEY`). The `/v1` paths now carry the v2 API, as documented in SYSTEM_DESIGN §6.
+    - The v1 screens remain until Phase 2. They work offline only, and their local cache is now per user (`life_sqlite_v1:<userId>`).
+  - **v1→v2 migration is owner-run** (`npm run db:migrate:v1 -w @life/api -- --email …`). It defaults to a dry run, and deterministic ids make it idempotent.
+  - **Link color token** `--link`: `#4766D0` in light, the sampled `#7293F1` in dark. `#4766D0` text is only ~3:1 on the dark canvas.
+- **Alternatives considered:**
+  - Server cursor from client timestamps (rejected: device clock skew can hide rows).
+  - Keeping the v1 routes behind a flag (rejected: they bypassed ownership, BUG-002).
+  - Supabase RLS policies with direct client access (rejected: SYSTEM_DESIGN keeps all writes behind the API for server-computed rewards).
+- **Consequences:**
+  - The owner should update or delete `apps/api/.env`.
+  - Until Phase 2, signed-in users see the v1 screens without sync ("Waiting to sync") and dead theme presets on More.
+- **Related:** [phase-00](./docs/phases/v2/phase-00-docs-design.md), [phase-01](./docs/phases/v2/phase-01-foundation.md), PROJECT.md BUG-002/003/004, B-001
+
+### 2026-10-09 — v2 Phase 2 (Today): day-model rules and v1 removal
+
+- **Context:** The Today screen needed exact rules for virtual vs stored occurrences, moves, groups, and offline use. It also replaces every v1 screen.
+- **Decision:**
+  - **Deterministic occurrence ids.** `occurrenceIdFor(item, date, slot)` is a UUIDv8 over SHA-256. Two offline devices touching the same day merge by last-write-wins instead of hitting the `(item_id, date, slot)` unique index.
+  - **Moves.**
+    - A one-off moves by changing `item.schedule.date`; its stored occurrence moves with it. `null` = Pending.
+    - A repeating item marks the day `moved` and adds an instance on the target day in slot `moved:<from>`.
+    - Repeating items can't be Pending; they can be skipped.
+  - **Groups** (Daily prayers) render as the kit prayer row. Their children count toward the day %; the group itself doesn't. The tiles count list rows only.
+  - **All schedule kinds** (daily, weekdays, every N days, monthly, active range) are evaluated from Phase 2, so migrated items such as Kahf on Fridays show correctly. Anchors only add a caption until Phase 4.
+  - **Offline.** App routes are precached per build (`additionalPrecacheEntries`), so every screen opens offline before its first visit.
+  - **v1 removed.**
+    - Routes deleted: Calendar, Goals, Health, Prayer, More.
+    - Code deleted: the v1 components, the sql.js v1 cache, the v1 sync engine, and the shared v1 `habits`/`sync` schemas.
+    - Theme is mode-only.
+    - Leftover v1 localStorage keys are cleared on sign-in.
+    - Shared `prayer.ts` and `health-tracking.ts` are kept for the migration tests and Phases 4 and 7.
+- **Alternatives considered:**
+  - Random occurrence ids, merging 409s on the server (rejected: needs conflict UI).
+  - Moving repeating items by editing their schedule (rejected: it changes every future instance).
+  - Keeping the v1 screens alongside (rejected: they no longer sync).
+- **Consequences:**
+  - The test count dropped from 242 to 147, because the v1 screens' tests went with them. Every v2 path is covered.
+  - The owner's history shows on Today once they run `db:migrate:v1 --apply`.
+- **Related:** [phase-02](./docs/phases/v2/phase-02-today.md)
+
+### 2026-10-10 — Polish: OTP auth, validation everywhere, top bar, reference themes, cursors
+
+- **Context:** After Phase 2 the owner asked for:
+  - a pointer cursor on everything clickable
+  - themes
+  - a top bar with a user menu
+  - clearer, fully validated sign-in and sign-up forms, including confirm password
+  - **6-digit email codes instead of links**, with branded emails
+  - **every form validated**, with submit disabled until valid
+  - number fields that accept numbers only
+- **Decision:**
+  - **Auth flow:**
+    - Sign-up collects full name, email, password (live 5-rule checklist), confirm password, and terms acceptance.
+    - Email is confirmed with `verifyOtp({ type: "email" })`; resend has a 60 s cooldown.
+    - Password reset is `resetPasswordForEmail` → code + new password → `verifyOtp({ type: "recovery" })` → `updateUser`.
+    - The link-based `/auth/update-password` page was removed.
+    - The full name travels in `user_metadata.full_name`. The API stores it as `users.display_name` for later leaderboards.
+  - **Email templates:** branded HTML templates in `docs/email-templates/`, with the paste steps. Supabase settings: OTP length 6, expiry 15 min, password rules matching the client.
+  - **Validation:** shared `lib/forms/validators.ts` + `use-form.ts`.
+    - Required `*` markers.
+    - Errors appear after blur or a submit attempt.
+    - Submit is disabled until valid, with a hint underneath.
+    - `sanitizeDigits` keeps numeric inputs digits-only.
+  - **Themes:** Sky, Mauve, Sunset, Lavender, one per reference image. Each is AA-checked in light and dark by `tokens.test.ts`. Applied before paint via `data-theme`.
+  - **Top bar:**
+    - App mark, sync indicator (tap to sync), and an avatar showing your initials.
+    - The avatar opens a dialog with name and email, Profile, Pending, Theme, Appearance, Sync now, and Sign out.
+  - **Cursors:** a global base-layer rule gives clickables `cursor: pointer` and disabled controls `not-allowed`.
+  - The Next dev indicator is turned off; it covered the avatar.
+- **Alternatives considered:**
+  - Link-based confirmation (owner chose codes).
+  - Applying templates via the Management API (owner chose to paste them; no extra token needed).
+  - An accent picker instead of themes (owner chose reference themes).
+- **Consequences:**
+  - The owner must paste the templates and set OTP length and password rules in Supabase.
+  - Until then, Supabase's default email contains a confirmation **link**, not the code the app asks for. Clicking that link still confirms the account, after which signing in works.
+  - E2E tests never submit the real sign-up form, because bounced test mail can get the project's email sending restricted. The OTP step is covered by component tests.
+- **Related:** [docs/email-templates/README.md](./docs/email-templates/README.md), [DESIGN_SYSTEM_V2 §2a–2b](./docs/design/DESIGN_SYSTEM_V2.md)
+
+### 2026-10-10 — Responsive density pass; Upcoming / Overdue on Today; task time
+
+- **Context:** The owner gave this feedback:
+  - The UI felt like a big desktop page.
+  - Sign-up didn't fit one phone screen.
+  - The row popup, account menu and add-task sheet were too large.
+  - Tasks "weren't being created".
+  - Rows were plain: no icon, colour or progress.
+
+  On the task problem: the server held every task. Tasks added just after midnight with "Tomorrow" went to the next day, and Today only showed the selected day, so they looked lost.
+- **Decision:**
+  - **Density.**
+    - Controls are 36–44 px: buttons md 40 / lg 44, fields 40, rows about 56. Body text is 13–14 px.
+    - The popup is 208 px. The account menu is 264 px with 36 px rows.
+    - The auth card is compact. Password rules appear only once typing starts.
+    - Sign-up and sign-in fit a 390×844 screen without scrolling (verified in E2E).
+  - **Responsive.** Phone first.
+    - The content column is `max-w-xl`, `md:max-w-2xl` (672 px on tablet).
+    - At `lg` (≥1024 px) a 224 px left rail with "Add task" replaces the bottom bar.
+    - Sheets are bottom sheets on phones and centred dialogs (max 448 px) from `sm`, with a fade-in instead of a slide.
+  - **Where did my task go?**
+    - Adding or saving shows a toast with the destination ("Added to Tomorrow, Sun 11 Oct") and a **View** action that jumps to that day.
+    - Today now has two new sections:
+      - **Overdue:** one-off tasks from earlier days that were never done, skipped or moved. Each shows "Was due …" and a one-tap **Move to today**.
+      - **Upcoming:** the next 14 days of one-off tasks, grouped by day. Tapping a day header jumps to it.
+  - **Optional time on tasks.**
+    - `schedule.time` (HH:mm) is kept only when there is a date.
+    - Rows are sorted by time; untimed rows come last.
+  - **Row tags.** Each row now carries tags:
+    - due date
+    - category, with its icon and pastel colour
+    - time
+    - quantity progress
+    - High/Critical priority
+    - started time
+    - repeat pattern
+- **Alternatives considered:**
+  - A separate "All tasks" screen: deferred to Phase 3, because Upcoming answers "where is it?" in place.
+  - Treating overdue tasks as missed, the way prayers are: rejected. Tasks stay actionable until moved or done.
+- **Consequences:**
+  - Overdue and Upcoming show only when the selected day is today.
+  - The row menu acts on the row's own day (Upcoming and Overdue rows carry their date).
+  - Repeating items keep their schedule. Time is for one-off tasks only for now; Phase 3 adds times to routines.

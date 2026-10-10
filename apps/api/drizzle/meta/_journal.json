@@ -8,6 +8,13 @@
       "when": 1790454801926,
       "tag": "0000_yielding_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791566036096,
+      "tag": "0001_v2_core",
+      "breakpoints": true
     }
   ]
 }

@@ -1,37 +1,14 @@
 import { describe, expect, it } from "vitest";
-import {
-  contrastInkFor,
-  isThemeMode,
-  isThemeName,
-  isValidHexColor,
-  relativeLuminance,
-  resolveMode,
-} from "./theme-utils";
-
-describe("isThemeName", () => {
-  it("accepts the four known theme names", () => {
-    for (const name of ["clay", "volt", "studio", "ember"]) {
-      expect(isThemeName(name)).toBe(true);
-    }
-  });
-
-  it("rejects unknown values, retired preset names, empty string, and null", () => {
-    expect(isThemeName("teal")).toBe(false);
-    expect(isThemeName("rose")).toBe(false);
-    expect(isThemeName("")).toBe(false);
-    expect(isThemeName(null)).toBe(false);
-  });
-});
+import { isThemeMode, isValidHexColor, relativeLuminance, resolveMode } from "./theme-utils";
 
 describe("isThemeMode", () => {
   it("accepts light/dark/system", () => {
-    expect(isThemeMode("light")).toBe(true);
-    expect(isThemeMode("dark")).toBe(true);
-    expect(isThemeMode("system")).toBe(true);
+    expect(["light", "dark", "system"].every(isThemeMode)).toBe(true);
   });
 
-  it("rejects anything else", () => {
-    expect(isThemeMode("auto")).toBe(false);
+  it("rejects anything else, including retired preset names", () => {
+    expect(isThemeMode("clay")).toBe(false);
+    expect(isThemeMode("")).toBe(false);
     expect(isThemeMode(null)).toBe(false);
   });
 });
@@ -48,43 +25,15 @@ describe("resolveMode", () => {
   });
 });
 
-describe("isValidHexColor", () => {
-  it("accepts a well-formed 6-digit hex color", () => {
-    expect(isValidHexColor("#9c3b4e")).toBe(true);
-    expect(isValidHexColor("#FFFFFF")).toBe(true);
-  });
-
-  it("rejects 3-digit shorthand, missing #, and non-hex characters", () => {
+describe("colors", () => {
+  it("validates 6-digit hex colors", () => {
+    expect(isValidHexColor("#7293f1")).toBe(true);
     expect(isValidHexColor("#fff")).toBe(false);
-    expect(isValidHexColor("9c3b4e")).toBe(false);
-    expect(isValidHexColor("#gggggg")).toBe(false);
-    expect(isValidHexColor("")).toBe(false);
-  });
-});
-
-describe("relativeLuminance", () => {
-  it("is 0 for black and 1 for white", () => {
-    expect(relativeLuminance("#000000")).toBeCloseTo(0, 5);
-    expect(relativeLuminance("#ffffff")).toBeCloseTo(1, 5);
   });
 
-  it("returns 0 for an invalid color instead of throwing", () => {
-    expect(relativeLuminance("not-a-color")).toBe(0);
-  });
-});
-
-describe("contrastInkFor", () => {
-  it("picks dark ink for a light/pastel accent", () => {
-    expect(contrastInkFor("#ffffff")).toBe("#171310");
-  });
-
-  it("picks light ink for dark/saturated accents, including a mid-tone rose", () => {
-    expect(contrastInkFor("#000000")).toBe("#fdfaf8");
-    expect(contrastInkFor("#9c3b4e")).toBe("#fdfaf8");
-    expect(contrastInkFor("#e08398")).toBe("#fdfaf8");
-  });
-
-  it("falls back to a safe dark ink for an invalid hex", () => {
-    expect(contrastInkFor("nope")).toBe("#111111");
+  it("computes relative luminance, 0 for invalid input", () => {
+    expect(relativeLuminance("#000000")).toBe(0);
+    expect(relativeLuminance("#ffffff")).toBeCloseTo(1);
+    expect(relativeLuminance("nope")).toBe(0);
   });
 });

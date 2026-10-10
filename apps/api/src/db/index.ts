@@ -1,15 +1,9 @@
-import dotenv from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import postgres from "postgres";
+import { env } from "../env.js";
 import * as schema from "./schema.js";
 
-const apiRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
-dotenv.config({ path: path.join(apiRoot, ".env"), override: true });
-
-const connectionString =
-  process.env.DATABASE_URL ?? "postgresql://life:life_dev@localhost:5434/life";
+const connectionString = env.databaseUrl;
 
 const client = postgres(connectionString, {
   max: 10,
@@ -18,6 +12,11 @@ const client = postgres(connectionString, {
     connectionString.includes("pooler.supabase.com")
       ? "require"
       : undefined,
+  // Supabase's transaction pooler (port 6543) does not support prepared statements.
+  prepare: !connectionString.includes(":6543"),
 });
 
 export const db = drizzle(client, { schema });
+/** Raw postgres-js client, used by the generic v2 sync queries (sync/store.ts). */
+export const pg = client;
+export type Db = typeof db;
