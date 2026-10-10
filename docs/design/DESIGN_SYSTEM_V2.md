@@ -115,6 +115,12 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **DateStrip** | 7 days in a row, selected = `--primary` pill with ink text, dot for days with items | ref 1 weekly bars row |
 | **BottomNav** | White bar; 4 icons plus a center **+** (56 px, `--primary-strong` with a white icon) | ref 2 |
 | **Sheet** | Bottom sheet for add, edit, and actions; 20 px top radius | — |
+| **ConfirmSheet** | Small "Delete …?" sheet: body text, Cancel and a red-filled confirm button | — |
+| **GroupRow** (routine) | Card with a 28 px ring, title, "3/5" tag and category tag; expands to its sub-items as TaskRows; done when all sub-items are done | ref 2 project card |
+| **Checklist row** | TaskRow with a "2/5 steps" tag and a "Show steps" toggle listing small tick rows | — |
+| **Heatmap** | Month calendar, Monday first; done = `--done` fill, started = `--progress`, missed = faint `--todo`, skipped = dashed outline, today = ring; legend underneath | — |
+| **IconPicker / ColorPicker** | 8-column grid of 36 px icon tiles; round swatches for the 8 category tones; selected = ink ring | ref 4 pastels |
+| **Pill / PillGroup** | Compact 32 px single-choice pills (When, Kind, Repeat, Category) | ref 2 |
 
 Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 

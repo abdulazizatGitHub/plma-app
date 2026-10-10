@@ -439,3 +439,45 @@ Use this template for each decision:
   - Overdue and Upcoming show only when the selected day is today.
   - The row menu acts on the row's own day (Upcoming and Overdue rows carry their date).
   - Repeating items keep their schedule. Time is for one-off tasks only for now; Phase 3 adds times to routines.
+
+### 2026-10-11 — v2 Phase 3: categories, item editor, routines, history, starter packs
+
+- **Context:** Phase 3 lets users build their own structure. The owner set four choices on 2026-10-10:
+  - starter packs live in shared code
+  - the pack picker shows only for new accounts with no data
+  - reordering uses up/down buttons for now (drag comes later)
+  - the whole phase ships with a commit per slice
+- **Decision:**
+  - **Starter packs.**
+    - Seven packs ship in `@life/shared` (`STARTER_PACKS`) with fixed ids and versions, so onboarding works offline.
+    - Applying a pack is client-side through the normal action/sync path.
+    - The API serves the same list: `GET /v1/templates`, plus `POST /v1/templates/:id/apply` through the push planner. `db:seed:templates` upserts the packs into `templates` for the Phase 12 library.
+    - Everything a pack creates carries provenance (`sourceTemplateId`, version, `adoptedAt`). Applying a pack twice adds nothing.
+  - **Onboarding.**
+    - The app redirects to `/welcome` only after a *successful* first sync, and only when the account has no categories or items and no local `onboarded` flag.
+    - An existing account on a new device is never mistaken for a new one, even offline.
+  - **Archive.**
+    - Archiving a category stamps the same `archivedAt` on its live items. That hides them everywhere through the existing `isDueOn` rule, and unarchive restores exactly that set.
+    - Deleting a category moves its items to "No category".
+    - History ignores the archive flag for past days and stops counting after the archive date.
+  - **Routines** are `group` items whose sub-items copy the parent's schedule and category.
+    - Done is derived from the sub-items, never stored.
+    - A one-off routine moves together with its sub-items. A repeating routine can be skipped but not moved.
+    - Prayer sets are marked with `meta.prayerSet` and keep the chip row.
+  - **Tracking.** Checklist ticks live in `occurrence.detail.steps`. Duration minutes live in `occurrence.value` (+5 per tap).
+  - **History** (`itemHistory`):
+    - one mark per day: done, partial, missed, skipped, today, not due, future
+    - skipped days neither break nor extend a streak
+    - an unfinished today doesn't break the current streak
+    - completion is shown over 90 days
+  - **Detail routes** use query parameters (`/categories/view?id=`, `/items/view?id=`, `/items/edit?id=`). Each is one static shell that is precached. The service worker ignores the app's own parameters (not `_rsc`) when matching the precache.
+  - **Durability.** Every user action now flushes the local store to IndexedDB immediately. A save followed by a full page load could otherwise be lost on the 250 ms timer; the browser E2E found this.
+- **Alternatives considered:**
+  - Packs only in the database (onboarding would need a connection).
+  - Drag-to-reorder now (deferred by the owner).
+  - Dynamic `[id]` routes (they can't be precached per id).
+- **Consequences:**
+  - Pack edits ship with app releases. Bump `version` when a pack changes.
+  - Repeating routines can't be moved to another day yet.
+  - Drag reorder, a full history screen (Phase 7) and times on habits (anchors, Phase 4) remain.
+- **Related:** [phase-03-categories-items.md](./docs/phases/v2/phase-03-categories-items.md), [DESIGN_SYSTEM_V2 §5](./docs/design/DESIGN_SYSTEM_V2.md)

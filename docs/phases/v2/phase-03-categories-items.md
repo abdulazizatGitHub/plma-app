@@ -32,8 +32,10 @@ Users build their own sections and decide, for each item, what it tracks, how im
 
 ## Acceptance
 
-- [ ] Create "Physical" with Steps (quantity, target 10,000, step 500). Log +500 twice, then type 10000. Works from both Today and the detail page.
-- [ ] Create "Gym — Push day" with 5 exercises. Ticking all children completes the parent.
-- [ ] A habit scheduled for weekdays [Mon, Wed, Fri] appears only on those days.
-- [ ] Archiving a category hides it everywhere and keeps its history.
-- [ ] A new user picks two starter packs, and only those appear.
+- [x] Create "Physical" with Steps (quantity, target 10,000, step 500). Log +500 twice, then type 10000. Works from both Today and the detail page.
+- [x] Create "Gym — Push day" with 5 exercises. Ticking all children completes the parent.
+- [x] A habit scheduled for weekdays [Mon, Wed, Fri] appears only on those days.
+- [x] Archiving a category hides it everywhere and keeps its history.
+- [x] A new user picks two starter packs, and only those appear.
+
+**Verified 2026-10-11** in a browser against the real API and Supabase, with a throwaway account deleted afterwards: all five criteria pass (16 checks). All new pages also open offline from the service worker.
