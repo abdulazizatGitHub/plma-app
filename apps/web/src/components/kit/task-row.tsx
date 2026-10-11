@@ -34,6 +34,8 @@ type TaskRowProps = {
   highlight?: boolean;
   /** Can't be ticked yet: shows a lock with this reason instead of the check (plan steps). */
   locked?: string;
+  /** A day that can't be logged (history or future): the check shows the state but can't change it. */
+  readOnly?: boolean;
 };
 
 const LONG_PRESS_MS = 500;
@@ -52,6 +54,7 @@ export function TaskRow({
   children,
   highlight = false,
   locked,
+  readOnly = false,
 }: TaskRowProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const row = useRef<HTMLDivElement>(null);
@@ -91,7 +94,7 @@ export function TaskRow({
             <Lock className="h-4 w-4" aria-hidden />
           </button>
         ) : (
-          <TaskCheck state={state} label={title} onToggle={onToggle} />
+          <TaskCheck state={state} label={title} onToggle={readOnly ? undefined : onToggle} disabled={readOnly} />
         )}
       </div>
       <div className="min-w-0 flex-1">

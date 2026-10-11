@@ -2,7 +2,9 @@
 
 import {
   anchorWindow,
+  canLog,
   clockIn,
+  dayAccess,
   currentPrayer,
   markPrayer,
   nextPrayer,
@@ -66,6 +68,12 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
   const label = (c: DayEntry) => (friday && prayerKeyOf(c.item) === "dhuhr" ? "Jumu'ah" : c.item.title);
   const current = isToday && times ? currentPrayer(now, times) : null;
   const mark = (child: DayEntry, m: Parameters<typeof markPrayer>[2]) => void run((ctx) => markPrayer(child, date, m, ctx));
+  // Today: one tap = prayed. Past days: one tap = qada (made up later). Future: can't mark yet.
+  const access = dayAccess(date, today);
+  const markable = access !== "planned";
+  const tapMark = access === "live" ? "prayed" : "qada";
+  // "On time" stays available for yesterday (prayed but forgot to tap); older days only qada / missed.
+  const offerOnTime = canLog(access);
 
   const nameOf = (key: string) => {
     const child = children.find((c) => normalisePrayerKey(prayerKeyOf(c.item) ?? "") === key);
@@ -77,7 +85,9 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
     subtitle = current
       ? `${nameOf(current.key)} now · until ${formatTime(clockIn(current.window.end, times.timezone))}`
       : `${nameOf(next.key)} in ${inMinutes(now, next.at)}`;
-  } else if (date < today) subtitle = "Unmarked prayers count as missed — hold one to mark it qada";
+  } else if (access === "late") subtitle = "Yesterday — tap a prayer you made up to mark it qada";
+  else if (access === "history") subtitle = "Unmarked prayers count as missed — tap one to recover it as qada";
+  else subtitle = "Upcoming — mark them on the day";
 
   const chips: PrayerChip[] = children.map((c) => ({
     key: c.key,
@@ -97,13 +107,13 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
         prayers={chips}
         onToggle={(key) => {
           const child = children.find((c) => c.key === key);
-          if (!child) return;
+          if (!child || !markable) return;
           const m = prayerMark(child, date, today);
-          mark(child, m === "prayed" || m === "qada" ? "clear" : "prayed");
+          mark(child, m === "prayed" || m === "qada" ? "clear" : tapMark);
         }}
         onChipMore={(key, anchor) => {
           const child = children.find((c) => c.key === key);
-          if (child) setChipMenu({ child, anchor });
+          if (child && markable) setChipMenu({ child, anchor });
         }}
         onMore={() => setAllOpen(true)}
         footer={
@@ -131,7 +141,9 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
               ["qada", "Prayed late (qada)", <Clock4 key="i" />],
               ["missed", "Missed", <CircleSlash key="i" />],
             ] as const
-          ).map(([m, text, icon]) => (
+          )
+            .filter(([m]) => m !== "prayed" || offerOnTime)
+            .map(([m, text, icon]) => (
             <PopoverMenuItem
               key={m}
               icon={icon}
@@ -171,7 +183,9 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
                       ["qada", "Qada"],
                       ["missed", "Missed"],
                     ] as const
-                  ).map(([value, text]) => (
+                  )
+                    .filter(([value]) => markable && (value !== "prayed" || offerOnTime))
+                    .map(([value, text]) => (
                     <button
                       key={value}
                       type="button"

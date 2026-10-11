@@ -71,7 +71,7 @@ describe("Prayer block on Today", () => {
     await waitFor(() => expect(occOf("isha")?.status).toBe("missed"));
   });
 
-  it("a past day shows unmarked prayers as missed; tapping marks them prayed", async () => {
+  it("yesterday: unmarked prayers read as missed, and tapping one records it as qada", async () => {
     today();
     const yesterday = addDays(todayLocalDate(), -1);
     const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${yesterday}T12:00:00`));
@@ -80,7 +80,20 @@ describe("Prayer block on Today", () => {
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
     const block = await screen.findByRole("region", { name: "Daily prayers" });
     await waitFor(() => expect(within(block).getByRole("button", { name: /^Maghrib, missed/ })).toBeInTheDocument());
-    expect(within(block).getByText(/count as missed/)).toBeInTheDocument();
+    expect(within(block).getByText(/Yesterday — tap a prayer you made up to mark it qada/)).toBeInTheDocument();
+    fireEvent.click(within(block).getByRole("button", { name: /^Maghrib, missed/ }));
+    await waitFor(() => expect(occOf("maghrib")).toMatchObject({ status: "done", detail: { qada: true }, date: yesterday }));
+  });
+
+  it("future prayers can't be marked yet", async () => {
+    const t = todayLocalDate();
+    const tomorrow = addDays(t, 1);
+    const entry = buildDay(store.query("items") as unknown as Item[], [], tomorrow)[0];
+    render(<PrayerGroup entry={entry} date={tomorrow} />);
+    expect(screen.getByText("Upcoming — mark them on the day")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Fajr, not marked/ }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(occs()).toHaveLength(0);
   });
 
   it("on Fridays Zuhr reads Jumu'ah (and can be turned off)", () => {

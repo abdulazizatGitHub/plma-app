@@ -118,12 +118,21 @@ type QuantityRowProps = Omit<QuantityStepperProps, "label"> & {
   onMore?: (anchor: HTMLElement) => void;
   tags?: React.ReactNode;
   highlight?: boolean;
+  /** A day that can't be logged: no stepper, just the value. */
+  readOnly?: boolean;
+  /** Being edited right now: keep the stepper open even once the goal is reached. */
+  active?: boolean;
 };
 
 /** Task row for counted items: title, "4,000 / 10,000 steps", thin progress line, stepper. */
-export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, highlight, ...stepper }: QuantityRowProps) {
+export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, highlight, readOnly = false, active = false, ...stepper }: QuantityRowProps) {
   const state = quantityState(stepper.value, target);
   const pct = target ? Math.min(100, (stepper.value / target) * 100) : 0;
+  // A reached goal folds its stepper away; "Log more" brings it back (extra effort still counts).
+  const [logMore, setLogMore] = useState(false);
+  const reached = state === "done";
+  // Never fold mid-tap: a row still being edited keeps its stepper until it settles.
+  const showStepper = !readOnly && (!reached || logMore || active);
   const caption = [
     target ? `${fmt(stepper.value)} / ${fmt(target)}${stepper.unit ? ` ${stepper.unit}` : ""}` : null,
     meta,
@@ -143,15 +152,27 @@ export function QuantityRow({ title, target, meta, priority, categoryColor, onOp
       onMore={onMore}
       tags={tags}
       highlight={highlight}
+      readOnly={readOnly}
     >
       {target ? (
         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-track" aria-hidden>
-          <div className="h-full rounded-full bg-primary transition-[width] duration-(--duration-base)" style={{ width: `${pct}%` }} />
+          <div className={`h-full rounded-full transition-[width] duration-(--duration-base) ${reached ? "bg-done" : "bg-primary"}`} style={{ width: `${pct}%` }} />
         </div>
       ) : null}
-      <div className="mt-1.5">
-        <QuantityStepper label={title} {...stepper} />
-      </div>
+      {showStepper ? (
+        <div className="mt-1.5 flex items-center gap-2">
+          <QuantityStepper label={title} {...stepper} />
+          {reached ? (
+            <button type="button" onClick={() => setLogMore(false)} className="min-h-8 rounded-full px-2 text-[12px] font-medium text-ink-2 hover:bg-track">
+              Done
+            </button>
+          ) : null}
+        </div>
+      ) : reached && !readOnly ? (
+        <button type="button" onClick={() => setLogMore(true)} className="mt-1 min-h-8 rounded-full px-1 text-[12px] font-medium text-link">
+          Log more
+        </button>
+      ) : null}
     </TaskRow>
   );
 }
