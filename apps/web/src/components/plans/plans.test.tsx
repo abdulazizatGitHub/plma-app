@@ -177,5 +177,21 @@ describe("Plans on Today and in categories", () => {
     expect(within(plans).getByText("Nothing upcoming.")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
+
+  it("deleting a plan step from Today removes its waits-for links too", async () => {
+    seedCollab();
+    const post = items().find((i) => i.title === "Post")!;
+    const [c] = updateStep(post, { date: todayLocalDate() }, { userId: USER, now: "2026-10-11T09:00:00.000Z", deviceId: null });
+    store.save(c.entity, c.row as unknown as StoredRow);
+    render(
+      <AddSheetProvider>
+        <TodayScreen />
+      </AddSheetProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "More actions for Post" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await waitFor(() => expect(items().some((i) => i.title === "Post")).toBe(false));
+    expect(deps()).toHaveLength(0);
+  });
 });
 

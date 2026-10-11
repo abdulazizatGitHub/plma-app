@@ -1,10 +1,11 @@
 "use client";
 
-import { moveTo, todayLocalDate, toggleDone, type DayEntry, type Item } from "@life/shared";
-import { useEffect, useState } from "react";
+import { moveTo, toggleDone, type DayEntry, type Item } from "@life/shared";
+import { useState } from "react";
 import { TaskRow } from "@/components/kit";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
 import { useActions, useAllItems, useCategories, usePending } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 const asEntry = (item: Item): DayEntry => ({ key: `${item.id}|`, item, slot: "", occurrence: null });
 
@@ -14,9 +15,8 @@ export default function PendingPage() {
   const categories = useCategories();
   const { items } = useAllItems();
   const run = useActions();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
 
   return (
     <div className="space-y-5">

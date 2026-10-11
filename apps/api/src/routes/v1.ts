@@ -38,7 +38,18 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier) {
         return reply.status(plan.status).send({ error: { code: plan.code, message: plan.message } });
       }
       try {
-        const { accepted, stale } = await applyPush(sql, userId, plan.rows);
+        let result;
+        try {
+          result = await applyPush(sql, userId, plan.rows);
+        } catch (err) {
+          // The account row was missing (e.g. removed while this process remembered it): recreate it and retry once.
+          const e = err as { code?: string; constraint_name?: string };
+          if (e.code !== "23503" || !e.constraint_name?.endsWith("_user_id_users_id_fk")) throw err;
+          ensureUser.forget(userId);
+          await ensureUser(request.auth!);
+          result = await applyPush(sql, userId, plan.rows);
+        }
+        const { accepted, stale } = result;
         return { serverTime: new Date().toISOString(), accepted, stale };
       } catch (err) {
         // Two devices created the same item/date occurrence with different ids.

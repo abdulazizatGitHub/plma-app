@@ -27,7 +27,19 @@ const withSerwist = withSerwistInit({
   additionalPrecacheEntries: OFFLINE_ROUTES.map((url) => ({ url, revision: BUILD_REVISION })),
 });
 
+/** Safe security headers for every page (a strict CSP comes with hosting, once domains are known). */
+const SECURITY_HEADERS = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Location is used by prayer times (asked just in time); camera and mic aren't used.
+  { key: "Permissions-Policy", value: "geolocation=(self), camera=(), microphone=()" },
+];
+
 const nextConfig: NextConfig = {
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   // The floating dev badge covered the top-bar avatar; errors still surface without it.
   devIndicators: false,
   transpilePackages: ["@life/shared"],

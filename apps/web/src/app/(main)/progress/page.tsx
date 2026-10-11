@@ -1,18 +1,18 @@
 "use client";
 
-import { prayerInsights, todayLocalDate } from "@life/shared";
+import { prayerInsights } from "@life/shared";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Bars, Ring, addDays, weekStart } from "@/components/kit";
 import { useDays, useItemOccurrences, usePrayerSet } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "narrow" });
 
 /** Today's ring and the last 7 days. Full history and analytics arrive in v2 Phase 7. */
 export default function ProgressPage() {
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
+  const today = useToday();
   const dates = useMemo(() => (today ? Array.from({ length: 7 }, (_, i) => addDays(today, i - 6)) : []), [today]);
   const days = useDays(dates);
   const pcts = dates.map((d) => days.get(d)?.progress.pct ?? 0);

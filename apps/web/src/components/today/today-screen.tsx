@@ -12,7 +12,6 @@ import {
   moveTo,
   partAt,
   partOf,
-  todayLocalDate,
   type Category,
   type DayEntry,
   type DayPrayerTimes,
@@ -20,7 +19,7 @@ import {
 } from "@life/shared";
 import { AlertTriangle, CalendarClock, ChevronRight, History, Hourglass, Plus, Telescope, Undo2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, DateStrip, Ring, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
 import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
@@ -28,6 +27,7 @@ import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { formatTime } from "@/lib/v2/category-style";
 import { useActions, useCategories, useDay, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
+import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
 import { PrayerGroup } from "./prayer-group";
@@ -74,7 +74,7 @@ function Section({ id, title, count, action, children }: { id?: string; title: s
 /** v2 Home: one day's To Do / In Progress / Done, plus Overdue and Upcoming (TOD-01…05, FLX-01…05). */
 export function TodayScreen() {
   // Computed on the client: a prerendered page would freeze the build date.
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [date, setDate] = useState<string | null>(null);
   const [filter, setFilter] = useState<ItemState | null>(null);
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
@@ -85,11 +85,14 @@ export function TodayScreen() {
   const run = useActions();
   const { held, hold } = useSettledPlacement();
 
+  // Follows the calendar: at midnight (or when the app comes back), a screen that was
+  // showing "today" moves to the new today; a screen showing another day stays there.
+  const shownToday = useRef<string | null>(null);
   useEffect(() => {
-    const t = todayLocalDate();
-    setToday(t); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
-    setDate(t);
-  }, []);
+    if (!today) return;
+    setDate((d) => (d === null || d === shownToday.current ? today : d));
+    shownToday.current = today;
+  }, [today]);
   useEffect(() => {
     // Per-device convenience; storage may be unavailable (private mode).
     try {
@@ -107,9 +110,10 @@ export function TodayScreen() {
     }
   };
   useEffect(() => {
-    setDefaultDate(date);
+    // "+" on a past day adds to today: a new task can't start life in the past.
+    setDefaultDate(date && today && date < today ? today : date);
     return () => setDefaultDate(null);
-  }, [date, setDefaultDate]);
+  }, [date, today, setDefaultDate]);
   useEffect(() => {
     // The "View" button on the add confirmation jumps here.
     registerShowDay((d) => {
@@ -146,7 +150,7 @@ export function TodayScreen() {
   // stays put and moves once it settles). Skipped / moved rows leave at once.
   const placed = (e: DayEntry): EntryState => {
     const real = entryState(e);
-    return real === "not_today" ? real : (held.get(e.key) ?? real);
+    return real === "not_today" ? real : (held.get(`${date}|${e.key}`) ?? real);
   };
   const bucket = (s: EntryState) => rows.filter((e) => placed(e) === s);
   const notToday = bucket("not_today");
@@ -162,7 +166,7 @@ export function TodayScreen() {
           date={own ?? date}
           category={categoryOf(e)}
           dueLabel={dueLabel}
-          onInteract={own ? undefined : () => hold(e.key, shown)}
+          onInteract={own ? undefined : () => hold(`${date}|${e.key}`, shown)}
           movingTo={shown !== real ? real : undefined}
           onMore={(entry, anchor) => setMenuFor({ entry, anchor, date: own })}
         />
@@ -274,11 +278,23 @@ export function TodayScreen() {
       <div data-tour="list" className="space-y-5">
       {nothing ? (
         <div className="card flex flex-col items-center gap-2 px-5 py-6 text-center">
-          <p className="text-[14px] font-medium text-ink">Nothing planned for {dayLabel(date, today).toLowerCase()}.</p>
-          <p className="text-[12px] text-ink-2">Add something, or enjoy the free day — it still counts as 100%.</p>
-          <Button onClick={openAdd} className="mt-1">
-            <Plus className="h-4 w-4" aria-hidden /> Add a task
-          </Button>
+          {access === "late" || access === "history" ? (
+            // A past day can't be planned any more; say what it was instead of inviting edits.
+            <p className="text-[14px] font-medium text-ink">Nothing was planned for {dayLabel(date, today).toLowerCase()}.</p>
+          ) : (
+            <>
+              <p className="text-[14px] font-medium text-ink">
+                Nothing planned for {dayLabel(date, today).toLowerCase()}
+                {access === "planned" ? " yet" : ""}.
+              </p>
+              <p className="text-[12px] text-ink-2">
+                {access === "planned" ? "Plan ahead: add a task for that day." : "Add something, or enjoy the free day — it still counts as 100%."}
+              </p>
+              <Button onClick={openAdd} className="mt-1">
+                <Plus className="h-4 w-4" aria-hidden /> Add a task
+              </Button>
+            </>
+          )}
         </div>
       ) : view === "day" && times ? (
         (() => {
@@ -354,7 +370,7 @@ export function TodayScreen() {
                       {e.occurrence?.status === "moved" && e.occurrence.movedTo ? `Moved to ${shortDate(e.occurrence.movedTo)}` : "Skipped"}
                     </p>
                   </div>
-                  {e.occurrence?.status === "skipped" ? (
+                  {e.occurrence?.status === "skipped" && access !== "history" ? (
                     <Button size="sm" variant="secondary" onClick={() => void run((ctx) => bringBack(e, date, ctx))}>
                       <Undo2 className="h-3.5 w-3.5" aria-hidden /> Bring back
                     </Button>

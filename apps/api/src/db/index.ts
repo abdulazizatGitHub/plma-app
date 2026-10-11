@@ -12,6 +12,11 @@ const client = postgres(connectionString, {
     connectionString.includes("pooler.supabase.com")
       ? "require"
       : undefined,
+  // The pooler drops idle connections; recycle ours first so a request never gets a dead socket
+  // (that showed up as ECONNRESET / CONNECT_TIMEOUT 500s on sync).
+  idle_timeout: 20,
+  max_lifetime: 60 * 30,
+  connect_timeout: 15,
   // Supabase's transaction pooler (port 6543) does not support prepared statements.
   prepare: !connectionString.includes(":6543"),
 });

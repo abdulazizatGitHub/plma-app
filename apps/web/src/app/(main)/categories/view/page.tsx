@@ -11,7 +11,6 @@ import {
   planProgress,
   sortItems,
   STARTER_PACKS,
-  todayLocalDate,
   unarchiveCategory,
   unarchiveItem,
   type Item,
@@ -19,7 +18,7 @@ import {
 import { Archive, ArrowDown, ArrowLeft, ArrowUp, Pencil, Pin, PinOff, Plus, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, createElement, useEffect, useMemo, useState } from "react";
+import { Suspense, createElement, useMemo, useState } from "react";
 import { CategorySheet } from "@/components/categories/category-sheet";
 import { ItemListRow } from "@/components/categories/item-list-row";
 import { PlanCard } from "@/components/plans/plan-card";
@@ -28,6 +27,7 @@ import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { toneInkClass } from "@/lib/theme/tokens";
 import { useActions, useAllItems, useCategory } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 import { usePlansData } from "@/lib/v2/use-plans";
 
 /** Starter packs whose categories hold plans: Content creation and University. */
@@ -47,11 +47,10 @@ function CategoryView() {
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [editing, setEditing] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [menu, setMenu] = useState<{ item: Item; siblings: Item[]; anchor: HTMLElement } | null>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
 
   const mine = useMemo(() => items.filter((i) => i.categoryId === id && !i.parentId), [items, id]);
   const live = sortItems(mine.filter((i) => !i.archivedAt && i.type !== "plan"));

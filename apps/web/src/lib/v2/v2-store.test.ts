@@ -113,6 +113,16 @@ describe("syncOnce", () => {
     expect(s.pendingCount()).toBe(1);
   });
 
+  it("treats a busy server (503 / 429) like being offline: changes stay queued", async () => {
+    for (const status of [503, 429]) {
+      const s = await LocalStore.open(uuid(), { sqlJs: SQL });
+      s.save("categories", category(A, "Queued"));
+      const result = await syncOnce(s, deps((async () => respond(status, { error: { code: "db_unavailable" } })) as unknown as typeof fetch));
+      expect(result).toMatchObject({ ok: false, reason: "offline" });
+      expect(s.pendingCount()).toBe(1);
+    }
+  });
+
   it("does nothing when signed out", async () => {
     const s = await LocalStore.open(uuid(), { sqlJs: SQL });
     const fetchImpl = vi.fn() as unknown as typeof fetch;
