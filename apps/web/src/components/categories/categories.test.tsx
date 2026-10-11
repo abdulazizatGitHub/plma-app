@@ -135,7 +135,7 @@ describe("New kinds on Today", () => {
     expect(within(routine).getByText("0/3")).toBeInTheDocument();
     for (const title of ["Bench", "OHP", "Dips"]) fireEvent.click(within(routine).getByRole("checkbox", { name: title }));
     await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Gym — Push day")).toBeInTheDocument(), SETTLED);
-    expect(screen.getByRole("img", { name: /% of today done/ })).toHaveAttribute("data-value", "100");
+    expect(screen.getByRole("img", { name: /% of the day done/ })).toHaveAttribute("data-value", "100");
   });
 
   it("a checklist expands to its steps; ticking them all completes it", async () => {

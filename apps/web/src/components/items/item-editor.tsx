@@ -1,13 +1,14 @@
 "use client";
 
 import { createItem, normalisePrayerKey, prayerKeyOf, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
 import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField } from "@/components/kit";
 import { sanitizeDigits } from "@/lib/forms/validators";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useLocation } from "@/components/location/location-provider";
 import { useActions, useCategories, useNextSortOrder, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 import { firstError, initialState, isOnce, toDraft, validate, type EditorPreset, type EditorState } from "./editor-state";
 import { ListEditor } from "./list-editor";
 
@@ -91,7 +92,7 @@ type ItemEditorProps = {
 
 /** The full editor ("More options"): kind, tracking, schedule, importance, sub-items (Phase 3). */
 export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }: ItemEditorProps) {
-  const today = useMemo(() => todayLocalDate(), []);
+  const today = useToday() ?? todayLocalDate();
   const categories = useCategories();
   const run = useActions();
   const nextSortOrder = useNextSortOrder();

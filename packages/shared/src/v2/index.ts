@@ -20,3 +20,4 @@ export * from "./plans/plan-state.js";
 export * from "./plans/cadence.js";
 export * from "./plans/plan-actions.js";
 export * from "./day-access.js";
+export * from "./streak.js";

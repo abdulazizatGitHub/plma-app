@@ -1,32 +1,30 @@
 "use client";
 
-import { todayLocalDate } from "@life/shared";
-import { useEffect, useState } from "react";
-
-/** Milliseconds until the next local midnight (plus a second of slack). */
-function untilMidnight(now = new Date()): number {
-  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 1);
-  return next.getTime() - now.getTime();
-}
+import { logicalToday, nextDayEnd } from "@life/shared";
+import { createContext, createElement, useContext, useEffect, useState, type ReactNode } from "react";
+import { useUserSettings } from "./use-day";
 
 /**
- * Today's local date, kept current. A phone often leaves the app open
- * overnight; without this, "Today" would still be yesterday in the morning.
- * Updates at local midnight and whenever the app comes back to the foreground.
- * Null on the server and until the first client render.
+ * Today's date as the user lives it: the calendar date, except before their
+ * day-end hour (e.g. 1:30 AM with the day ending at 2 AM) it's still the
+ * previous day. Kept current — a phone often leaves the app open overnight —
+ * by switching at the day-end boundary and whenever the app comes back to the
+ * foreground. Null on the server and until the first client render.
  */
-export function useToday(): string | null {
+function useLiveToday(dayEndHour: number, enabled: boolean): string | null {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
+    if (!enabled) return;
     const refresh = () => setToday((prev) => {
-      const now = todayLocalDate();
+      const now = logicalToday(dayEndHour);
       return prev === now ? prev : now;
     });
     refresh();
+    const delay = () => Math.max(1000, nextDayEnd(dayEndHour).getTime() - Date.now() + 1000);
     let timer = setTimeout(function tick() {
       refresh();
-      timer = setTimeout(tick, untilMidnight());
-    }, untilMidnight());
+      timer = setTimeout(tick, delay());
+    }, delay());
     const onVisible = () => {
       if (document.visibilityState === "visible") refresh();
     };
@@ -37,6 +35,22 @@ export function useToday(): string | null {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [dayEndHour, enabled]);
   return today;
+}
+
+/** `undefined` = no provider above (tests, isolated renders): fall back to a local clock. */
+const TodayContext = createContext<string | null | undefined>(undefined);
+
+/** One shared "today" for the whole app, following the user's day-end setting. */
+export function TodayProvider({ children }: { children: ReactNode }) {
+  const { dayEndHour } = useUserSettings();
+  const today = useLiveToday(dayEndHour ?? 0, true);
+  return createElement(TodayContext.Provider, { value: today }, children);
+}
+
+export function useToday(): string | null {
+  const shared = useContext(TodayContext);
+  const own = useLiveToday(0, shared === undefined);
+  return shared === undefined ? own : shared;
 }

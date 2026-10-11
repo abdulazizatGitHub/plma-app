@@ -36,6 +36,8 @@ export const userSettingsSchema = syncedRowSchema.extend({
   prayerManual: z.record(z.string(), clockSchema).default({}),
   /** On Fridays the Zuhr chip reads "Jumu'ah" (owner, 2026-10-11). */
   jumuahLabel: z.boolean().default(true),
+  /** When the user's day ends and locks: 0 = midnight … 4 = 4 AM (night owls). */
+  dayEndHour: z.number().int().min(0).max(4).default(0),
   /** How the location was chosen: device GPS, a picked city, never, or not asked yet. */
   locationMode: z.enum(["unset", "device", "city", "never"]).default("unset"),
   quietFrom: clockSchema.nullable(),
@@ -139,6 +141,7 @@ export function defaultUserSettings(userId: string, now: string, timezone = "Asi
     dayParts: [],
     prayerManual: {},
     jumuahLabel: true,
+    dayEndHour: 0,
     locationMode: "unset",
     quietFrom: null,
     quietTo: null,

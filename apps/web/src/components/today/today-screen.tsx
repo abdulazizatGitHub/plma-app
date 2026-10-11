@@ -9,6 +9,10 @@ import {
   entryState,
   entryWindow,
   isPrayerGroup,
+  nextPrayer,
+  normalisePrayerKey,
+  prayerKeyOf,
+  prayerMark,
   moveTo,
   partAt,
   partOf,
@@ -20,16 +24,17 @@ import {
 import { AlertTriangle, CalendarClock, ChevronRight, History, Hourglass, Plus, Telescope, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, DateStrip, Ring, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
+import { Button, DateStrip, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
 import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { formatTime } from "@/lib/v2/category-style";
-import { useActions, useCategories, useDay, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
+import { useActions, useCategories, useDay, useDayStreak, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
+import { DaySummaryCard } from "./day-summary";
 import { PrayerGroup } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
 
@@ -135,6 +140,7 @@ export function TodayScreen() {
   const isToday = date !== null && date === today;
   const times = usePrayerTimes(date);
   const access = date && today ? dayAccess(date, today) : "live";
+  const streak = useDayStreak(today);
   const now = useNow();
   const upcoming = useUpcoming(isToday ? today : null);
   const overdue = useOverdue(isToday ? today : null);
@@ -173,6 +179,27 @@ export function TodayScreen() {
       </div>
     );
   };
+  // What's next today: the next prayer or the next timed item still to do, whichever comes first.
+  const nextUp = (() => {
+    if (!isToday || !times) return null;
+    const options: { at: number; label: string }[] = [];
+    const prayerBlock = groups[0];
+    if (prayerBlock) {
+      const np = nextPrayer(now, times);
+      const child = prayerBlock.children?.find((c) => normalisePrayerKey(prayerKeyOf(c.item) ?? "") === np.key);
+      const open = child ? prayerMark(child, date, today) === "open" : true;
+      if (open) options.push({ at: np.at.getTime(), label: `${child?.item.title ?? np.key} · ${formatTime(clockIn(np.at, times.timezone))}` });
+    }
+    for (const e of rows) {
+      const state = entryState(e);
+      if (state === "done" || state === "not_today") continue;
+      const w = entryWindow(e, times);
+      if (!w || w.end.getTime() <= now.getTime()) continue;
+      const startsLater = w.start.getTime() > now.getTime();
+      options.push({ at: w.start.getTime(), label: `${e.item.title}${startsLater ? ` · ${formatTime(clockIn(w.start, times.timezone))}` : " (now)"}` });
+    }
+    return options.sort((a, b) => a.at - b.at)[0]?.label ?? null;
+  })();
   const goTo = (d: string) => {
     setDate(d);
     setFilter(null);
@@ -196,11 +223,7 @@ export function TodayScreen() {
             </button>
           ) : null}
         </div>
-        <div data-tour="ring">
-          <Ring label={`${progress.pct}% of ${dayLabel(date, today).toLowerCase()} done`} value={progress.pct} size={48} stroke={5}>
-            <span className="text-[12px] font-semibold text-ink">{progress.pct}%</span>
-          </Ring>
-        </div>
+
       </header>
 
       <div className="space-y-1.5">
@@ -223,11 +246,24 @@ export function TodayScreen() {
             {access === "late"
               ? "Yesterday is still open: log what you did but forgot to record. It closes at midnight."
               : access === "history"
-                ? "Past days are history — habits can't be ticked now. Unfinished tasks can still be moved to today, and missed prayers recovered as qada."
+                ? "This day is closed and its progress is final. Unfinished tasks can still be moved to today, and missed prayers recovered as qada. (When your day ends: Profile → Your day.)"
                 : "Planning ahead: add, skip or move things here. You can tick them when the day comes."}
           </span>
         </p>
       ) : null}
+
+      <div data-tour="ring">
+        <DaySummaryCard
+          access={access}
+          rows={rows}
+          progress={progress}
+          prayers={groups[0] ?? null}
+          date={date}
+          today={today}
+          streak={streak}
+          nextUp={nextUp}
+        />
+      </div>
 
       <div data-tour="tiles">
       <StatusTiles

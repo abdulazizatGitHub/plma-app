@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TOUR_KEY } from "@/components/onboarding/onboarding-gate";
 import { useStore } from "@/components/providers/store-provider";
+import { useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
 import { SegmentedTabs, ThemeSwatches } from "@/components/kit";
 import { useTheme } from "@/components/providers/theme-provider";
 import { AccountCard } from "@/components/settings/account-card";
@@ -13,6 +14,8 @@ import type { ThemeMode } from "@/lib/theme/theme-utils";
 export default function ProfilePage() {
   const { theme, setTheme, mode, setMode } = useTheme();
   const { store } = useStore();
+  const settings = useUserSettings();
+  const saveSettings = useSaveSettings();
   const router = useRouter();
   return (
     <div className="space-y-5">
@@ -36,6 +39,27 @@ export default function ProfilePage() {
             { value: "system", label: "System" },
           ]}
         />
+      </section>
+      <section className="card p-5" aria-label="Your day">
+        <h2 className="mb-1 text-[15px] font-medium text-ink">Your day</h2>
+        <p className="mb-3 text-[13px] text-ink-2">
+          When your day ends it locks: its progress, streaks and rewards become final. Night owl? Let the day run past midnight so
+          late logging still counts for the evening.
+        </p>
+        <label className="flex items-center gap-3 text-[13px] text-ink">
+          My day ends at
+          <select
+            value={settings.dayEndHour}
+            onChange={(e) => void saveSettings({ dayEndHour: Number(e.target.value) })}
+            className="h-10 rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
+          >
+            {[0, 1, 2, 3, 4].map((h) => (
+              <option key={h} value={h}>
+                {h === 0 ? "12 AM (midnight)" : `${h} AM`}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
       <Link href="/settings/prayer" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
         <span className="flex-1">Prayer settings</span>
