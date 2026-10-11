@@ -1,9 +1,11 @@
 "use client";
 
-import { todayLocalDate } from "@life/shared";
+import { prayerInsights, todayLocalDate } from "@life/shared";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Bars, Ring, addDays } from "@/components/kit";
-import { useDays } from "@/lib/v2/use-day";
+import { Bars, Ring, addDays, weekStart } from "@/components/kit";
+import { useDays, useItemOccurrences, usePrayerSet } from "@/lib/v2/use-day";
 
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "narrow" });
 
@@ -16,6 +18,11 @@ export default function ProgressPage() {
   const pcts = dates.map((d) => days.get(d)?.progress.pct ?? 0);
   const todayPct = pcts.at(-1) ?? 0;
   const avg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0;
+  const { group, prayers } = usePrayerSet();
+  const from = today ? weekStart(today) : "1970-01-01";
+  const prayerIds = useMemo(() => prayers.map((p) => p.id), [prayers]);
+  const prayerOccs = useItemOccurrences(prayerIds, from, today ?? from);
+  const week = useMemo(() => (group && today ? prayerInsights(group, prayers, prayerOccs, from, today, today) : null), [group, prayers, prayerOccs, from, today]);
 
   return (
     <div className="space-y-5">
@@ -42,6 +49,19 @@ export default function ProgressPage() {
           highlight={6}
         />
       </section>
+      {group && week ? (
+        <Link href={`/items/view?id=${group.id}`} aria-label="Prayers this week" className="card flex items-center gap-4 p-5">
+          <Ring label={`${week.totals.prayed + week.totals.qada} of ${week.totals.due} prayers this week`} value={week.totals.due ? ((week.totals.prayed + week.totals.qada) / week.totals.due) * 100 : 0} size={56} stroke={6} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-medium text-ink">Prayers this week</span>
+            <span className="block text-[13px] text-ink-2">
+              {week.totals.prayed} on time · {week.totals.qada} qada · {week.totals.missed} missed
+              {week.mostMissed ? ` · most missed: ${week.mostMissed.title}` : ""}
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 text-ink-2" aria-hidden />
+        </Link>
+      ) : null}
     </div>
   );
 }

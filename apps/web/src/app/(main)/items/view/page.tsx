@@ -17,6 +17,7 @@ import { Suspense, createElement, useEffect, useMemo, useState, type ReactNode }
 import { Bars, Button, ConfirmSheet, Heatmap, Tag, addDays, type HeatMark } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { DayEntryRow } from "@/components/today/day-entry-row";
+import { PrayerInsightsPanel } from "@/components/prayer/insights-panel";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { KIND_LABEL, scheduleSummary, trackingSummary } from "@/lib/v2/item-text";
@@ -133,7 +134,9 @@ function ItemView() {
         )}
       </section>
 
-      {stats ? (
+      {item.meta.prayerSet === true ? <PrayerInsightsPanel group={item} prayers={children.filter((c) => !c.deletedAt && !c.archivedAt)} today={today} /> : null}
+
+      {stats && item.meta.prayerSet !== true ? (
         <section aria-label="Stats" className="grid grid-cols-3 gap-2">
           <Stat icon={<Flame />} label="Streak" value={`${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}`} />
           <Stat icon={<Trophy />} label="Best" value={`${stats.bestStreak}`} />
@@ -165,7 +168,7 @@ function ItemView() {
       ) : null}
 
       <div className="flex flex-wrap gap-1.5">
-        <Button size="sm" onClick={() => router.push(`/items/edit?id=${item.id}`)}>
+        <Button size="sm" onClick={() => router.push(item.meta.prayerSet === true ? "/settings/prayer" : `/items/edit?id=${item.id}`)}>
           <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
         </Button>
         {item.archivedAt ? (
