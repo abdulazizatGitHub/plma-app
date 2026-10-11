@@ -1,12 +1,13 @@
 import "fake-indexeddb/auto";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { Item, ItemDependency } from "@life/shared";
+import { createPlan, type CadenceRule, type Item, type ItemDependency, type Occurrence } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import PlansPage from "@/app/(main)/plans/page";
+import PlanViewPage from "@/app/(main)/plans/view/page";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
-import { LocalStore } from "@/lib/v2/local-store";
+import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
 let store: LocalStore;
@@ -71,3 +72,70 @@ describe("Plans page", () => {
     await waitFor(() => expect(items().find((i) => i.type === "plan")).toMatchObject({ title: "DSA", meta: { preset: "university", course: "DSA" } }));
   });
 });
+
+function seedCollab() {
+  const id = uid();
+  const ctx = { userId: USER, now: "2026-10-11T08:00:00.000Z", deviceId: null };
+  for (const c of createPlan(id, { preset: "collab", title: "Collab — Café X", categoryId: null, venue: "Café X" }, 0, ctx, uid)) store.save(c.entity, c.row as unknown as StoredRow);
+  params = new URLSearchParams({ id });
+  return id;
+}
+const view = () =>
+  render(
+    <AddSheetProvider>
+      <PlanViewPage />
+    </AddSheetProvider>,
+  );
+const stepRow = (title: string) => screen.getByRole("listitem", { name: title });
+
+describe("Plan page", () => {
+  it("Post is locked until Payment cleared is ticked", async () => {
+    seedCollab();
+    view();
+    await screen.findByRole("heading", { name: "Collab — Café X" });
+    expect(within(stepRow("Post")).getByRole("img", { name: "Locked: waits for Payment cleared" })).toBeInTheDocument();
+    expect(within(stepRow("Post")).queryByRole("checkbox")).not.toBeInTheDocument();
+    fireEvent.click(within(stepRow("Payment cleared")).getByRole("checkbox", { name: "Payment cleared" }));
+    await waitFor(() => expect(within(stepRow("Post")).getByRole("checkbox", { name: "Post" })).toBeInTheDocument());
+    expect((store.query("occurrences") as unknown as Occurrence[])[0]).toMatchObject({ status: "done" });
+  });
+
+  it("rules: post on Tue/Fri, gap ≥ 1 — Thursday warns and suggests Friday; the date is kept", async () => {
+    seedCollab();
+    view();
+    await screen.findByRole("heading", { name: "Collab — Café X" });
+    const postRules = within(screen.getByRole("listitem", { name: "Post rules" }));
+    // Quick taps: both land on the same rule.
+    fireEvent.click(postRules.getByRole("button", { name: "Tue" }));
+    fireEvent.click(postRules.getByRole("button", { name: "Fri" }));
+    fireEvent.change(postRules.getByLabelText("Post gap"), { target: { value: "1" } });
+    await waitFor(() => {
+      const rules = (store.query("cadenceRules") as unknown as CadenceRule[]).filter((r) => !r.deletedAt);
+      expect(rules.map((r) => r.rule)).toEqual(expect.arrayContaining([{ type: "weekdays", days: [2, 5] }, { type: "gapDays", n: 1 }]));
+      expect(rules).toHaveLength(2);
+    });
+    fireEvent.change(within(stepRow("Post")).getByLabelText("Post date"), { target: { value: "2026-10-15" } }); // a Thursday
+    // The dated step moves from "No date yet" to the timeline, so look it up again.
+    const status = await waitFor(() => within(stepRow("Post")).getByRole("status"));
+    expect(status).toHaveTextContent(/Tue \/ Fri — Thursday isn't one of them/);
+    expect(within(status).getByRole("button", { name: "Fri 16 Oct" })).toBeInTheDocument();
+    // Saved anyway.
+    expect((store.query("items") as unknown as Item[]).find((i) => i.title === "Post")?.schedule).toMatchObject({ date: "2026-10-15" });
+    fireEvent.click(within(status).getByRole("button", { name: "Fri 16 Oct" }));
+    await waitFor(() => expect(within(stepRow("Post")).queryByRole("status")).not.toBeInTheDocument());
+  });
+
+  it("Waits for… refuses a loop and explains why", async () => {
+    seedCollab();
+    view();
+    await screen.findByRole("heading", { name: "Collab — Café X" });
+    fireEvent.click(screen.getByRole("button", { name: "More actions for Payment cleared" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Waits for…" }));
+    const sheet = screen.getByRole("dialog", { name: "Waits for…" });
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: "Post" }));
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save" }));
+    expect(within(sheet).getByRole("alert")).toHaveTextContent(/loop/);
+    expect(deps()).toHaveLength(1);
+  });
+});
+
