@@ -18,6 +18,10 @@ import {
   type Category,
   type DayEntry,
   type EntryState,
+  canLog,
+  dayAccess,
+  todayLocalDate,
+  type DayAccess,
 } from "@life/shared";
 import { AlertTriangle, ArrowRight, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -70,22 +74,26 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   }
   if (time) tags.push(<Tag key="time" icon={<Clock3 />}>{formatTime(time)}</Tag>);
   if (when) tags.push(<Tag key="when" icon={<Moon />}>{when}</Tag>);
-  if (t.kind === "quantity") {
+  // Progress toward a goal; once reached: "Goal reached" and how far over (extra effort counts).
+  const goal = (key: string, value: number, target: number | undefined, unit: string, icon?: ReactNode) => {
+    if (target !== undefined && value >= target) {
+      tags.push(
+        <Tag key={key} tone="done" icon={<Check />}>
+          Goal reached · {fmt(value)} {unit}
+        </Tag>,
+      );
+      if (value > target) tags.push(<Tag key={`${key}-over`}>+{fmt(value - target)} over</Tag>);
+      return;
+    }
     tags.push(
-      <Tag key="qty">
-        {fmt(o?.value ?? 0)}
-        {t.target ? ` / ${fmt(t.target)}` : ""} {t.unit}
+      <Tag key={key} icon={icon}>
+        {fmt(value)}
+        {target ? ` / ${fmt(target)}` : ""} {unit}
       </Tag>,
     );
-  }
-  if (t.kind === "duration") {
-    tags.push(
-      <Tag key="dur" icon={<Timer />}>
-        {o?.value ?? 0}
-        {t.targetMin ? ` / ${t.targetMin}` : ""} min
-      </Tag>,
-    );
-  }
+  };
+  if (t.kind === "quantity") goal("qty", o?.value ?? 0, t.target, t.unit);
+  if (t.kind === "duration") goal("dur", o?.value ?? 0, t.targetMin, "min", <Timer />);
   if (t.kind === "checklist") {
     tags.push(
       <Tag key="steps" icon={<ListChecks />}>
@@ -105,6 +113,8 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
 }
 
 type EntryRowProps = {
+  /** Overrides the day's own mode (tests and special lists). */
+  access?: DayAccess;
   entry: DayEntry;
   /** The day this entry belongs to (actions write to that day). */
   date: string;
@@ -125,7 +135,7 @@ type EntryRowProps = {
 const openChecklists = new Set<string>();
 
 /** The checklist's steps as small tick rows (TRK-04). */
-function ChecklistSteps({ entry, date, onInteract }: { entry: DayEntry; date: string; onInteract?: () => void }) {
+function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry; date: string; onInteract?: () => void; readOnly?: boolean }) {
   const run = useActions();
   const t = entry.item.tracking;
   if (t.kind !== "checklist") return null;
@@ -138,6 +148,7 @@ function ChecklistSteps({ entry, date, onInteract }: { entry: DayEntry; date: st
             type="button"
             role="checkbox"
             aria-checked={ticks[i]}
+            disabled={readOnly}
             onClick={() => {
               onInteract?.();
               void run((ctx) => toggleChecklistStep(entry, date, i, ctx));
@@ -163,7 +174,11 @@ function ChecklistSteps({ entry, date, onInteract }: { entry: DayEntry; date: st
  * expand to their steps, everything else is the one-tap check. Tapping the
  * title opens the item.
  */
-export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo }: EntryRowProps) {
+export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp }: EntryRowProps) {
+  // Daily items belong to their day: today is live, yesterday can still be logged,
+  // older days are history, future days are for planning (see day-access.ts).
+  const access = accessProp ?? dayAccess(date, todayLocalDate());
+  const readOnly = !canLog(access);
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
@@ -182,6 +197,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   // A plan step opens its plan; anything else its own page.
   const open = () => router.push(entry.plan ? `/plans/view?id=${entry.plan.id}` : `/items/view?id=${entry.item.id}`);
   const tick = () => {
+    if (readOnly) return;
     if (lockedBy) {
       notify({ message: `${entry.item.title} waits for ${lockedBy} — tick that first.` });
       return;
@@ -212,6 +228,9 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
   const list = entryTags(entry, category, dueLabel, when, lockedBy);
+  if (access === "history" && entryState(entry) !== "done" && entryState(entry) !== "not_today" && !dueLabel) {
+    list.unshift(<Tag key="missed" tone="todo">Missed</Tag>);
+  }
   // Heads-up while the row waits to move (it stays put while you're editing).
   if (movingTo) list.unshift(<Tag key="moving" tone="primary" icon={<ArrowRight />}>{MOVE_LABEL[movingTo]}</Tag>);
   const tags = list.length ? list : undefined;
@@ -232,6 +251,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
         priority={entry.item.priority}
         onOpen={open}
         highlight={highlight}
+        readOnly={readOnly}
+        active={Boolean(movingTo)}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -252,6 +273,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
         priority={entry.item.priority}
         onOpen={open}
         highlight={highlight}
+        readOnly={readOnly}
+        active={Boolean(movingTo)}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -264,6 +287,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
       priority={entry.item.priority}
       onToggle={tick}
       locked={lockedBy}
+      readOnly={readOnly}
       onOpen={open}
       highlight={highlight}
       onMore={(anchor) => onMore(entry, anchor)}
@@ -279,7 +303,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
             {showSteps ? "Hide steps" : "Show steps"}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showSteps ? "rotate-180" : ""}`} aria-hidden />
           </button>
-          {showSteps ? <ChecklistSteps entry={entry} date={date} onInteract={onInteract} /> : null}
+          {showSteps ? <ChecklistSteps entry={entry} date={date} onInteract={onInteract} readOnly={readOnly} /> : null}
         </>
       ) : null}
     </TaskRow>

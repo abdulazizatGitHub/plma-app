@@ -1,4 +1,5 @@
 import type { Item, Occurrence } from "./entities.js";
+import { toLocalDateString } from "../date.js";
 import { isDueOn, isPending } from "./schedule.js";
 
 /*
@@ -29,6 +30,9 @@ export function buildDay(items: Item[], occurrences: Occurrence[], date: string)
   const occ = new Map<string, Occurrence>();
   for (const o of occurrences) if (live(o) && o.date === date) occ.set(`${o.itemId}|${o.slot}`, o);
 
+  // A repeating item doesn't exist on days before it was created (unless it has a record then,
+  // e.g. history migrated from v1), so it can't be "missed" there.
+  const existed = (item: Item) => item.schedule.kind === "once" || date >= toLocalDateString(new Date(item.createdAt)) || occ.has(`${item.id}|`);
   const entry = (item: Item, slot = ""): DayEntry => ({
     key: `${item.id}|${slot}`,
     item,
@@ -52,10 +56,11 @@ export function buildDay(items: Item[], occurrences: Occurrence[], date: string)
     if (item.parentId && plan?.type !== "plan") continue;
     const touched = occ.has(`${item.id}|`);
     if (!isDueOn(item, date) && !touched) continue;
+    if (!existed(item)) continue;
     const e = entry(item);
     if (plan) e.plan = plan;
     if (item.type === "group") {
-      e.children = sorted.filter((c) => c.parentId === item.id && (isDueOn(c, date) || occ.has(`${c.id}|`))).map((c) => entry(c));
+      e.children = sorted.filter((c) => c.parentId === item.id && (isDueOn(c, date) || occ.has(`${c.id}|`)) && existed(c)).map((c) => entry(c));
     }
     add(e);
   }

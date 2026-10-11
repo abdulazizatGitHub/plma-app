@@ -3,6 +3,7 @@
 import {
   ANYTIME,
   bringBack,
+  dayAccess,
   clockIn,
   dayParts,
   entryState,
@@ -17,7 +18,7 @@ import {
   type DayPrayerTimes,
   type EntryState,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronRight, History, Hourglass, Plus, Telescope, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, DateStrip, Ring, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
@@ -129,6 +130,7 @@ export function TodayScreen() {
   const pending = usePending();
   const isToday = date !== null && date === today;
   const times = usePrayerTimes(date);
+  const access = date && today ? dayAccess(date, today) : "live";
   const now = useNow();
   const upcoming = useUpcoming(isToday ? today : null);
   const overdue = useOverdue(isToday ? today : null);
@@ -207,6 +209,21 @@ export function TodayScreen() {
           </div>
         ) : null}
       </div>
+
+      {access !== "live" ? (
+        <p role="note" className="flex items-start gap-2 rounded-xl bg-track px-3 py-2.5 text-[12.5px] text-ink">
+          <span className="mt-0.5 text-ink-2 [&>svg]:h-4 [&>svg]:w-4" aria-hidden>
+            {access === "late" ? <Hourglass /> : access === "history" ? <History /> : <Telescope />}
+          </span>
+          <span>
+            {access === "late"
+              ? "Yesterday is still open: log what you did but forgot to record. It closes at midnight."
+              : access === "history"
+                ? "Past days are history — habits can't be ticked now. Unfinished tasks can still be moved to today, and missed prayers recovered as qada."
+                : "Planning ahead: add, skip or move things here. You can tick them when the day comes."}
+          </span>
+        </p>
+      ) : null}
 
       <div data-tour="tiles">
       <StatusTiles
@@ -304,7 +321,7 @@ export function TodayScreen() {
           if (!list.length) return null;
           const shown = state === "done" && !showAllDone && !filter ? list.slice(0, DONE_PREVIEW) : list;
           return (
-            <Section key={state} title={title} count={list.length}>
+            <Section key={state} title={state === "todo" && access === "history" ? "Not done" : state === "todo" && access === "planned" ? "Planned" : title} count={list.length}>
               {shown.map((e) => row(e))}
               {shown.length < list.length ? (
                 <button type="button" onClick={() => setShowAllDone(true)} className="min-h-9 w-full rounded-xl text-[12px] font-medium text-link">

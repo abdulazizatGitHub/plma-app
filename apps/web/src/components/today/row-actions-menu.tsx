@@ -1,6 +1,6 @@
 "use client";
 
-import { deleteItemTree, entryState, isPrayerGroup, moveTo, skip, start, toggleDone, type DayEntry } from "@life/shared";
+import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, skip, start, toggleDone, type DayEntry } from "@life/shared";
 import { ArrowRight, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -48,6 +48,9 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
   const quickEdit = oneOff && !isGroup && entry.item.tracking.kind === "check";
   const from = date ?? today;
   const state = date ? entryState(entry) : "todo";
+  // Status changes only on days that can be logged; future days can still be skipped or moved.
+  const access = date ? dayAccess(date, today) : "live";
+  const logging = canLog(access);
   const act = (build: Parameters<typeof run>[0]) => {
     void run(build);
     onClose();
@@ -63,15 +66,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
         </>
       ) : (
         <>
-          {state === "todo" && !isGroup && entry.item.tracking.kind !== "quantity" && entry.item.tracking.kind !== "duration" ? (
+          {logging && state === "todo" && !isGroup && entry.item.tracking.kind !== "quantity" && entry.item.tracking.kind !== "duration" ? (
             <PopoverMenuItem icon={<Play />} label="Mark started" onClick={() => act((ctx) => start(entry, date, ctx))} />
           ) : null}
-          {state === "done" && !isGroup ? (
+          {logging && state === "done" && !isGroup ? (
             <PopoverMenuItem icon={<RotateCcw />} label="Mark not done" onClick={() => act((ctx) => toggleDone(entry, date, ctx))} />
           ) : null}
+          {access !== "history" ? (
           <PopoverMenuItem
             icon={<SkipForward />}
-            label="Skip today"
+            label={access === "planned" ? "Skip that day" : "Skip today"}
             onClick={() =>
               act(async (ctx) => [
                 ...(await skip(entry, date, ctx)),
@@ -79,7 +83,14 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
               ])
             }
           />
-          {canMove ? <PopoverMenuItem icon={<ArrowRight />} label="Move to tomorrow" onClick={() => moveAction(addDays(from, 1))} /> : null}
+          ) : null}
+          {canMove ? (
+            from < today ? (
+              <PopoverMenuItem icon={<ArrowRight />} label="Move to today" onClick={() => moveAction(today)} />
+            ) : (
+              <PopoverMenuItem icon={<ArrowRight />} label="Move to tomorrow" onClick={() => moveAction(addDays(from, 1))} />
+            )
+          ) : null}
         </>
       )}
       {canMove ? <PopoverMenuItem icon={<CalendarDays />} label="Move to a date…" onClick={() => setPicking((p) => !p)} /> : null}

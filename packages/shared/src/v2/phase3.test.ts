@@ -294,3 +294,11 @@ describe("starter packs", () => {
     expect(state.items[0]).toMatchObject({ title: "Steps", tracking: { kind: "quantity", target: 6000, step: 500 } });
   });
 });
+
+describe("items before they existed", () => {
+  it("a daily habit doesn't appear (or count as missed) on days before it was created", () => {
+    const it = newItem({}, { createdAt: "2026-10-11T09:00:00.000Z" });
+    expect(buildDay([it], [], "2026-10-08")).toEqual([]);
+    expect(buildDay([it], [], "2026-10-11")).toHaveLength(1);
+  });
+});

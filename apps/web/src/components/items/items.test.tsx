@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { buildDay, entryState, setQuantity, type Item } from "@life/shared";
+import { buildDay, entryState, setQuantity, todayLocalDate, type Item } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -82,9 +82,10 @@ describe("ItemEditor", () => {
 
     const ctx = { userId: USER, now: new Date().toISOString(), deviceId: null };
     const occs: Parameters<typeof buildDay>[1] = [];
-    const entry = () => buildDay([steps], occs, TODAY)[0];
+    const day = todayLocalDate(); // the habit exists from the day it was created
+    const entry = () => buildDay([steps], occs, day)[0];
     const log = async (v: number) => {
-      const [c] = await setQuantity(entry(), TODAY, v, ctx);
+      const [c] = await setQuantity(entry(), day, v, ctx);
       occs.splice(0, occs.length, c.row as (typeof occs)[number]);
     };
     await log(500);

@@ -582,3 +582,24 @@ Use this template for each decision:
   - The status tiles and the % update at once; only the row's position waits.
   - Menu actions (Skip, Move) still apply at once, because the user asked for them explicitly.
 - **Where:** `lib/v2/use-settle.ts` (`useSettledPlacement`); Today places rows by their held state.
+
+### 2026-10-12 — Daily items belong to their day; reached goals fold away
+
+- **Context:** The owner noticed two problems:
+  - Past days' habits (steps, reading, gym, prayers) could be ticked days later, which makes history and streaks meaningless.
+  - Steppers stayed big after a goal was reached, inviting endless taps.
+- **Decision (day modes, `dayAccess`):**
+  - **Today: live.**
+  - **Yesterday: late logging** (`LOG_GRACE_DAYS = 1`).
+    - You can log what you did but forgot to record. A banner says it closes at midnight.
+    - Tapping a prayer records **qada**; "on time" stays available in the menu, in case you prayed but forgot to tap.
+  - **Older days: history.**
+    - Read-only: checks are disabled, there are no steppers, and unfinished items are tagged "Missed" under a "Not done" heading.
+    - Unfinished one-off tasks can still be **moved to today**, and missed prayers **recovered as qada** (the owner's earlier qada rule).
+  - **Future days: planned.** Add, skip, move or edit, but no ticking or logging until the day comes.
+  - **Before creation:** repeating items don't appear on days before they were created (unless a record exists then, e.g. v1 history), so they can't be "missed" there.
+- **Decision (goals):**
+  - Extra effort is real data and is kept: "Goal reached · 11,500 steps" plus "+1,500 over".
+  - The stepper folds once the goal is reached; "Log more" brings it back.
+  - It never folds mid-tap: a row still being edited keeps its stepper until it settles.
+
