@@ -32,6 +32,12 @@ export const userSettingsSchema = syncedRowSchema.extend({
   /** Minutes added per prayer key to match the local mosque. */
   prayerOffsets: z.record(z.string(), z.number().int().min(-30).max(30)),
   dayParts: z.array(z.object({ key: z.string().min(1).max(32), label: z.string().min(1).max(40), start: anchorSchema })).max(12),
+  /** Fixed times that replace the calculated ones, per prayer key (PRY-05). */
+  prayerManual: z.record(z.string(), clockSchema).default({}),
+  /** On Fridays the Zuhr chip reads "Jumu'ah" (owner, 2026-10-11). */
+  jumuahLabel: z.boolean().default(true),
+  /** How the location was chosen: device GPS, a picked city, never, or not asked yet. */
+  locationMode: z.enum(["unset", "device", "city", "never"]).default("unset"),
   quietFrom: clockSchema.nullable(),
   quietTo: clockSchema.nullable(),
   /** Who sees achievements & progress (owner A-3, SOC-06). */
@@ -131,6 +137,9 @@ export function defaultUserSettings(userId: string, now: string, timezone = "Asi
     madhab: "hanafi",
     prayerOffsets: {},
     dayParts: [],
+    prayerManual: {},
+    jumuahLabel: true,
+    locationMode: "unset",
     quietFrom: null,
     quietTo: null,
     visibility: "friends",

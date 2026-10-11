@@ -1,5 +1,6 @@
 import type { ActionContext, Change } from "./actions.js";
 import { categorySchema, itemSchema, type Category, type Item } from "./entities.js";
+import { createPrayerSet, DEFAULT_PRAYERS } from "./prayer/prayer-set.js";
 import type { Schedule, Tracking } from "./tracking.js";
 
 /*
@@ -18,6 +19,8 @@ export type PackItem = {
   isOptional?: boolean;
   /** Routine sub-items (type "group"). */
   children?: string[];
+  /** The Daily prayers block (built by createPrayerSet, with prayer keys). */
+  prayerSet?: boolean;
 };
 
 export type StarterPack = {
@@ -37,14 +40,19 @@ const minutes = (targetMin: number): Tracking => ({ v: 1, kind: "duration", targ
 export const STARTER_PACKS: StarterPack[] = [
   {
     id: "5e7a1c00-0001-4000-8000-000000000001",
-    version: 1,
+    version: 2,
     name: "Spiritual",
-    description: "Quran reading and the weekly surahs.",
+    description: "Daily prayers, Quran reading and the weekly surahs.",
     category: { name: "Spiritual", icon: "moon", color: "peach" },
     items: [
+      { type: "group", title: "Five daily prayers", prayerSet: true, children: DEFAULT_PRAYERS.map((p) => p.title) },
       { type: "habit", title: "Quran reading", tracking: count("pages", 2, 1) },
-      { type: "habit", title: "Surah Al-Kahf", schedule: weekdays(5) },
-      { type: "habit", title: "Surah Al-Mulk" },
+      {
+        type: "habit",
+        title: "Surah Al-Kahf",
+        schedule: { v: 1, kind: "weekdays", weekdays: [5], anchor: { type: "prayer", prayer: "dhuhr", relation: "after", offsetMin: 0 } },
+      },
+      { type: "habit", title: "Surah Al-Mulk", schedule: { v: 1, kind: "daily", anchor: { type: "prayer", prayer: "isha", relation: "after", offsetMin: 0 } } },
       { type: "habit", title: "Morning & evening adhkar", isOptional: true },
     ],
   },
@@ -206,6 +214,10 @@ export function applySelection(
     picked.forEach(({ index, target }, sortOrder) => {
       const spec = pack.items[index];
       if (!spec) return;
+      if (spec.prayerSet) {
+        changes.push(...createPrayerSet(ctx, newId, { categoryId, sortOrder, provenance }));
+        return;
+      }
       const schedule = spec.schedule ?? daily;
       const parent = makeItem(spec, tuned(spec, target), sortOrder, null, schedule);
       changes.push({ entity: "items", row: parent });

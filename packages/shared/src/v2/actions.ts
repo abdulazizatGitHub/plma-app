@@ -155,6 +155,26 @@ export async function moveTo(entry: DayEntry, from: string, to: string | null, c
   return [occ(await occurrenceWith(entry, from, ctx, { status: "moved", movedTo: to })), occ(movedIn)];
 }
 
+/**
+ * Prayer marking (PRY-03/04, PRY-09): prayed on time, prayed late (qada),
+ * missed, or cleared. Any prayer, any order, any past day.
+ */
+export async function markPrayer(entry: DayEntry, date: string, mark: "prayed" | "qada" | "missed" | "clear", ctx: ActionContext): Promise<Change[]> {
+  const detail = { ...(entry.occurrence?.detail ?? {}) };
+  delete detail.qada;
+  if (mark === "qada") detail.qada = true;
+  const status = mark === "prayed" || mark === "qada" ? "done" : mark === "missed" ? "missed" : "todo";
+  return [
+    occ(
+      await occurrenceWith(entry, date, ctx, {
+        status,
+        detail: Object.keys(detail).length ? detail : null,
+        completedAt: status === "done" ? ctx.now : null,
+      }),
+    ),
+  ];
+}
+
 export type TaskDraft = {
   title: string;
   /** null = pending. */

@@ -15,6 +15,13 @@
       "when": 1791566036096,
       "tag": "0001_v2_core",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791719049960,
+      "tag": "0002_prayer_settings",
+      "breakpoints": true
     }
   ]
 }

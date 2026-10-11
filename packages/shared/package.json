@@ -13,6 +13,7 @@
     "test": "vitest run --project shared"
   },
   "dependencies": {
+    "adhan": "^4.4.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {

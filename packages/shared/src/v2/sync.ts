@@ -41,8 +41,8 @@ export const ENTITY_SPECS: Record<SyncEntity, EntitySpec> = {
   userSettings: {
     schema: userSettingsSchema,
     table: "user_settings",
-    json: ["prayerOffsets", "dayParts"],
-    bool: [],
+    json: ["prayerOffsets", "dayParts", "prayerManual"],
+    bool: ["jumuahLabel"],
     refs: {},
   },
   categories: { schema: categorySchema, table: "categories", json: [], bool: [], refs: {} },

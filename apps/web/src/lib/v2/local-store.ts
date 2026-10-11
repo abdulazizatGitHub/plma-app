@@ -35,6 +35,22 @@ function schemaSql() {
   ].join("\n");
 }
 
+/**
+ * Adds columns introduced after a device's store was created (CREATE TABLE IF
+ * NOT EXISTS never alters an existing table). New columns start NULL; the next
+ * pull fills them.
+ */
+function upgradeColumns(db: Database) {
+  for (const entity of SYNC_ENTITIES) {
+    const table = ENTITY_SPECS[entity].table;
+    const have = new Set((db.exec(`PRAGMA table_info(${quote(table)})`)[0]?.values ?? []).map((r) => String(r[1])));
+    for (const c of entityColumns(entity)) {
+      const col = camelToSnake(c);
+      if (!have.has(col)) db.run(`ALTER TABLE ${quote(table)} ADD COLUMN ${quote(col)}`);
+    }
+  }
+}
+
 function toCells(entity: SyncEntity, row: Record<string, unknown>): SqlValue[] {
   const { json, bool } = ENTITY_SPECS[entity];
   return entityColumns(entity).map((c) => {
@@ -92,6 +108,7 @@ export class LocalStore {
     const saved = await idbGet(fileKey(userId));
     const db = saved ? new SQL.Database(saved) : new SQL.Database();
     db.run(schemaSql());
+    upgradeColumns(db);
     const store = new LocalStore(userId, db);
     openStores.add(store);
     return store;
