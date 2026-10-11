@@ -15,6 +15,7 @@ Last updated: **2026-10-11**
 | **v2 Phase 1** | **Built and verified.** Accounts, v2 schema plus RLS, sync, IndexedDB store. Last step: the owner signs up and runs the v1 data migration. |
 | **v2 Phase 2** | **Built and verified.** Today, Pending, Categories (read-only), Progress (7 days), Profile; v1 removed; offline launch verified. |
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
+| **Setup & tour (2026-10-11)** | Done. Interests first, then tick suggestions (none pre-ticked, editable targets); spotlight tour (replay in Profile); overdue badge by the date. Browser 9/9. |
 | **Responsive pass (2026-10-10)** | Done. Compact density, phone-first layout with a tablet column and a desktop side rail, Upcoming and Overdue on Today, optional task time, add toast with View, tagged rows. |
 | **Polish (2026-10-10)** | Done. OTP auth with full validation, branded email templates (owner pastes), top bar and user menu, 4 reference themes, pointer cursors, digits-only numeric inputs. |
 
@@ -47,7 +48,7 @@ Last updated: **2026-10-11**
 
 ## Testing & tooling
 
-- Vitest across `packages/shared`, `apps/api`, `apps/web` (220 tests) — `npm run test`
+- Vitest across `packages/shared`, `apps/api`, `apps/web` (225 tests) — `npm run test`
 - ESLint (typescript-eslint, `no-explicit-any` as error) — `npm run lint`
 - `tsc --noEmit` per workspace — `npm run typecheck`
 

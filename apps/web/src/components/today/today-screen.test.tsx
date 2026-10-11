@@ -124,6 +124,9 @@ describe("TodayScreen", () => {
     const upcoming = await screen.findByRole("region", { name: "Upcoming" });
     expect(within(upcoming).getByText("Late call")).toBeInTheDocument();
     expect(within(upcoming).getByText("11:00 PM")).toBeInTheDocument();
+    HTMLElement.prototype.scrollIntoView = vi.fn(); // jsdom has no layout
+    fireEvent.click(screen.getByRole("button", { name: "1 overdue" })); // badge by the date jumps to the list
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
     const overdue = screen.getByRole("region", { name: "Overdue" });
     expect(within(overdue).getByText(/^Was due/)).toBeInTheDocument();
     fireEvent.click(within(overdue).getByRole("button", { name: "Move to today" }));

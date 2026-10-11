@@ -19,6 +19,7 @@ export function BottomNavBar({ items, activeHref, onAdd, inline = false }: Botto
     return (
       <li key={href} className="flex-1">
         <Link
+          data-tour={`nav:${href}`}
           href={href}
           aria-current={active ? "page" : undefined}
           className={`flex min-h-12 flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${
@@ -42,6 +43,7 @@ export function BottomNavBar({ items, activeHref, onAdd, inline = false }: Botto
           <button
             type="button"
             aria-label="Add"
+            data-tour="add"
             onClick={onAdd}
             className="press-pop -mt-5 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary-strong text-on-primary-strong shadow-[0_6px_16px_color-mix(in_srgb,var(--primary-strong)_35%,transparent)]"
           >

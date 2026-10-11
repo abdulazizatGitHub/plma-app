@@ -137,13 +137,34 @@ export function adoptedPackIds(categories: Category[]): Set<string> {
   return new Set(categories.filter((c) => !c.deletedAt && c.sourceTemplateId).map((c) => c.sourceTemplateId as string));
 }
 
+/** One interest the user picked, with the suggested items they ticked (by index) and any target they changed. */
+export type PackChoice = { packId: string; items: { index: number; target?: number }[] };
+
+/** The item's tracking with the user's target, if they changed it. */
+function tuned(spec: PackItem, target: number | undefined): Tracking {
+  const t = spec.tracking ?? { v: 1, kind: "check" };
+  if (target === undefined) return t;
+  if (t.kind === "quantity") return { ...t, target };
+  if (t.kind === "duration") return { ...t, targetMin: target };
+  return t;
+}
+
+/** What a suggestion can tune in setup: a count target or minutes. */
+export function tunableTarget(spec: PackItem): { value: number; unit: string; max: number } | null {
+  const t = spec.tracking;
+  if (t?.kind === "quantity" && t.target !== undefined) return { value: t.target, unit: t.unit, max: 1_000_000 };
+  if (t?.kind === "duration" && t.targetMin !== undefined) return { value: t.targetMin, unit: "min", max: 1440 };
+  return null;
+}
+
 /**
- * Rows for the chosen packs: one category each, its items and routine
- * sub-items, all stamped with the pack's id and version. Packs already
- * adopted are skipped, so applying twice adds nothing.
+ * Rows for the user's setup choices: one category per chosen interest, plus
+ * only the suggested items they ticked (owner, 2026-10-11: nothing is added
+ * unless ticked). Everything carries the pack's id and version. Interests
+ * already adopted are skipped, so applying twice adds nothing.
  */
-export function applyPacks(
-  packIds: string[],
+export function applySelection(
+  choices: PackChoice[],
   existing: Category[],
   ctx: ActionContext,
   newId: () => string,
@@ -153,7 +174,8 @@ export function applyPacks(
   const changes: Change[] = [];
   let order = firstSortOrder;
   for (const pack of STARTER_PACKS) {
-    if (!packIds.includes(pack.id) || adopted.has(pack.id)) continue;
+    const choice = choices.find((c) => c.packId === pack.id);
+    if (!choice || adopted.has(pack.id)) continue;
     const provenance = { sourceTemplateId: pack.id, sourceTemplateVersion: pack.version, adoptedAt: ctx.now };
     const base = { userId: ctx.userId, createdAt: ctx.now, updatedAt: ctx.now, deletedAt: null };
     const categoryId = newId();
@@ -161,7 +183,7 @@ export function applyPacks(
       entity: "categories",
       row: categorySchema.parse({ id: categoryId, ...base, ...pack.category, sortOrder: order++, archivedAt: null, ...provenance }),
     });
-    const makeItem = (spec: PackItem, sortOrder: number, parentId: string | null, schedule: Schedule): Item =>
+    const makeItem = (spec: PackItem, tracking: Tracking, sortOrder: number, parentId: string | null, schedule: Schedule): Item =>
       itemSchema.parse({
         id: newId(),
         ...base,
@@ -172,7 +194,7 @@ export function applyPacks(
         notes: null,
         priority: spec.priority ?? "medium",
         isOptional: spec.isOptional ?? false,
-        tracking: spec.type === "group" ? { v: 1, kind: "check" } : (spec.tracking ?? { v: 1, kind: "check" }),
+        tracking: spec.type === "group" ? { v: 1, kind: "check" } : tracking,
         schedule,
         meta: {},
         groupGoalId: null,
@@ -180,14 +202,26 @@ export function applyPacks(
         archivedAt: null,
         ...provenance,
       });
-    pack.items.forEach((spec, i) => {
+    const picked = [...choice.items].sort((a, b) => a.index - b.index);
+    picked.forEach(({ index, target }, sortOrder) => {
+      const spec = pack.items[index];
+      if (!spec) return;
       const schedule = spec.schedule ?? daily;
-      const parent = makeItem(spec, i, null, schedule);
+      const parent = makeItem(spec, tuned(spec, target), sortOrder, null, schedule);
       changes.push({ entity: "items", row: parent });
       (spec.children ?? []).forEach((title, j) => {
-        changes.push({ entity: "items", row: makeItem({ type: "habit", title }, j, parent.id, schedule) });
+        changes.push({ entity: "items", row: makeItem({ type: "habit", title }, { v: 1, kind: "check" }, j, parent.id, schedule) });
       });
     });
   }
   return changes;
+}
+
+/** Every suggested item of each pack (the API's one-call apply). */
+export function applyPacks(packIds: string[], existing: Category[], ctx: ActionContext, newId: () => string, firstSortOrder = 0): Change[] {
+  const choices = packIds.flatMap((packId) => {
+    const pack = packById(packId);
+    return pack ? [{ packId, items: pack.items.map((_, index) => ({ index })) }] : [];
+  });
+  return applySelection(choices, existing, ctx, newId, firstSortOrder);
 }

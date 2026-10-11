@@ -1,10 +1,11 @@
 "use client";
 
 import { bringBack, entryState, isPrayerGroup, moveTo, todayLocalDate, type Category, type DayEntry, type EntryState } from "@life/shared";
-import { CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, DateStrip, Ring, StatusTiles, addDays, weekStart, type ItemState } from "@/components/kit";
+import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useDay, useDays, useOverdue, usePending, useUpcoming } from "@/lib/v2/use-day";
@@ -26,9 +27,9 @@ const byTime = (a: DayEntry, b: DayEntry) => {
   return ta.localeCompare(tb) || a.item.sortOrder - b.item.sortOrder;
 };
 
-function Section({ title, count, action, children }: { title: string; count: number; action?: ReactNode; children: ReactNode }) {
+function Section({ id, title, count, action, children }: { id?: string; title: string; count: number; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="space-y-1.5" aria-label={title}>
+    <section id={id} className="scroll-mt-16 space-y-1.5" aria-label={title}>
       <h2 className="flex items-baseline gap-1.5 text-[15px] font-semibold text-ink">
         {title}
         <span className="text-[12px] font-normal text-ink-2">{count}</span>
@@ -115,10 +116,22 @@ export function TodayScreen() {
         <div>
           <h1 className="text-xl font-semibold text-ink">{dayLabel(date, today)}</h1>
           <p className="text-[12px] text-ink-2">{longDate(date)}</p>
+          {isToday && overdue.length ? (
+            // The ring is today's plan; overdue tasks belong to earlier days, so flag them here.
+            <button
+              type="button"
+              onClick={() => document.getElementById("overdue")?.scrollIntoView({ behavior: "smooth" })}
+              className="mt-1 inline-flex min-h-6 items-center gap-1 rounded-full bg-todo px-2 text-[11px] font-semibold text-on-fill"
+            >
+              <AlertTriangle className="h-3 w-3" aria-hidden /> {overdue.length} overdue
+            </button>
+          ) : null}
         </div>
-        <Ring label={`${progress.pct}% of ${dayLabel(date, today).toLowerCase()} done`} value={progress.pct} size={48} stroke={5}>
-          <span className="text-[12px] font-semibold text-ink">{progress.pct}%</span>
-        </Ring>
+        <div data-tour="ring">
+          <Ring label={`${progress.pct}% of ${dayLabel(date, today).toLowerCase()} done`} value={progress.pct} size={48} stroke={5}>
+            <span className="text-[12px] font-semibold text-ink">{progress.pct}%</span>
+          </Ring>
+        </div>
       </header>
 
       <div className="space-y-1.5">
@@ -132,14 +145,16 @@ export function TodayScreen() {
         ) : null}
       </div>
 
+      <div data-tour="tiles">
       <StatusTiles
         counts={{ todo: progress.counts.todo, in_progress: progress.counts.in_progress, done: progress.counts.done }}
         selected={filter}
         onSelect={setFilter}
       />
+      </div>
 
       {overdue.length && !filter ? (
-        <Section title="Overdue" count={overdue.length}>
+        <Section id="overdue" title="Overdue" count={overdue.length}>
           {overdue.map((e) => {
             const was = e.item.schedule.kind === "once" ? (e.item.schedule.date ?? date) : date;
             return (
@@ -164,6 +179,7 @@ export function TodayScreen() {
         <PrayerGroup key={g.key} entry={g} date={date} />
       ))}
 
+      <div data-tour="list" className="space-y-5">
       {nothing ? (
         <div className="card flex flex-col items-center gap-2 px-5 py-6 text-center">
           <p className="text-[14px] font-medium text-ink">Nothing planned for {dayLabel(date, today).toLowerCase()}.</p>
@@ -189,6 +205,7 @@ export function TodayScreen() {
           );
         })
       )}
+      </div>
 
       {notToday.length && !filter ? (
         <section aria-label="Not today">
@@ -252,6 +269,7 @@ export function TodayScreen() {
         </Link>
       ) : null}
 
+      <Tour ready={ready && isToday} />
       <RowActionsMenu key={menuFor ? `${menuFor.date ?? date}|${menuFor.entry.key}` : "none"} target={menuFor} date={date} today={today} onClose={() => setMenuFor(null)} />
     </div>
   );

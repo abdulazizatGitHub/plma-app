@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPacks,
+  applySelection,
   archiveCategory,
   buildDay,
   categorySchema,
@@ -282,5 +283,14 @@ describe("starter packs", () => {
     const gym = state.items.find((i) => i.title === "Gym — Push day")!;
     expect(state.items.filter((i) => i.parentId === gym.id)).toHaveLength(5);
     expect(applyPacks([spiritual.id], state.categories, ctx, uid)).toEqual([]);
+  });
+
+  it("setup adds the interest's category and only the ticked items, with the user's targets", () => {
+    const physical = STARTER_PACKS[1];
+    const state = { categories: [] as Category[], items: [] as Item[], occs: [] as Occurrence[] };
+    apply(state, applySelection([{ packId: physical.id, items: [{ index: 0, target: 6000 }] }, { packId: STARTER_PACKS[3].id, items: [] }], [], ctx, uid));
+    expect(state.categories.map((c) => c.name)).toEqual(["Physical", "Mental"]);
+    expect(state.items).toHaveLength(1);
+    expect(state.items[0]).toMatchObject({ title: "Steps", tracking: { kind: "quantity", target: 6000, step: 500 } });
   });
 });

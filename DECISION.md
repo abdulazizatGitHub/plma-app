@@ -481,3 +481,16 @@ Use this template for each decision:
   - Repeating routines can't be moved to another day yet.
   - Drag reorder, a full history screen (Phase 7) and times on habits (anchors, Phase 4) remain.
 - **Related:** [phase-03-categories-items.md](./docs/phases/v2/phase-03-categories-items.md), [DESIGN_SYSTEM_V2 §5](./docs/design/DESIGN_SYSTEM_V2.md)
+
+### 2026-10-11 — Setup asks interests first; nothing added unless ticked; first-run tour
+
+- **Context:** The owner tried the pack picker. Choosing "Spiritual" and "Physical" silently added every suggested item (Quran reading, Steps, Gym…) without asking. The owner asked for interest-based setup and a tour.
+- **Decision (owner, 2026-10-11):**
+  - **Setup has two steps.**
+    1. Pick interests. Each becomes a category.
+    2. Tick suggested items per interest. **Nothing is pre-ticked.** Count and minute targets are editable inline. "Finish — I'll add my own" works with nothing ticked.
+    - Shared `applySelection` builds exactly that. `applyPacks` (all items) remains for the API.
+  - **Spotlight tour** on Today, once after setup. Five tips: ring, tiles, list, +, Categories. Skippable, and replayable from Profile → Help. Desktop uses the side-rail targets. The flag lives in local `meta` and is flushed immediately.
+  - **Overdue badge:** an "N overdue" badge by the date jumps to the Overdue list. The ring stays today's plan.
+- **Consequences:** Rule-based suggestions; no AI service, and it works offline. Later questions (student or working…) can narrow the suggestions.
+

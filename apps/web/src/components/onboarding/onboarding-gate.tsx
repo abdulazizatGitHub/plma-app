@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { useStore } from "@/components/providers/store-provider";
 
 export const ONBOARDED_KEY = "onboarded";
+/** "pending" after setup (or a replay from Profile); "done" once seen or skipped. */
+export const TOUR_KEY = "tour";
 
 /**
  * Sends a brand-new account to the starter-pack picker once (owner decision

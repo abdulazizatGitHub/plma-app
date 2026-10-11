@@ -1,20 +1,52 @@
 "use client";
 
-import { adoptedPackIds, applyPacks, STARTER_PACKS } from "@life/shared";
+import { adoptedPackIds, applySelection, STARTER_PACKS, tunableTarget, type PackChoice, type PackItem, type StarterPack } from "@life/shared";
 import { ArrowLeft, Check } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useState } from "react";
+import { DisabledHint } from "@/components/auth/auth-shell";
 import { Button } from "@/components/kit";
-import { ONBOARDED_KEY } from "@/components/onboarding/onboarding-gate";
+import { ONBOARDED_KEY, TOUR_KEY } from "@/components/onboarding/onboarding-gate";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useStore } from "@/components/providers/store-provider";
+import { sanitizeDigits, wholeNumber } from "@/lib/forms/validators";
 import { toneInkClass } from "@/lib/theme/tokens";
 import { categoryTone, iconFor } from "@/lib/v2/category-style";
+import { scheduleSummary, trackingSummary } from "@/lib/v2/item-text";
 import { useActions, useAllCategories, useNextCategoryOrder } from "@/lib/v2/use-day";
 
+/** A ticked suggestion and its (possibly edited) target, keyed "packId:index". */
+type Picks = Record<string, { target: string }>;
+
+const keyOf = (pack: StarterPack, index: number) => `${pack.id}:${index}`;
+const DAILY = { v: 1, kind: "daily" } as const;
+
+function PackIcon({ pack, size = "h-9 w-9" }: { pack: StarterPack; size?: string }) {
+  const tone = categoryTone(pack.category);
+  return (
+    <span className={`flex ${size} shrink-0 items-center justify-center rounded-[10px] ${toneInkClass(tone)}`} style={{ background: `var(--cat-${tone})` }} aria-hidden>
+      {createElement(iconFor(pack.category.icon), { className: "h-4.5 w-4.5" })}
+    </span>
+  );
+}
+
+/** "Every day · 10,000 steps" for a suggestion (what it will look like on Today). */
+function describe(spec: PackItem): string {
+  const parts = [scheduleSummary({ schedule: spec.schedule ?? DAILY })];
+  if (spec.type === "group") parts.push(`${spec.children?.length ?? 0} sub-items`);
+  else if (spec.tracking && spec.tracking.kind !== "quantity" && spec.tracking.kind !== "duration") {
+    const t = trackingSummary({ tracking: spec.tracking });
+    if (t) parts.push(t);
+  }
+  if (spec.isOptional) parts.push("optional");
+  return parts.join(" · ");
+}
+
 /**
- * Starter packs (CAT-05): new accounts pick what they want to track, or start
- * empty. With ?add=1 (from Categories) it adds packs not adopted yet.
+ * First-run setup (owner, 2026-10-11): 1) pick interests — they become your
+ * categories; 2) tick the suggestions you want, nothing is pre-ticked, and
+ * adjust their targets. With ?add=1 (from Categories) it adds interests not
+ * set up yet.
  */
 function Welcome() {
   const adding = useSearchParams().get("add") === "1";
@@ -24,57 +56,160 @@ function Welcome() {
   const { store } = useStore();
   const { notify } = useAddSheet();
   const router = useRouter();
-  const [picked, setPicked] = useState<string[]>([]);
+  const [step, setStep] = useState<"interests" | "items">("interests");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [picks, setPicks] = useState<Picks>({});
 
   const adopted = adoptedPackIds(categories);
   const packs = STARTER_PACKS.filter((p) => !adopted.has(p.id));
-  const toggle = (id: string) => setPicked((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  const chosen = packs.filter((p) => interests.includes(p.id));
+  const toggleInterest = (id: string) => setInterests((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  const togglePick = (pack: StarterPack, index: number) =>
+    setPicks((all) => {
+      const key = keyOf(pack, index);
+      if (all[key]) {
+        const { [key]: _gone, ...rest } = all;
+        return rest;
+      }
+      const t = tunableTarget(pack.items[index]);
+      return { ...all, [key]: { target: t ? String(t.value) : "" } };
+    });
 
-  function finish(ids: string[]) {
-    if (ids.length) void run((ctx) => applyPacks(ids, categories, ctx, () => crypto.randomUUID(), nextOrder()));
-    store?.setMeta(ONBOARDED_KEY, ids.length ? "packs" : "empty");
-    if (ids.length) notify({ message: `Added ${ids.length} pack${ids.length === 1 ? "" : "s"}` });
+  const errors = chosen.flatMap((pack) =>
+    pack.items.flatMap((spec, index) => {
+      const pick = picks[keyOf(pack, index)];
+      const t = tunableTarget(spec);
+      const msg = pick && t ? wholeNumber(`${spec.title} target`, 1, t.max)(pick.target) : null;
+      return msg ? [msg] : [];
+    }),
+  );
+  const pickedCount = Object.keys(picks).filter((k) => chosen.some((p) => k.startsWith(`${p.id}:`))).length;
+
+  function finish(choices: PackChoice[]) {
+    if (choices.length) void run((ctx) => applySelection(choices, categories, ctx, () => crypto.randomUUID(), nextOrder()));
+    if (!adding) {
+      store?.setMeta(ONBOARDED_KEY, choices.length ? "packs" : "empty");
+      store?.setMeta(TOUR_KEY, "pending");
+      void store?.flush(); // the flags must survive an immediate reload
+    }
+    if (choices.length) {
+      notify({ message: `Added ${choices.length} categor${choices.length === 1 ? "y" : "ies"}${pickedCount ? ` and ${pickedCount} item${pickedCount === 1 ? "" : "s"}` : ""}` });
+    }
     router.replace(adding ? "/categories" : "/");
+  }
+
+  const submit = () =>
+    finish(
+      chosen.map((pack) => ({
+        packId: pack.id,
+        items: pack.items.flatMap((spec, index) => {
+          const pick = picks[keyOf(pack, index)];
+          if (!pick) return [];
+          return [{ index, ...(tunableTarget(spec) ? { target: Number(pick.target) } : {}) }];
+        }),
+      })),
+    );
+
+  const back = (
+    <button
+      type="button"
+      onClick={() => (step === "items" ? setStep("interests") : router.push("/categories"))}
+      className="inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink"
+    >
+      <ArrowLeft className="h-4 w-4" aria-hidden /> {step === "items" ? "Interests" : "Categories"}
+    </button>
+  );
+
+  if (step === "items") {
+    return (
+      <div className="space-y-4">
+        {back}
+        <header>
+          <p className="text-[12px] font-medium text-ink-2">Step 2 of 2</p>
+          <h1 className="text-xl font-semibold text-ink">Pick what goes on your day</h1>
+          <p className="mt-0.5 text-[13px] text-ink-2">Only what you tick is added. You can add your own items any time with +.</p>
+        </header>
+        {chosen.map((pack) => (
+          <section key={pack.id} aria-label={pack.name} className="card space-y-1 p-3">
+            <h2 className="mb-1 flex items-center gap-2 text-[14px] font-semibold text-ink">
+              <PackIcon pack={pack} size="h-7 w-7" /> {pack.category.name}
+            </h2>
+            {pack.items.map((spec, index) => {
+              const key = keyOf(pack, index);
+              const pick = picks[key];
+              const t = tunableTarget(spec);
+              const err = pick && t ? wholeNumber("Target", 1, t.max)(pick.target) : null;
+              return (
+                <div key={key} className="rounded-xl px-1 py-1.5">
+                  <button type="button" role="checkbox" aria-checked={Boolean(pick)} onClick={() => togglePick(pack, index)} className="flex w-full items-start gap-2.5 text-left">
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border-2 ${pick ? "border-primary-strong bg-primary-strong text-on-primary-strong" : "border-ink-2"}`}
+                    >
+                      {pick ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] text-ink">{spec.title}</span>
+                      <span className="block text-[12px] text-ink-2">{describe(spec)}</span>
+                    </span>
+                  </button>
+                  {pick && t ? (
+                    <label className="mt-1.5 ml-7.5 flex items-center gap-2 text-[12px] text-ink-2">
+                      Target
+                      <input
+                        inputMode="numeric"
+                        aria-label={`${spec.title} target`}
+                        value={pick.target}
+                        onChange={(e) => setPicks((all) => ({ ...all, [key]: { target: sanitizeDigits(e.target.value) } }))}
+                        className={`h-8 w-24 rounded-[10px] border bg-surface px-2 text-[13px] text-ink outline-none focus:border-primary-strong ${err ? "border-todo" : "border-border"}`}
+                      />
+                      {t.unit}
+                    </label>
+                  ) : null}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+        <div className="flex flex-col gap-2 sm:flex-row-reverse">
+          <Button size="lg" className="sm:flex-1" disabled={errors.length > 0} onClick={submit}>
+            {pickedCount ? `Finish — add ${pickedCount} item${pickedCount === 1 ? "" : "s"}` : "Finish — I'll add my own"}
+          </Button>
+        </div>
+        <DisabledHint show={errors.length > 0} message={errors[0] ?? ""} />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
-      {adding ? (
-        <button type="button" onClick={() => router.push("/categories")} className="inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Categories
-        </button>
-      ) : null}
+      {adding ? back : null}
       <header>
-        <h1 className="text-xl font-semibold text-ink">{adding ? "Add starter packs" : "What do you want to track?"}</h1>
+        <p className="text-[12px] font-medium text-ink-2">Step 1 of 2</p>
+        <h1 className="text-xl font-semibold text-ink">{adding ? "Add interests" : "What matters to you?"}</h1>
         <p className="mt-0.5 text-[13px] text-ink-2">
-          {adding ? "Each pack adds a category with ready-made items." : "Pick a few starter packs — you can edit, archive or delete anything later."}
+          Each interest becomes a category. Next you&apos;ll choose what to track in it — nothing is added without your tick.
         </p>
       </header>
 
       {packs.length ? (
-        <ul className="grid gap-2 sm:grid-cols-2" aria-label="Starter packs">
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3" aria-label="Interests">
           {packs.map((p) => {
-            const on = picked.includes(p.id);
-            const tone = categoryTone(p.category);
+            const on = interests.includes(p.id);
             return (
               <li key={p.id}>
                 <button
                   type="button"
                   aria-pressed={on}
-                  onClick={() => toggle(p.id)}
-                  className={`card flex h-full w-full items-start gap-3 p-3 text-left transition-token ${on ? "ring-2 ring-primary-strong" : "hover:bg-track/40"}`}
+                  onClick={() => toggleInterest(p.id)}
+                  className={`card relative flex h-full w-full flex-col items-start gap-2 p-3 text-left transition-token ${on ? "ring-2 ring-primary-strong" : "hover:bg-track/40"}`}
                 >
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] ${toneInkClass(tone)}`} style={{ background: `var(--cat-${tone})` }} aria-hidden>
-                    {createElement(iconFor(p.category.icon), { className: "h-4.5 w-4.5" })}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-medium text-ink">{p.name}</span>
-                    <span className="block text-[12px] text-ink-2">{p.description}</span>
-                    <span className="mt-1 block text-[11.5px] text-ink-2">{p.items.map((i) => i.title).join(" · ")}</span>
-                  </span>
+                  <PackIcon pack={p} />
+                  <span className="block text-[14px] font-medium text-ink">{p.name}</span>
+                  <span className="block text-[12px] leading-snug text-ink-2">{p.description}</span>
                   <span
                     aria-hidden
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-primary-strong bg-primary-strong text-on-primary-strong" : "border-border"}`}
+                    className={`absolute top-2.5 right-2.5 flex h-5 w-5 items-center justify-center rounded-full border-2 ${on ? "border-primary-strong bg-primary-strong text-on-primary-strong" : "border-border"}`}
                   >
                     {on ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
                   </span>
@@ -84,15 +219,15 @@ function Welcome() {
           })}
         </ul>
       ) : (
-        <p className="card px-4 py-6 text-center text-[13px] text-ink-2">You&apos;ve added every starter pack.</p>
+        <p className="card px-4 py-6 text-center text-[13px] text-ink-2">You&apos;ve set up every interest.</p>
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row-reverse">
-        <Button size="lg" className="sm:flex-1" disabled={!picked.length} onClick={() => finish(picked)}>
-          {picked.length ? `${adding ? "Add" : "Start with"} ${picked.length} pack${picked.length === 1 ? "" : "s"}` : "Pick at least one pack"}
+        <Button size="lg" className="sm:flex-1" disabled={!interests.length} onClick={() => setStep("items")}>
+          {interests.length ? `Next — ${interests.length} interest${interests.length === 1 ? "" : "s"}` : "Pick at least one interest"}
         </Button>
         <Button size="lg" variant="secondary" className="sm:flex-1" onClick={() => (adding ? router.push("/categories") : finish([]))}>
-          {adding ? "Cancel" : "Start empty"}
+          {adding ? "Cancel" : "Skip — start empty"}
         </Button>
       </div>
     </div>

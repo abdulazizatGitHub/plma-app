@@ -20,6 +20,7 @@ function SideNav({ active, onAdd }: { active: string; onAdd: () => void }) {
       <button
         type="button"
         onClick={onAdd}
+        data-tour="add"
         className="press-pop mb-3 flex min-h-10 items-center justify-center gap-2 rounded-full bg-primary-strong text-[13px] font-medium text-on-primary-strong"
       >
         <Plus className="h-4 w-4" aria-hidden /> Add task
@@ -29,6 +30,7 @@ function SideNav({ active, onAdd }: { active: string; onAdd: () => void }) {
         return (
           <Link
             key={href}
+            data-tour={`nav:${href}`}
             href={href}
             aria-current={current ? "page" : undefined}
             className={`flex min-h-10 items-center gap-3 rounded-(--radius-control) px-3 text-[14px] font-medium ${
