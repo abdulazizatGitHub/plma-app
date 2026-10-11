@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { createPlan, todayLocalDate, updateStep, type CadenceRule, type Item, type ItemDependency, type Occurrence } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
@@ -10,6 +10,7 @@ import CategoryViewPage from "@/app/(main)/categories/view/page";
 import { TodayScreen } from "@/components/today/today-screen";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
+import { usePending } from "@/lib/v2/use-day";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
 let store: LocalStore;
@@ -100,6 +101,9 @@ describe("Plan page", () => {
     fireEvent.click(within(stepRow("Payment cleared")).getByRole("checkbox", { name: "Payment cleared" }));
     await waitFor(() => expect(within(stepRow("Post")).getByRole("checkbox", { name: "Post" })).toBeInTheDocument());
     expect((store.query("occurrences") as unknown as Occurrence[])[0]).toMatchObject({ status: "done" });
+    // Done, so no longer pending (it never had a date).
+    const { result } = renderHook(() => usePending());
+    expect(result.current.map((i) => i.title)).not.toContain("Payment cleared");
   });
 
   it("rules: post on Tue/Fri, gap ≥ 1 — Thursday warns and suggests Friday; the date is kept", async () => {

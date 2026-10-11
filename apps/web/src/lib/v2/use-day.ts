@@ -153,11 +153,17 @@ function addDaysIso(iso: string, n: number) {
 export function usePending(): Item[] {
   const { store } = useStore();
   const version = useStoreVersion(store);
-  return useMemo(
-    () => (store ? pendingItems(readItems(store)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : []),
+  return useMemo(() => {
+    if (!store) return [];
+    // An undated plan step ticked on its plan (e.g. "Payment cleared") is done, not pending.
+    const done = new Set(
+      (store.query("occurrences", `WHERE "status" = 'done' AND "deleted_at" IS NULL`) as unknown as Occurrence[]).map((o) => o.itemId),
+    );
+    return pendingItems(readItems(store))
+      .filter((i) => !done.has(i.id))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store, version],
-  );
+  }, [store, version]);
 }
 
 export function useCategories(): Category[] {

@@ -119,6 +119,9 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **Location sheet** | Our pre-prompt before the browser's: Always (disabled on web), While using (primary), Choose a city, Never (text button); city search over bundled cities | — |
 | **Now highlight** | A row whose time window contains now gets a 2 px primary ring (`data-now`) | — |
 | **Day view** | Sections per prayer-based day part, with a time range and a "Now" tag | ref 1 |
+| **PlanCard** | Preset icon tile, title, venue / course caption, "Next: Edit · Wed 14 Oct" and overdue tags, 36 px progress ring | ref 2 project card |
+| **StepRow** | Round tick, or a lock with "Waits for …"; kind icon and title; date and time inputs; a cadence warning box (soft progress fill) with suggested-date chips — never blocks | — |
+| **Rules editor** | Per step kind: weekday chips and a "keep apart by" select; scope tabs This plan / All <category> plans | — |
 | **ConfirmSheet** | Small "Delete …?" sheet: body text, Cancel and a red-filled confirm button | — |
 | **GroupRow** (routine) | Card with a 28 px ring, title, "3/5" tag and category tag; expands to its sub-items as TaskRows; done when all sub-items are done | ref 2 project card |
 | **Checklist row** | TaskRow with a "2/5 steps" tag and a "Show steps" toggle listing small tick rows | — |
