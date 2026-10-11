@@ -117,10 +117,11 @@ type QuantityRowProps = Omit<QuantityStepperProps, "label"> & {
   onOpen?: () => void;
   onMore?: (anchor: HTMLElement) => void;
   tags?: React.ReactNode;
+  highlight?: boolean;
 };
 
 /** Task row for counted items: title, "4,000 / 10,000 steps", thin progress line, stepper. */
-export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, ...stepper }: QuantityRowProps) {
+export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, highlight, ...stepper }: QuantityRowProps) {
   const state = quantityState(stepper.value, target);
   const pct = target ? Math.min(100, (stepper.value / target) * 100) : 0;
   const caption = [
@@ -141,6 +142,7 @@ export function QuantityRow({ title, target, meta, priority, categoryColor, onOp
       onOpen={onOpen}
       onMore={onMore}
       tags={tags}
+      highlight={highlight}
     >
       {target ? (
         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-track" aria-hidden>

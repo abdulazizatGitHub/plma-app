@@ -94,10 +94,10 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       try {
         const p = await currentPosition();
-        await save({ lat: p.lat, lng: p.lng, locationLabel: labelFor(p), timezone: deviceTimezone(), locationMode: "device" });
+        // The grant is known now; record it before the settings write lands.
         store?.setMeta(LOCATION_LEVEL_KEY, "whileUsing");
         store?.setMeta(LOCATION_CHECKED_KEY, String(Date.now()));
-        void store?.flush();
+        await save({ lat: p.lat, lng: p.lng, locationLabel: labelFor(p), timezone: deviceTimezone(), locationMode: "device" });
         notify({ message: `Prayer times set for ${labelFor(p)}` });
         setPanel(null);
         ask.done();

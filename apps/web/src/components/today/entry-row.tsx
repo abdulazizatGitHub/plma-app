@@ -4,6 +4,11 @@ import {
   checklistSteps,
   describeSchedule,
   entryState,
+  entryWindow,
+  inWindow,
+  normalisePrayerKey,
+  prayerKeyOf,
+  clockIn,
   setDuration,
   setQuantity,
   toggleChecklistStep,
@@ -11,15 +16,18 @@ import {
   type Category,
   type DayEntry,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Play, Repeat2, Timer } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Moon, Play, Repeat2, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
-import { useActions } from "@/lib/v2/use-day";
+import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
+import { useNow } from "@/lib/v2/use-now";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+const PRAYER_NAME: Record<string, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
+const localDateOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 /** Plain-text caption (used where tags don't fit, e.g. menus and tests). */
 export function entryCaption(entry: DayEntry, category: Category | undefined): string | undefined {
@@ -29,12 +37,13 @@ export function entryCaption(entry: DayEntry, category: Category | undefined): s
 }
 
 /** The tag line under a row title: category, time, progress, priority, schedule, history. */
-function entryTags(entry: DayEntry, category?: Category, dueLabel?: string): ReactNode[] {
+function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when?: string): ReactNode[] {
   const item = entry.item;
   const o = entry.occurrence;
   const t = item.tracking;
   const time = item.schedule.kind === "once" ? item.schedule.time : undefined;
-  const repeat = item.schedule.kind !== "once" ? describeSchedule(item) : null;
+  // The anchor gets its own "when" tag, so the repeat tag shows just the days.
+  const repeat = item.schedule.kind !== "once" ? describeSchedule({ schedule: { ...item.schedule, anchor: undefined } }) : null;
   const Icon = categoryIcon(category);
   const tags: ReactNode[] = [];
   if (dueLabel) tags.push(<Tag key="due" tone="todo" icon={<AlertTriangle />}>{dueLabel}</Tag>);
@@ -46,6 +55,7 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string): Rea
     );
   }
   if (time) tags.push(<Tag key="time" icon={<Clock3 />}>{formatTime(time)}</Tag>);
+  if (when) tags.push(<Tag key="when" icon={<Moon />}>{when}</Tag>);
   if (t.kind === "quantity") {
     tags.push(
       <Tag key="qty">
@@ -148,7 +158,23 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
   const state = entryState(entry);
   const visible: ItemState = state === "not_today" ? "todo" : state;
   const t = entry.item.tracking;
-  const list = entryTags(entry, category, dueLabel);
+  const times = usePrayerTimes(date);
+  const now = useNow();
+  const { prayers } = usePrayerSet();
+  const s = entry.item.schedule;
+  const anchor = s.kind !== "once" ? s.anchor : undefined;
+  const slot = anchor && times ? entryWindow(entry, times) : null;
+  let when: string | undefined;
+  if (anchor && slot && times) {
+    const range = `${formatTime(clockIn(slot.start, times.timezone))}–${formatTime(clockIn(slot.end, times.timezone))}`;
+    if (anchor.type === "prayer") {
+      const key = normalisePrayerKey(anchor.prayer);
+      const name = prayers.find((p) => normalisePrayerKey(prayerKeyOf(p) ?? "") === key)?.title ?? PRAYER_NAME[key] ?? key;
+      when = `${anchor.relation[0].toUpperCase()}${anchor.relation.slice(1)} ${name} · ${range}`;
+    } else when = range;
+  }
+  const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
+  const list = entryTags(entry, category, dueLabel, when);
   const tags = list.length ? list : undefined;
 
   if (t.kind === "quantity") {
@@ -163,6 +189,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
         unit={t.unit}
         priority={entry.item.priority}
         onOpen={open}
+        highlight={highlight}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -179,6 +206,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
         unit="min"
         priority={entry.item.priority}
         onOpen={open}
+        highlight={highlight}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -191,6 +219,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       priority={entry.item.priority}
       onToggle={() => void run((ctx) => toggleDone(entry, date, ctx))}
       onOpen={open}
+      highlight={highlight}
       onMore={(anchor) => onMore(entry, anchor)}
     >
       {t.kind === "checklist" ? (

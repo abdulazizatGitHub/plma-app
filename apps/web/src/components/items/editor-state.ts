@@ -1,4 +1,4 @@
-import type { ChildDraft, EditableItemType, Item, ItemDraft, Schedule, Tracking } from "@life/shared";
+import type { Anchor, ChildDraft, EditableItemType, Item, ItemDraft, Schedule, Tracking } from "@life/shared";
 import { addDays } from "@/components/kit";
 import { endNotBefore, isoDate, taskTitle, wholeNumber } from "@/lib/forms/validators";
 import { newRow, type ListRow } from "./list-editor";
@@ -11,6 +11,8 @@ import { newRow, type ListRow } from "./list-editor";
 export type TrackKind = Tracking["kind"];
 export type RepeatKind = "daily" | "weekdays" | "everyNDays" | "monthly";
 export type DateChoice = "today" | "tomorrow" | "pick" | "none";
+export type TimeOfDay = "any" | "time" | "prayer";
+export type Relation = "before" | "at" | "after";
 
 export type EditorState = {
   kind: EditableItemType;
@@ -36,6 +38,13 @@ export type EditorState = {
   monthDay: string;
   activeFrom: string;
   activeUntil: string;
+  /** Repeating items: when in the day (SCH-03/04). */
+  timeOfDay: TimeOfDay;
+  anchorTime: string;
+  anchorPrayer: string;
+  anchorRelation: Relation;
+  /** Minutes after the anchor point, 0–120 (prayer anchors). */
+  anchorOffset: number;
   children: ListRow[];
 };
 
@@ -84,11 +93,18 @@ export function initialState(item: Item | null, children: Item[], preset: Editor
     monthDay: s?.kind === "monthly" ? String(s.monthDay) : String(Number(today.slice(8, 10))),
     activeFrom: s && s.kind !== "once" ? (s.activeFrom ?? "") : "",
     activeUntil: s && s.kind !== "once" ? (s.activeUntil ?? "") : "",
+    ...anchorState(s && s.kind !== "once" ? s.anchor : undefined),
     children: children.length ? children.filter((c) => !c.deletedAt).map((c) => newRow(c.title, c.id)) : [newRow(), newRow()],
   };
 }
 
-export type EditorErrors = Partial<Record<"title" | "unit" | "target" | "step" | "targetMin" | "steps" | "picked" | "time" | "weekdays" | "everyN" | "monthDay" | "range" | "children", string>>;
+function anchorState(a: Anchor | undefined): Pick<EditorState, "timeOfDay" | "anchorTime" | "anchorPrayer" | "anchorRelation" | "anchorOffset"> {
+  if (a?.type === "time") return { timeOfDay: "time", anchorTime: a.time, anchorPrayer: "dhuhr", anchorRelation: "after", anchorOffset: 0 };
+  if (a?.type === "prayer") return { timeOfDay: "prayer", anchorTime: "", anchorPrayer: a.prayer === "zuhr" ? "dhuhr" : a.prayer, anchorRelation: a.relation, anchorOffset: a.offsetMin ?? 0 };
+  return { timeOfDay: "any", anchorTime: "", anchorPrayer: "dhuhr", anchorRelation: "after", anchorOffset: 0 };
+}
+
+export type EditorErrors = Partial<Record<"title" | "unit" | "target" | "step" | "targetMin" | "steps" | "picked" | "time" | "weekdays" | "everyN" | "monthDay" | "range" | "anchorTime" | "children", string>>;
 
 const filled = (rows: ListRow[]) => rows.filter((r) => r.title.trim());
 
@@ -120,6 +136,7 @@ export function validate(s: EditorState): EditorErrors {
     if (s.repeat === "weekdays") set("weekdays", s.weekdays.length ? null : "Pick at least one day.");
     if (s.repeat === "everyNDays") set("everyN", wholeNumber("Days", 2, 365)(s.everyN));
     if (s.repeat === "monthly") set("monthDay", wholeNumber("Day of the month", 1, 31)(s.monthDay));
+    if (s.timeOfDay === "time") set("anchorTime", CLOCK_RE.test(s.anchorTime) ? null : "Pick a time of day.");
     if (s.activeFrom) set("range", isoDate(s.activeFrom));
     if (s.activeUntil) set("range", isoDate(s.activeUntil) ?? endNotBefore(s.activeFrom, s.activeUntil));
   }
@@ -151,7 +168,17 @@ function schedule(s: EditorState, today: string): Schedule {
     const date = s.when === "today" ? today : s.when === "tomorrow" ? addDays(today, 1) : s.when === "pick" ? s.picked : null;
     return date && s.time ? { v: 1, kind: "once", date, time: s.time } : { v: 1, kind: "once", date };
   }
-  const range = { ...(s.activeFrom ? { activeFrom: s.activeFrom } : {}), ...(s.activeUntil ? { activeUntil: s.activeUntil } : {}) };
+  const anchor: Anchor | undefined =
+    s.timeOfDay === "time"
+      ? { type: "time", time: s.anchorTime }
+      : s.timeOfDay === "prayer"
+        ? { type: "prayer", prayer: s.anchorPrayer, relation: s.anchorRelation, offsetMin: s.anchorOffset }
+        : undefined;
+  const range = {
+    ...(anchor ? { anchor } : {}),
+    ...(s.activeFrom ? { activeFrom: s.activeFrom } : {}),
+    ...(s.activeUntil ? { activeUntil: s.activeUntil } : {}),
+  };
   switch (s.repeat) {
     case "weekdays":
       return { v: 1, kind: "weekdays", weekdays: [...s.weekdays].sort(), ...range };

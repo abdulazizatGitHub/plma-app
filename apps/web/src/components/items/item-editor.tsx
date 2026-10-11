@@ -1,12 +1,13 @@
 "use client";
 
-import { createItem, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
+import { createItem, normalisePrayerKey, prayerKeyOf, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
 import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField } from "@/components/kit";
 import { sanitizeDigits } from "@/lib/forms/validators";
 import { categoryTone } from "@/lib/v2/category-style";
-import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
+import { useLocation } from "@/components/location/location-provider";
+import { useActions, useCategories, useNextSortOrder, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
 import { firstError, initialState, isOnce, toDraft, validate, type EditorPreset, type EditorState } from "./editor-state";
 import { ListEditor } from "./list-editor";
 
@@ -33,6 +34,26 @@ const WHEN = [
   { value: "pick", label: "Pick date" },
   { value: "none", label: "No date" },
 ] as const;
+const TIME_OF_DAY = [
+  { value: "any", label: "Any time" },
+  { value: "time", label: "At a time" },
+  { value: "prayer", label: "Around a prayer" },
+] as const;
+const RELATIONS = [
+  { value: "before", label: "Before" },
+  { value: "at", label: "At" },
+  { value: "after", label: "After" },
+] as const;
+const OFFSETS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
+const DEFAULT_PRAYER_OPTIONS = [
+  { key: "fajr", title: "Fajr" },
+  { key: "sunrise", title: "Sunrise" },
+  { key: "dhuhr", title: "Zuhr" },
+  { key: "asr", title: "Asr" },
+  { key: "maghrib", title: "Maghrib" },
+  { key: "isha", title: "Isha" },
+];
+
 const PRIORITY = [
   { value: "low", label: "Low" },
   { value: "medium", label: "Medium" },
@@ -74,6 +95,19 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
   const categories = useCategories();
   const run = useActions();
   const nextSortOrder = useNextSortOrder();
+  const { prayers } = usePrayerSet();
+  const settings = useUserSettings();
+  const { ensure } = useLocation();
+  // The user's own prayers (renamed ones keep their key), plus Sunrise.
+  const prayerOptions = prayers.length
+    ? [
+        ...prayers.flatMap((p) => {
+          const key = prayerKeyOf(p);
+          return key ? [{ key: normalisePrayerKey(key), title: p.title }] : [];
+        }),
+        { key: "sunrise", title: "Sunrise" },
+      ]
+    : DEFAULT_PRAYER_OPTIONS;
   const [s, setState] = useState<EditorState>(() => initialState(item, existingChildren, preset, today));
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const errors = validate(s);
@@ -114,6 +148,8 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
       return changes;
     }).then(() => {
       if (saved) onSaved(saved, !item);
+      // Prayer anchors use prayer times: ask for location now if it was never set (just in time).
+      if (!once && s.timeOfDay === "prayer" && settings.locationMode === "unset") void ensure("whileUsing", "This item follows prayer times, which are calculated for where you are.");
     });
   }
 
@@ -242,6 +278,53 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
             ) : null}
             {s.repeat === "everyNDays" ? <TextField label="Every how many days?" required {...digits("everyN", 3)} /> : null}
             {s.repeat === "monthly" ? <TextField label="Day of the month" required hint="Short months use their last day." {...digits("monthDay", 2)} /> : null}
+            <PillGroup legend="Time of day" options={TIME_OF_DAY} value={s.timeOfDay} onChange={(v) => set("timeOfDay", v)} />
+            {s.timeOfDay === "time" ? (
+              <TextField label="Time" type="time" required value={s.anchorTime} onChange={(e) => set("anchorTime", e.target.value)} onBlur={touch("anchorTime")} error={shown("anchorTime")} />
+            ) : null}
+            {s.timeOfDay === "prayer" ? (
+              <div className="space-y-2">
+                <SegmentedTabs label="Before, at or after" options={[...RELATIONS]} value={s.anchorRelation} onChange={(v) => set("anchorRelation", v)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="mb-1 block text-[12px] font-medium text-ink">Prayer</span>
+                    <select
+                      value={s.anchorPrayer}
+                      onChange={(e) => set("anchorPrayer", e.target.value)}
+                      className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
+                    >
+                      {prayerOptions.map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[12px] font-medium text-ink">Plus</span>
+                    <select
+                      value={s.anchorOffset}
+                      onChange={(e) => set("anchorOffset", Number(e.target.value))}
+                      className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
+                    >
+                      {OFFSETS.map((m) => (
+                        <option key={m} value={m}>
+                          {m ? `${m} min` : "No delay"}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <p className="text-[12px] text-ink-2">
+                  {s.anchorRelation === "after"
+                    ? "Shown from that prayer until the next one."
+                    : s.anchorRelation === "before"
+                      ? "Shown from the previous prayer until that one."
+                      : "Shown for half an hour either side."}{" "}
+                  It can still be ticked any time.
+                </p>
+              </div>
+            ) : null}
             <div className="grid grid-cols-2 gap-2">
               <TextField label="Starts (optional)" type="date" value={s.activeFrom} onChange={(e) => set("activeFrom", e.target.value)} onBlur={touch("range")} />
               <TextField label="Ends (optional)" type="date" value={s.activeUntil} onChange={(e) => set("activeUntil", e.target.value)} onBlur={touch("range")} error={shown("range")} />

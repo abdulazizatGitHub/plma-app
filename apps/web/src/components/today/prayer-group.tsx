@@ -18,26 +18,17 @@ import {
 } from "@life/shared";
 import { BarChart3, Check, CircleSlash, Clock4, MapPin, Settings2, Undo2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { PopoverMenu, PopoverMenuDivider, PopoverMenuItem, PrayerRow, Sheet, type PrayerChip } from "@/components/kit";
 import { useLocation } from "@/components/location/location-provider";
 import { formatTime } from "@/lib/v2/category-style";
 import { longDate } from "@/lib/v2/dates";
 import { useActions, usePrayerTimes, useUserSettings } from "@/lib/v2/use-day";
+import { useNow } from "@/lib/v2/use-now";
 
 const CHIP: Record<PrayerMark, PrayerChip["status"]> = { prayed: "done", qada: "qada", missed: "missed", open: "open" };
 const TIME_KEYS = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
 const NAMES: Record<string, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
-
-/** Re-renders every minute (for "Asr now" / "Maghrib in 42 min"). */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  return now;
-}
 
 const inMinutes = (from: Date, to: Date) => {
   const m = Math.max(0, Math.round((to.getTime() - from.getTime()) / 60_000));

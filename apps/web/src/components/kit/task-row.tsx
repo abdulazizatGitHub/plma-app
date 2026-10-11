@@ -30,6 +30,8 @@ type TaskRowProps = {
   tags?: ReactNode;
   /** Extra content under the title (e.g. a quantity stepper). */
   children?: ReactNode;
+  /** It's this item's time now (inside its prayer or time window). */
+  highlight?: boolean;
 };
 
 const LONG_PRESS_MS = 500;
@@ -46,6 +48,7 @@ export function TaskRow({
   onMore,
   tags,
   children,
+  highlight = false,
 }: TaskRowProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const row = useRef<HTMLDivElement>(null);
@@ -58,7 +61,8 @@ export function TaskRow({
   return (
     <div
       ref={row}
-      className={`card flex gap-2.5 px-3 py-2.5 ${children || tags ? "items-start" : "items-center"}`}
+      data-now={highlight || undefined}
+      className={`card flex gap-2.5 px-3 py-2.5 ${children || tags ? "items-start" : "items-center"} ${highlight ? "ring-2 ring-primary/70" : ""}`}
       onPointerDown={() => {
         if (!onMore) return;
         clear();

@@ -142,4 +142,28 @@ describe("ItemEditor", () => {
     await waitFor(() => expect(onEdited).toHaveBeenCalled());
     expect(items().filter((i) => i.parentId === parent.id).map((k) => k.title)).toEqual(["Stretch"]);
   });
+
+  it("builds Surah Kahf · Fridays · after Zuhr", async () => {
+    const onSaved = renderEditor();
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: "Surah Kahf" } });
+    fireEvent.click(screen.getByRole("button", { name: "Habit · repeats" }));
+    fireEvent.click(screen.getByRole("button", { name: "Some days" }));
+    for (const d of ["Mon", "Tue", "Wed", "Thu"]) fireEvent.click(screen.getByRole("button", { name: d })); // keep Fri
+    fireEvent.click(screen.getByRole("button", { name: "Around a prayer" }));
+    fireEvent.change(screen.getByLabelText("Prayer"), { target: { value: "dhuhr" } });
+    expect(screen.getByText(/Shown from that prayer until the next one/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(items()[0].schedule).toEqual({ v: 1, kind: "weekdays", weekdays: [5], anchor: { type: "prayer", prayer: "dhuhr", relation: "after", offsetMin: 0 } });
+  });
+
+  it("an item at a set time of day needs a valid time", () => {
+    renderEditor();
+    fireEvent.change(screen.getByLabelText(/^Name/), { target: { value: "Walk" } });
+    fireEvent.click(screen.getByRole("button", { name: "Habit · repeats" }));
+    fireEvent.click(screen.getByRole("button", { name: "At a time" }));
+    expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText(/^Time\*?$/), { target: { value: "07:30" } });
+    expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
+  });
 });

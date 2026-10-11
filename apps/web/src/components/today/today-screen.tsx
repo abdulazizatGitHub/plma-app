@@ -1,14 +1,32 @@
 "use client";
 
-import { bringBack, entryState, isPrayerGroup, moveTo, todayLocalDate, type Category, type DayEntry, type EntryState } from "@life/shared";
+import {
+  ANYTIME,
+  bringBack,
+  clockIn,
+  dayParts,
+  entryState,
+  entryWindow,
+  isPrayerGroup,
+  moveTo,
+  partAt,
+  partOf,
+  todayLocalDate,
+  type Category,
+  type DayEntry,
+  type DayPrayerTimes,
+  type EntryState,
+} from "@life/shared";
 import { AlertTriangle, CalendarClock, ChevronRight, Plus, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, DateStrip, Ring, StatusTiles, addDays, weekStart, type ItemState } from "@/components/kit";
+import { Button, DateStrip, Ring, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
 import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
-import { useActions, useCategories, useDay, useDays, useOverdue, usePending, useUpcoming } from "@/lib/v2/use-day";
+import { formatTime } from "@/lib/v2/category-style";
+import { useActions, useCategories, useDay, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
+import { useNow } from "@/lib/v2/use-now";
 import { DayEntryRow } from "./day-entry-row";
 import { PrayerGroup } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
@@ -20,12 +38,23 @@ const SECTIONS: { state: ItemState; title: string }[] = [
 ];
 const DONE_PREVIEW = 3;
 
-/** Timed tasks first, by time; then the rest in their saved order. */
+/** Timed tasks first, by time; then the rest in their saved order (lists without prayer times). */
 const byTime = (a: DayEntry, b: DayEntry) => {
   const ta = a.item.schedule.kind === "once" ? (a.item.schedule.time ?? "99:99") : "99:99";
   const tb = b.item.schedule.kind === "once" ? (b.item.schedule.time ?? "99:99") : "99:99";
   return ta.localeCompare(tb) || a.item.sortOrder - b.item.sortOrder;
 };
+
+/** By when they happen in the day (time, or prayer window), then saved order. */
+const byWindow = (times: DayPrayerTimes | null) => (a: DayEntry, b: DayEntry) => {
+  if (!times) return byTime(a, b);
+  const ka = entryWindow(a, times)?.start.getTime() ?? Infinity;
+  const kb = entryWindow(b, times)?.start.getTime() ?? Infinity;
+  return ka - kb || a.item.sortOrder - b.item.sortOrder;
+};
+
+type View = "status" | "day";
+const VIEW_KEY = "life_today_view";
 
 function Section({ id, title, count, action, children }: { id?: string; title: string; count: number; action?: ReactNode; children: ReactNode }) {
   return (
@@ -49,6 +78,7 @@ export function TodayScreen() {
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showNotToday, setShowNotToday] = useState(false);
+  const [view, setView] = useState<View>("status");
   const { openAdd, setDefaultDate, registerShowDay } = useAddSheet();
   const run = useActions();
 
@@ -57,6 +87,22 @@ export function TodayScreen() {
     setToday(t); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
     setDate(t);
   }, []);
+  useEffect(() => {
+    // Per-device convenience; storage may be unavailable (private mode).
+    try {
+      if (localStorage.getItem(VIEW_KEY) === "day") setView("day"); // eslint-disable-line react-hooks/set-state-in-effect -- restore a saved preference
+    } catch {
+      /* keep the default */
+    }
+  }, []);
+  const chooseView = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      /* not saved; fine */
+    }
+  };
   useEffect(() => {
     setDefaultDate(date);
     return () => setDefaultDate(null);
@@ -80,6 +126,8 @@ export function TodayScreen() {
   const byId = useMemo(() => new Map<string, Category>(categories.map((c) => [c.id, c])), [categories]);
   const pending = usePending();
   const isToday = date !== null && date === today;
+  const times = usePrayerTimes(date);
+  const now = useNow();
   const upcoming = useUpcoming(isToday ? today : null);
   const overdue = useOverdue(isToday ? today : null);
 
@@ -89,7 +137,7 @@ export function TodayScreen() {
 
   // Prayers keep their own row up top; routines sort into the buckets like any item.
   const groups = entries.filter((e) => e.children && isPrayerGroup(e.item));
-  const rows = entries.filter((e) => !(e.children && isPrayerGroup(e.item))).sort(byTime);
+  const rows = entries.filter((e) => !(e.children && isPrayerGroup(e.item))).sort(byWindow(times));
   const bucket = (s: EntryState) => rows.filter((e) => entryState(e) === s);
   const notToday = bucket("not_today");
   const nothing = ready && rows.length === 0 && groups.length === 0;
@@ -153,6 +201,18 @@ export function TodayScreen() {
       />
       </div>
 
+      {rows.length ? (
+        <SegmentedTabs<View>
+          label="Group by"
+          value={view}
+          onChange={chooseView}
+          options={[
+            { value: "status", label: "By status" },
+            { value: "day", label: "By time of day" },
+          ]}
+        />
+      ) : null}
+
       {overdue.length && !filter ? (
         <Section id="overdue" title="Overdue" count={overdue.length}>
           {overdue.map((e) => {
@@ -188,6 +248,41 @@ export function TodayScreen() {
             <Plus className="h-4 w-4" aria-hidden /> Add a task
           </Button>
         </div>
+      ) : view === "day" && times ? (
+        (() => {
+          // Day view (TOD-06): the day's parts, set by the prayer times; "now" is marked.
+          const parts = dayParts(times);
+          const current = isToday ? partAt(now, parts) : null;
+          const shown = rows.filter((e) => entryState(e) !== "not_today" && (!filter || entryState(e) === filter));
+          const sections = [
+            ...parts.map((p) => ({
+              key: p.key,
+              title: p.label,
+              range: `${formatTime(clockIn(p.window.start, times.timezone))} – ${formatTime(clockIn(p.window.end, times.timezone))}`,
+            })),
+            { key: ANYTIME, title: "Anytime", range: "" },
+          ];
+          return sections.map((sec) => {
+            const list = shown.filter((e) => partOf(e, times, parts) === sec.key);
+            if (!list.length) return null;
+            const isNow = current === sec.key;
+            return (
+              <Section
+                key={sec.key}
+                title={sec.title}
+                count={list.length}
+                action={
+                  <span className="flex items-center gap-1.5 text-[11.5px] font-normal text-ink-2">
+                    {isNow ? <Tag tone="primary">Now</Tag> : null}
+                    {sec.range}
+                  </span>
+                }
+              >
+                {list.map((e) => row(e))}
+              </Section>
+            );
+          });
+        })()
       ) : (
         SECTIONS.filter((s) => !filter || filter === s.state).map(({ state, title }) => {
           const list = bucket(state);
