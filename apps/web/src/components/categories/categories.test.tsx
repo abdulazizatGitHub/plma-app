@@ -7,6 +7,9 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import CategoriesPage from "@/app/(main)/categories/page";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { TodayScreen } from "@/components/today/today-screen";
+import { SETTLE_MS } from "@/lib/v2/use-settle";
+
+const SETTLED = { timeout: SETTLE_MS + 2000 };
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
@@ -131,7 +134,7 @@ describe("New kinds on Today", () => {
     const routine = await screen.findByRole("region", { name: "Gym — Push day" });
     expect(within(routine).getByText("0/3")).toBeInTheDocument();
     for (const title of ["Bench", "OHP", "Dips"]) fireEvent.click(within(routine).getByRole("checkbox", { name: title }));
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Gym — Push day")).toBeInTheDocument());
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Gym — Push day")).toBeInTheDocument(), SETTLED);
     expect(screen.getByRole("img", { name: /% of today done/ })).toHaveAttribute("data-value", "100");
   });
 
@@ -146,9 +149,10 @@ describe("New kinds on Today", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show steps" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Script" }));
     expect(await screen.findByText("1/2 steps")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Video")).toBeInTheDocument();
+    // Still in To Do (and open) while ticking steps.
+    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Video")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: "Shoot" }));
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Video")).toBeInTheDocument());
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Video")).toBeInTheDocument(), SETTLED);
   });
 
   it("a timed habit logs minutes toward its target", async () => {
@@ -162,6 +166,6 @@ describe("New kinds on Today", () => {
     fireEvent.click(plus);
     expect(await screen.findByText("5 / 10 min")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Increase Stretch by 5" }));
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Stretch")).toBeInTheDocument());
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Stretch")).toBeInTheDocument(), SETTLED);
   });
 });

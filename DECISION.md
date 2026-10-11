@@ -571,3 +571,14 @@ Use this template for each decision:
   - Per-step reminders (PLN-03, second half) arrive with Phase 6.
   - Branch protection and Actions settings are the owner's to switch on in GitHub.
   - The first push's CI didn't start: GitHub listed the workflows as active, but no runs appeared. Check Settings → Actions → General.
+
+### 2026-10-11 — Rows settle in place before changing section
+
+- **Context:** The owner reported that tapping + (or ticking) made the row vanish from To Do and reappear further down in In Progress or Done, mid-edit.
+- **Decision:**
+  - A row stays in the section it was in while it's being worked on. Every progress tap (+/−, tick, checklist step, minutes) restarts a short pause of 2.5 s (`SETTLE_MS`).
+  - While it waits, a "→ In Progress" / "→ Done" tag says where it's going.
+  - It then moves, animated with the View Transitions API where supported. Reduced-motion settings get an instant move.
+  - The status tiles and the % update at once; only the row's position waits.
+  - Menu actions (Skip, Move) still apply at once, because the user asked for them explicitly.
+- **Where:** `lib/v2/use-settle.ts` (`useSettledPlacement`); Today places rows by their held state.

@@ -122,6 +122,7 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **PlanCard** | Preset icon tile, title, venue / course caption, "Next: Edit · Wed 14 Oct" and overdue tags, 36 px progress ring | ref 2 project card |
 | **StepRow** | Round tick, or a lock with "Waits for …"; kind icon and title; date and time inputs; a cadence warning box (soft progress fill) with suggested-date chips — never blocks | — |
 | **Rules editor** | Per step kind: weekday chips and a "keep apart by" select; scope tabs This plan / All <category> plans | — |
+| **Settle in place** | Rows don't jump while edited: they keep their section for 2.5 s after the last tap, show a primary "→ Done" tag, then move with a view transition | — |
 | **ConfirmSheet** | Small "Delete …?" sheet: body text, Cancel and a red-filled confirm button | — |
 | **GroupRow** (routine) | Card with a 28 px ring, title, "3/5" tag and category tag; expands to its sub-items as TaskRows; done when all sub-items are done | ref 2 project card |
 | **Checklist row** | TaskRow with a "2/5 steps" tag and a "Show steps" toggle listing small tick rows | — |

@@ -5,6 +5,9 @@ import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { addDays } from "@/components/kit";
+import { SETTLE_MS } from "@/lib/v2/use-settle";
+
+const SETTLED = { timeout: SETTLE_MS + 2000 };
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 import { TodayScreen } from "./today-screen";
@@ -76,14 +79,29 @@ describe("TodayScreen", () => {
     const todo = await screen.findByRole("region", { name: "To Do" });
     expect(within(todo).getByText("Make bed")).toBeInTheDocument();
 
+    // While you're editing, the row stays put and says where it's going…
     fireEvent.click(screen.getByRole("button", { name: "Increase Steps by 500" }));
-    const inProgress = await screen.findByRole("region", { name: "In Progress" });
-    expect(within(inProgress).getByText("Steps")).toBeInTheDocument();
-
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Steps")).toBeInTheDocument());
+    expect(within(screen.getByRole("region", { name: "To Do" })).getAllByText("In Progress").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("checkbox", { name: "Quiz" }));
-    const done = await screen.findByRole("region", { name: "Done" });
-    expect(within(done).getByText("Quiz")).toBeInTheDocument();
-    expect(ring()).toHaveAttribute("data-value", "33");
+    await waitFor(() => expect(ring()).toHaveAttribute("data-value", "33")); // the % updates at once
+    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Quiz")).toBeInTheDocument();
+    // …and moves once it settles.
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Steps")).toBeInTheDocument(), SETTLED);
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Quiz")).toBeInTheDocument(), SETTLED);
+  });
+
+  it("keeps a row in place while you keep tapping, then moves it", async () => {
+    store.save("items", item({ title: "Pages", tracking: { v: 1, kind: "quantity", unit: "pages", target: 5, step: 1 } }));
+    renderToday();
+    const plus = await screen.findByRole("button", { name: "Increase Pages by 1" });
+    for (let i = 0; i < 3; i++) {
+      fireEvent.click(plus);
+      await new Promise((r) => setTimeout(r, 900)); // each tap restarts the wait
+    }
+    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Pages")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "In Progress" })).not.toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Pages")).toBeInTheDocument(), SETTLED);
   });
 
   it("reaches 100% when the only To Do item is skipped", async () => {

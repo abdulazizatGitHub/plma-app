@@ -27,6 +27,7 @@ import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { formatTime } from "@/lib/v2/category-style";
 import { useActions, useCategories, useDay, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
+import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
 import { PrayerGroup } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
@@ -81,6 +82,7 @@ export function TodayScreen() {
   const [view, setView] = useState<View>("status");
   const { openAdd, setDefaultDate, registerShowDay } = useAddSheet();
   const run = useActions();
+  const { held, hold } = useSettledPlacement();
 
   useEffect(() => {
     const t = todayLocalDate();
@@ -138,20 +140,33 @@ export function TodayScreen() {
   // Prayers keep their own row up top; routines sort into the buckets like any item.
   const groups = entries.filter((e) => e.children && isPrayerGroup(e.item));
   const rows = entries.filter((e) => !(e.children && isPrayerGroup(e.item))).sort(byWindow(times));
-  const bucket = (s: EntryState) => rows.filter((e) => entryState(e) === s);
+  // Where a row is shown: its real state, unless it's being edited right now (it then
+  // stays put and moves once it settles). Skipped / moved rows leave at once.
+  const placed = (e: DayEntry): EntryState => {
+    const real = entryState(e);
+    return real === "not_today" ? real : (held.get(e.key) ?? real);
+  };
+  const bucket = (s: EntryState) => rows.filter((e) => placed(e) === s);
   const notToday = bucket("not_today");
   const nothing = ready && rows.length === 0 && groups.length === 0;
   const categoryOf = (e: DayEntry) => (e.item.categoryId ? byId.get(e.item.categoryId) : undefined);
-  const row = (e: DayEntry, own?: string, dueLabel?: string) => (
-    <DayEntryRow
-      key={`${own ?? date}|${e.key}`}
-      entry={e}
-      date={own ?? date}
-      category={categoryOf(e)}
-      dueLabel={dueLabel}
-      onMore={(entry, anchor) => setMenuFor({ entry, anchor, date: own })}
-    />
-  );
+  const row = (e: DayEntry, own?: string, dueLabel?: string) => {
+    const real = entryState(e);
+    const shown = placed(e);
+    return (
+      <div key={`${own ?? date}|${e.key}`} style={{ viewTransitionName: rowTransitionName(`${own ?? date}|${e.key}`) }}>
+        <DayEntryRow
+          entry={e}
+          date={own ?? date}
+          category={categoryOf(e)}
+          dueLabel={dueLabel}
+          onInteract={own ? undefined : () => hold(e.key, shown)}
+          movingTo={shown !== real ? real : undefined}
+          onMore={(entry, anchor) => setMenuFor({ entry, anchor, date: own })}
+        />
+      </div>
+    );
+  };
   const goTo = (d: string) => {
     setDate(d);
     setFilter(null);

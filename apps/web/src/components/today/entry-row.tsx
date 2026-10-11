@@ -17,8 +17,9 @@ import {
   toggleDone,
   type Category,
   type DayEntry,
+  type EntryState,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
@@ -29,6 +30,7 @@ import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
 import { usePlanIsComplete, useStepLock } from "@/lib/v2/use-plans";
 import { useNow } from "@/lib/v2/use-now";
 
+const MOVE_LABEL: Record<EntryState, string> = { todo: "To Do", in_progress: "In Progress", done: "Done", not_today: "Not today" };
 const fmt = (n: number) => n.toLocaleString("en-US");
 const PRAYER_NAME: Record<string, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 const localDateOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -110,6 +112,10 @@ type EntryRowProps = {
   onMore: (entry: DayEntry, anchor: HTMLElement) => void;
   /** Shown as a red tag, e.g. "Was due Fri 9 Oct" (Overdue list). */
   dueLabel?: string;
+  /** Called on every tap that changes progress, so Today can keep the row in place a moment. */
+  onInteract?: () => void;
+  /** Where the row will move once it settles (shown as "→ Done"). */
+  movingTo?: EntryState;
 };
 
 /**
@@ -119,7 +125,7 @@ type EntryRowProps = {
 const openChecklists = new Set<string>();
 
 /** The checklist's steps as small tick rows (TRK-04). */
-function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
+function ChecklistSteps({ entry, date, onInteract }: { entry: DayEntry; date: string; onInteract?: () => void }) {
   const run = useActions();
   const t = entry.item.tracking;
   if (t.kind !== "checklist") return null;
@@ -132,7 +138,10 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
             type="button"
             role="checkbox"
             aria-checked={ticks[i]}
-            onClick={() => void run((ctx) => toggleChecklistStep(entry, date, i, ctx))}
+            onClick={() => {
+              onInteract?.();
+              void run((ctx) => toggleChecklistStep(entry, date, i, ctx));
+            }}
             className="flex min-h-8 w-full items-center gap-2 rounded-lg px-1 text-left text-[13px] text-ink hover:bg-track"
           >
             <span
@@ -154,7 +163,7 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
  * expand to their steps, everything else is the one-tap check. Tapping the
  * title opens the item.
  */
-export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowProps) {
+export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo }: EntryRowProps) {
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
@@ -178,6 +187,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       return;
     }
     const plan = entry.plan;
+    onInteract?.();
     void run((ctx) => toggleDone(entry, date, ctx)).then(() => {
       if (plan && entryState(entry) !== "done" && planComplete(plan.id, date)) notify({ message: `Plan complete — ${plan.title}` });
     });
@@ -202,6 +212,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
   const list = entryTags(entry, category, dueLabel, when, lockedBy);
+  // Heads-up while the row waits to move (it stays put while you're editing).
+  if (movingTo) list.unshift(<Tag key="moving" tone="primary" icon={<ArrowRight />}>{MOVE_LABEL[movingTo]}</Tag>);
   const tags = list.length ? list : undefined;
 
   if (t.kind === "quantity") {
@@ -210,7 +222,10 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
         title={entry.item.title}
         tags={tags}
         value={entry.occurrence?.value ?? 0}
-        onChange={(v) => void run((ctx) => setQuantity(entry, date, v, ctx))}
+        onChange={(v) => {
+          onInteract?.();
+          void run((ctx) => setQuantity(entry, date, v, ctx));
+        }}
         step={t.step}
         target={t.target}
         unit={t.unit}
@@ -227,7 +242,10 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
         title={entry.item.title}
         tags={tags}
         value={entry.occurrence?.value ?? 0}
-        onChange={(v) => void run((ctx) => setDuration(entry, date, v, ctx))}
+        onChange={(v) => {
+          onInteract?.();
+          void run((ctx) => setDuration(entry, date, v, ctx));
+        }}
         step={5}
         target={t.targetMin}
         unit="min"
@@ -261,7 +279,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
             {showSteps ? "Hide steps" : "Show steps"}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showSteps ? "rotate-180" : ""}`} aria-hidden />
           </button>
-          {showSteps ? <ChecklistSteps entry={entry} date={date} /> : null}
+          {showSteps ? <ChecklistSteps entry={entry} date={date} onInteract={onInteract} /> : null}
         </>
       ) : null}
     </TaskRow>
