@@ -27,6 +27,8 @@ export default defineConfig({
         test: {
           name: "web",
           environment: "jsdom",
+          // Some UI tests wait for rows to settle (SETTLE_MS) before asserting where they land.
+          testTimeout: 15_000,
           include: ["apps/web/src/**/*.test.{ts,tsx}"],
           setupFiles: ["apps/web/vitest.setup.ts"],
         },

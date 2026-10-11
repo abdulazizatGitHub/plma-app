@@ -1,11 +1,12 @@
 "use client";
 
-import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, skip, start, toggleDone, type DayEntry } from "@life/shared";
+import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, removeStep, skip, start, toggleDone, type DayEntry, type ItemDependency } from "@life/shared";
 import { ArrowRight, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { useStore } from "@/components/providers/store-provider";
 import { isoDate } from "@/lib/forms/validators";
 import { useActions } from "@/lib/v2/use-day";
 
@@ -33,6 +34,7 @@ type RowActionsMenuProps = {
 export function RowActionsMenu({ target, date: screenDate, today, onClose }: RowActionsMenuProps) {
   const run = useActions();
   const { openEdit } = useAddSheet();
+  const { store } = useStore();
   const router = useRouter();
   const [picking, setPicking] = useState(false);
   const [picked, setPicked] = useState(addDays(today, 2));
@@ -136,7 +138,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
               icon={<Trash2 />}
               label="Delete"
               tone="danger"
-              onClick={() => act((ctx) => deleteItemTree(entry.item, (entry.children ?? []).map((c) => c.item), ctx))}
+              onClick={() =>
+                act((ctx) => {
+                  // A plan step takes its "waits for" links with it.
+                  if (entry.plan && store) {
+                    const deps = store.query("itemDependencies", `WHERE ("item_id" = ? OR "depends_on_id" = ?) AND "deleted_at" IS NULL`, [entry.item.id, entry.item.id]) as unknown as ItemDependency[];
+                    return removeStep(entry.item, deps, ctx);
+                  }
+                  return deleteItemTree(entry.item, (entry.children ?? []).map((c) => c.item), ctx);
+                })
+              }
             />
           ) : null}
         </>

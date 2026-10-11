@@ -5,7 +5,6 @@ import {
   dateRange,
   deleteItemTree,
   itemHistory,
-  todayLocalDate,
   unarchiveItem,
   type DayEntry,
   type Occurrence,
@@ -22,6 +21,7 @@ import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actio
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { KIND_LABEL, scheduleSummary, trackingSummary } from "@/lib/v2/item-text";
 import { useActions, useAllItems, useCategory, useDay, useItem, useItemOccurrences } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 /** Days of history behind the streak and completion figures. */
 const STATS_DAYS = 90;
@@ -56,15 +56,13 @@ function ItemView() {
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [month, setMonth] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
   useEffect(() => {
-    const t = todayLocalDate();
-    setToday(t); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
-    setMonth(t.slice(0, 7));
-  }, []);
+    if (today) setMonth((m) => m ?? today.slice(0, 7)); // eslint-disable-line react-hooks/set-state-in-effect -- start on this month
+  }, [today]);
 
   const day = today ?? "1970-01-01";
   const { entries } = useDay(day);

@@ -12,7 +12,6 @@ import {
   setDependencies,
   stepDone,
   stepKindOf,
-  todayLocalDate,
   toggleDone,
   updatePlan,
   updateStep,
@@ -21,7 +20,7 @@ import {
 } from "@life/shared";
 import { ArrowLeft, Link2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, createElement, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Suspense, createElement, useMemo, useState, type FormEvent } from "react";
 import { Button, ConfirmSheet, Pill, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, Ring, Sheet, Tag, TextField } from "@/components/kit";
 import { PRESET_ICON, stepIcon } from "@/components/plans/plan-icons";
 import { RulesEditor } from "@/components/plans/rules-editor";
@@ -29,6 +28,7 @@ import { StepRow } from "@/components/plans/step-row";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useActions, useCategories } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 import { usePlansData } from "@/lib/v2/use-plans";
 
 const dateOf = (i: Item) => (i.schedule.kind === "once" ? i.schedule.date : null);
@@ -157,10 +157,9 @@ function PlanView() {
   const router = useRouter();
   const { notify } = useAddSheet();
   const categories = useCategories();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [menu, setMenu] = useState<{ step: Item; anchor: HTMLElement } | null>(null);
   const [panel, setPanel] = useState<Panel>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
 
   const plan = data.plans.find((p) => p.id === id) ?? null;
   const steps = useMemo(() => (plan ? data.steps.filter((s) => s.parentId === plan.id) : []), [data.steps, plan]);

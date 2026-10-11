@@ -1,6 +1,6 @@
 "use client";
 
-import { PLAN_PRESETS, planProgress, todayLocalDate } from "@life/shared";
+import { PLAN_PRESETS, planProgress } from "@life/shared";
 import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { Button } from "@/components/kit";
 import { NewPlanSheet } from "@/components/plans/new-plan-sheet";
 import { PlanCard } from "@/components/plans/plan-card";
 import { usePlansData } from "@/lib/v2/use-plans";
+import { useToday } from "@/lib/v2/use-today";
 
 /** Plans (PLN-01…06): collabs, courses and other multi-step work with dates. */
 function Plans() {
@@ -16,10 +17,9 @@ function Plans() {
   const askNew = useSearchParams().get("new") === "1";
   const [creating, setCreating] = useState(false);
   const [showDone, setShowDone] = useState(false);
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   useEffect(() => {
-    setToday(todayLocalDate()); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
-    if (askNew) setCreating(true);
+    if (askNew) setCreating(true); // eslint-disable-line react-hooks/set-state-in-effect -- open the sheet when arriving with ?new=1
   }, [askNew]);
 
   if (!ready || !today) return <div className="skeleton h-40" aria-busy="true" aria-label="Loading plans" />;

@@ -163,4 +163,21 @@ describe("TodayScreen", () => {
     await act(async () => undefined);
     expect(store.query("occurrences").filter((o) => o.status === "done")).toHaveLength(1);
   });
+
+  it("+ on a past day adds the task to today (a new task can't start in the past)", async () => {
+    renderToday();
+    const past = addDays(todayLocalDate(), -3);
+    const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${past}T12:00:00`));
+    await screen.findByRole("button", { name: "Previous week" });
+    if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add a task" }));
+    fireEvent.change(screen.getByLabelText(/What needs doing/), { target: { value: "Call the bank" } });
+    fireEvent.click(screen.getByRole("button", { name: "Add task" }));
+    await waitFor(() => {
+      const saved = store.query("items").find((r) => r.title === "Call the bank") as unknown as Item | undefined;
+      expect(saved?.schedule).toEqual({ v: 1, kind: "once", date: todayLocalDate() });
+    });
+  });
 });
+

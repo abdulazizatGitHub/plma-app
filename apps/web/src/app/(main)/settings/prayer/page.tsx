@@ -7,18 +7,18 @@ import {
   STARTER_PACKS,
   createPrayerSet,
   savePrayerSet,
-  todayLocalDate,
   type PrayerTimeKey,
 } from "@life/shared";
 import { ArrowLeft, LocateFixed, MapPin, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Button, Checkbox, Pill, SegmentedTabs } from "@/components/kit";
 import { ListEditor, newRow, type ListRow } from "@/components/items/list-editor";
 import { useLocation } from "@/components/location/location-provider";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { formatTime } from "@/lib/v2/category-style";
 import { useActions, useAllCategories, useAllItems, usePrayerSet, usePrayerTimes, useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 const LABEL: Record<PrayerTimeKey, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 const ADJUSTABLE = PRAYER_TIME_ORDER.filter((k) => k !== "sunrise");
@@ -46,8 +46,7 @@ export default function PrayerSettingsPage() {
   const { group, prayers } = usePrayerSet();
   const { items } = useAllItems();
   const categories = useAllCategories();
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
+  const today = useToday();
   const times = usePrayerTimes(today);
   const [rows, setRows] = useState<ListRow[] | null>(null);
   const prayerRows = rows ?? prayers.map((p) => newRow(p.title, p.id));
