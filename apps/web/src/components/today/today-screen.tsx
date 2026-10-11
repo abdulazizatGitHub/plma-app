@@ -278,11 +278,23 @@ export function TodayScreen() {
       <div data-tour="list" className="space-y-5">
       {nothing ? (
         <div className="card flex flex-col items-center gap-2 px-5 py-6 text-center">
-          <p className="text-[14px] font-medium text-ink">Nothing planned for {dayLabel(date, today).toLowerCase()}.</p>
-          <p className="text-[12px] text-ink-2">Add something, or enjoy the free day — it still counts as 100%.</p>
-          <Button onClick={openAdd} className="mt-1">
-            <Plus className="h-4 w-4" aria-hidden /> Add a task
-          </Button>
+          {access === "late" || access === "history" ? (
+            // A past day can't be planned any more; say what it was instead of inviting edits.
+            <p className="text-[14px] font-medium text-ink">Nothing was planned for {dayLabel(date, today).toLowerCase()}.</p>
+          ) : (
+            <>
+              <p className="text-[14px] font-medium text-ink">
+                Nothing planned for {dayLabel(date, today).toLowerCase()}
+                {access === "planned" ? " yet" : ""}.
+              </p>
+              <p className="text-[12px] text-ink-2">
+                {access === "planned" ? "Plan ahead: add a task for that day." : "Add something, or enjoy the free day — it still counts as 100%."}
+              </p>
+              <Button onClick={openAdd} className="mt-1">
+                <Plus className="h-4 w-4" aria-hidden /> Add a task
+              </Button>
+            </>
+          )}
         </div>
       ) : view === "day" && times ? (
         (() => {

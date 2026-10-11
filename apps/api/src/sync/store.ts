@@ -54,9 +54,14 @@ export async function pullChanges(sql: Sql, userId: string, since?: string): Pro
  * Makes sure an authenticated user has a profile row and default settings
  * (Karachi method, Hanafi Asr, friends visibility). Cached per process.
  */
-export function userBootstrapper(sql: Sql) {
+export type EnsureUser = ((user: AuthUser) => Promise<void>) & {
+  /** Drop the "already exists" memo, e.g. after the row turned out to be missing. */
+  forget: (userId: string) => void;
+};
+
+export function userBootstrapper(sql: Sql): EnsureUser {
   const known = new Set<string>();
-  return async function ensureUser(user: AuthUser) {
+  const ensureUser = async function ensureUser(user: AuthUser) {
     if (known.has(user.id)) return;
     const now = new Date().toISOString();
     const s = defaultUserSettings(user.id, now);
@@ -72,5 +77,9 @@ export function userBootstrapper(sql: Sql) {
         ON CONFLICT DO NOTHING`;
     });
     known.add(user.id);
+  } as EnsureUser;
+  ensureUser.forget = (userId: string) => {
+    known.delete(userId);
   };
+  return ensureUser;
 }

@@ -48,6 +48,8 @@ export async function syncOnce(store: LocalStore, { apiBase, getToken, fetchImpl
       const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
       return body.error?.message ?? `Refused (${res.status})`;
     }
+    // Briefly unavailable or rate-limited: like being offline — keep the changes and retry.
+    if (res.status === 503 || res.status === 429) throw new Error("Server busy — your changes are saved on this device");
     if (!res.ok) throw new Stop("server", `Push failed (${res.status})`);
     return null;
   };
@@ -75,6 +77,8 @@ export async function syncOnce(store: LocalStore, { apiBase, getToken, fetchImpl
     const since = store.getMeta(CURSOR);
     const res = await fetchImpl(`${apiBase}/v1/sync/pull${since ? `?since=${encodeURIComponent(since)}` : ""}`, { headers });
     if (res.status === 401) throw new Stop("signed_out", "Session expired");
+    // Briefly unavailable or rate-limited: like being offline — keep the changes and retry.
+    if (res.status === 503 || res.status === 429) throw new Error("Server busy — your changes are saved on this device");
     if (!res.ok) throw new Stop("server", `Pull failed (${res.status})`);
     const data = (await res.json()) as SyncPullResponseV2;
     for (const entity of SYNC_ENTITIES) {

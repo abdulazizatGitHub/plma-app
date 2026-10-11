@@ -8,7 +8,7 @@ import { addDays } from "@/components/kit";
 import { SETTLE_MS } from "@/lib/v2/use-settle";
 
 const SETTLED = { timeout: SETTLE_MS + 2000 };
-import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
+import { AddSheetProvider, useAddSheet } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 import { TodayScreen } from "./today-screen";
 
@@ -52,9 +52,20 @@ function item(over: Partial<Item>): StoredRow {
   } as StoredRow;
 }
 
+/** Stand-in for the bottom nav's "+" (the nav isn't part of TodayScreen). */
+function QuickAddButton() {
+  const { openAdd } = useAddSheet();
+  return (
+    <button type="button" onClick={openAdd}>
+      Open quick add
+    </button>
+  );
+}
+
 function renderToday() {
   return render(
     <AddSheetProvider>
+      <QuickAddButton />
       <TodayScreen />
     </AddSheetProvider>,
   );
@@ -171,7 +182,10 @@ describe("TodayScreen", () => {
     await screen.findByRole("button", { name: "Previous week" });
     if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
-    fireEvent.click(await screen.findByRole("button", { name: "Add a task" }));
+    // A past day doesn't invite planning; the + in the nav still works and adds to today.
+    expect(await screen.findByText(/Nothing was planned for/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add a task" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open quick add" }));
     fireEvent.change(screen.getByLabelText(/What needs doing/), { target: { value: "Call the bank" } });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
     await waitFor(() => {
