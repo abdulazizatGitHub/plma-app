@@ -5,8 +5,11 @@ import {
   dayProgress,
   defaultUserSettings,
   pendingItems,
+  dayStreak,
   prayerTimes,
+  toLocalDateString,
   updateSettings,
+  type DayStreak,
   type DayPrayerTimes,
   type UserSettings,
   type ActionContext,
@@ -313,4 +316,23 @@ export function usePrayerSet(): { group: Item | null; prayers: Item[] } {
     const prayers = group ? items.filter((i) => i.parentId === group.id && !i.archivedAt).sort((a, b) => a.sortOrder - b.sortOrder) : [];
     return { group, prayers };
   }, [items]);
+}
+
+/** Perfect-day streak (every required item done) up to `today`, from your first item (max a year back). */
+export function useDayStreak(today: string | null): DayStreak {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(() => {
+    if (!store || !today) return { current: 0, best: 0 };
+    const items = readItems(store);
+    if (!items.length) return { current: 0, best: 0 };
+    const first = items.reduce((min, i) => (i.createdAt < min ? i.createdAt : min), items[0].createdAt);
+    const firstDay = toLocalDateString(new Date(first));
+    const [y, m, d] = today.split("-").map(Number);
+    const yearAgo = new Date(Date.UTC(y - 1, m - 1, d)).toISOString().slice(0, 10);
+    const from = firstDay > yearAgo ? firstDay : yearAgo;
+    const occs = store.query("occurrences", `WHERE "date" >= ? AND "date" <= ? AND "deleted_at" IS NULL`, [from, today]) as unknown as Occurrence[];
+    return dayStreak(items, occs, from, today);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, version, today]);
 }

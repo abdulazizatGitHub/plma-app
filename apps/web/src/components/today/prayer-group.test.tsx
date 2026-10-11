@@ -71,7 +71,7 @@ describe("Prayer block on Today", () => {
     await waitFor(() => expect(occOf("isha")?.status).toBe("missed"));
   });
 
-  it("yesterday: unmarked prayers read as missed, and tapping one records it as qada", async () => {
+  it("yesterday (closed): unmarked prayers read as missed, and tapping one recovers it as qada", async () => {
     today();
     const yesterday = addDays(todayLocalDate(), -1);
     const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${yesterday}T12:00:00`));
@@ -80,7 +80,7 @@ describe("Prayer block on Today", () => {
     fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
     const block = await screen.findByRole("region", { name: "Daily prayers" });
     await waitFor(() => expect(within(block).getByRole("button", { name: /^Maghrib, missed/ })).toBeInTheDocument());
-    expect(within(block).getByText(/Yesterday — tap a prayer you made up to mark it qada/)).toBeInTheDocument();
+    expect(within(block).getByText(/tap one to recover it as qada/)).toBeInTheDocument();
     fireEvent.click(within(block).getByRole("button", { name: /^Maghrib, missed/ }));
     await waitFor(() => expect(occOf("maghrib")).toMatchObject({ status: "done", detail: { qada: true }, date: yesterday }));
   });

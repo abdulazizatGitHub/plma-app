@@ -52,7 +52,11 @@ describe("Prayer insights page", () => {
       </AddSheetProvider>,
     );
     const panel = await screen.findByRole("region", { name: "Prayer insights" });
-    expect(within(panel).getAllByText(/Fajr is your most missed prayer|Most missed/).length).toBeGreaterThan(0);
+    // "This week" may hold only today (e.g. on a Monday); the month covers the sample days unless the month just began.
+    if (addDays(today, -2).slice(0, 7) === today.slice(0, 7)) {
+      fireEvent.click(within(panel).getByRole("tab", { name: "This month" }));
+      expect(within(panel).getAllByText(/Fajr is your most missed prayer|Most missed/).length).toBeGreaterThan(0);
+    }
     const missed = within(panel).getByRole("region", { name: "Missed prayers" });
     // Day before yesterday (all unmarked) plus yesterday's Fajr.
     expect(within(missed).getAllByRole("button", { name: "Mark as qada" })).toHaveLength(6);

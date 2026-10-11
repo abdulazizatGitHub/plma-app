@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { buildDay, dayAccess, todayLocalDate, type Item } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
@@ -52,7 +52,7 @@ describe("day access (daily items belong to their day)", () => {
 
   it("classifies days", () => {
     expect(dayAccess(today, today)).toBe("live");
-    expect(dayAccess(addDays(today, -1), today)).toBe("late");
+    expect(dayAccess(addDays(today, -1), today)).toBe("history"); // a day locks when it ends
     expect(dayAccess(addDays(today, -2), today)).toBe("history");
     expect(dayAccess(addDays(today, 1), today)).toBe("planned");
   });
@@ -73,10 +73,10 @@ describe("day access (daily items belong to their day)", () => {
     expect(screen.queryByRole("button", { name: "Increase Steps by 500" })).not.toBeInTheDocument();
   });
 
-  it("yesterday can still be logged (forgot to record it)", async () => {
+  it("yesterday is locked once the day has ended", async () => {
     row(habit({ title: "Vitamins" }), addDays(today, -1));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Vitamins" }));
-    await waitFor(() => expect(store.query("occurrences")).toHaveLength(1));
+    expect(screen.getByRole("checkbox", { name: "Vitamins" })).toBeDisabled();
+    expect(screen.getByText("Missed")).toBeInTheDocument();
   });
 });
 

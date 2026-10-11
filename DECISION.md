@@ -603,3 +603,19 @@ Use this template for each decision:
   - The stepper folds once the goal is reached; "Log more" brings it back.
   - It never folds mid-tap: a row still being edited keeps its stepper until it settles.
 
+
+### 2026-10-12 — Days lock at the user's day-end; Today summary card
+
+- **Context:** After midnight the owner could still edit the previous day. Its progress never became final, so streaks and future rewards had nothing solid to stand on. The 48 px ring was also too small to say much about the day.
+- **Decision (day lock):**
+  - Grace is removed (`LOG_GRACE_DAYS = 0`). A day becomes **history** (read-only) as soon as it ends.
+  - "When it ends" is the user's choice: **Profile → Your day → My day ends at**, from midnight up to 4 AM (`user_settings.day_end_hour`, migration `0003`).
+  - Before that hour it is still the previous day. `logicalToday` and `TodayProvider` switch at that boundary, on focus, and when the app returns to the foreground.
+  - Locked days still allow two kinds of recovery: moving unfinished one-off tasks to today, and recording missed prayers as qada.
+- **Decision (summary card):** the header ring is replaced by one card at the top of Today:
+  - a 112 px segmented ring (done, in progress, to do; missed on a closed day) with the % and "done" or "final"
+  - an "X of Y done" legend
+  - a one-line summary: what's left and what's next, or "Day closed"
+  - a per-prayer bar
+  - the perfect-day streak: current and best
+- **Streak rule (`dayStreak`):** consecutive days at 100%. Days with nothing due are neutral. An unfinished today doesn't break the run until it locks. Badges and rewards (Phase 8) build on these locked days.

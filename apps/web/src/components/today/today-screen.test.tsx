@@ -71,7 +71,7 @@ function renderToday() {
   );
 }
 
-const ring = () => screen.getByRole("img", { name: /% of today done/ });
+const ring = () => screen.getByRole("img", { name: /% of the day done/ });
 
 beforeAll(async () => {
   SQL = await initSqlJs();

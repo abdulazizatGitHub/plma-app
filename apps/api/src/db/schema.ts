@@ -119,6 +119,7 @@ export const userSettings = pgTable("user_settings", {
   prayerManual: jsonb("prayer_manual").$type<Record<string, string>>().notNull().default({}),
   jumuahLabel: boolean("jumuah_label").notNull().default(true),
   locationMode: text("location_mode").notNull().default("unset"),
+  dayEndHour: smallint("day_end_hour").notNull().default(0),
   quietFrom: text("quiet_from"),
   quietTo: text("quiet_to"),
   visibility: text("visibility").notNull().default("friends"),

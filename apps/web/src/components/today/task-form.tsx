@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
 import { Button, Pill, SegmentedTabs, TextField, addDays } from "@/components/kit";
 import { useForm } from "@/lib/forms/use-form";
+import { useToday } from "@/lib/v2/use-today";
 import { isoDate, taskTitle } from "@/lib/forms/validators";
 
 type DateChoice = "today" | "tomorrow" | "pick" | "none";
@@ -41,7 +42,7 @@ type TaskFormProps = {
 
 /** Quick add / edit for tasks: title, day + optional time, category, importance. */
 export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions, onNewPlan }: TaskFormProps) {
-  const today = todayLocalDate();
+  const today = useToday() ?? todayLocalDate();
   const form = useForm(
     {
       title: initial.title ?? "",

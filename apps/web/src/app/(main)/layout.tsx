@@ -5,11 +5,13 @@ import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { RequireAuth } from "@/components/providers/require-auth";
 import { StoreProvider } from "@/components/providers/store-provider";
+import { TodayProvider } from "@/lib/v2/use-today";
 
 export default function MainLayout({ children }: LayoutProps<"/">) {
   return (
     <RequireAuth>
       <StoreProvider>
+        <TodayProvider>
         <AddSheetProvider>
           <LocationProvider>
           <OnboardingGate />
@@ -22,6 +24,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
           <AppNav />
           </LocationProvider>
         </AddSheetProvider>
+        </TodayProvider>
       </StoreProvider>
     </RequireAuth>
   );

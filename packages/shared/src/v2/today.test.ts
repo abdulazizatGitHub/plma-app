@@ -3,10 +3,14 @@ import {
   bringBack,
   buildDay,
   createTask,
+  dayAccess,
+  dayStreak,
   dayProgress,
   describeSchedule,
   entryState,
   isDueOn,
+  logicalToday,
+  nextDayEnd,
   itemSchema,
   moveTo,
   occurrenceIdFor,
@@ -218,5 +222,55 @@ describe("occurrenceIdFor", () => {
     expect(a).not.toBe(await occurrenceIdFor("item-1", SAT));
     expect(a).not.toBe(await occurrenceIdFor("item-1", FRI, `moved:${SAT}`));
     expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+});
+
+describe("day lock", () => {
+  it("keeps the previous day until the user's day-end hour", () => {
+    expect(logicalToday(0, new Date(2026, 9, 12, 0, 30))).toBe("2026-10-12");
+    expect(logicalToday(2, new Date(2026, 9, 12, 1, 30))).toBe("2026-10-11");
+    expect(logicalToday(2, new Date(2026, 9, 12, 2, 0))).toBe("2026-10-12");
+    expect(logicalToday(9, new Date(2026, 9, 12, 4, 30))).toBe("2026-10-12"); // clamped to 4 AM
+  });
+
+  it("finds the next boundary", () => {
+    expect(nextDayEnd(0, new Date(2026, 9, 11, 23, 0))).toEqual(new Date(2026, 9, 12, 0, 0));
+    expect(nextDayEnd(3, new Date(2026, 9, 12, 1, 0))).toEqual(new Date(2026, 9, 12, 3, 0));
+    expect(nextDayEnd(3, new Date(2026, 9, 12, 9, 0))).toEqual(new Date(2026, 9, 13, 3, 0));
+  });
+
+  it("locks every past day once it has ended", () => {
+    expect(dayAccess("2026-10-12", "2026-10-12")).toBe("live");
+    expect(dayAccess("2026-10-11", "2026-10-12")).toBe("history");
+    expect(dayAccess("2026-10-13", "2026-10-12")).toBe("planned");
+  });
+});
+
+describe("dayStreak", () => {
+  const D = (d: number) => `2026-10-${String(d).padStart(2, "0")}`;
+  async function doneOn(items: Item[], occs: Occurrence[], dates: number[]) {
+    for (const d of dates) {
+      const entry = buildDay(items, occs, D(d)).find((e) => e.item.id === items[0].id)!;
+      apply(items, occs, await toggleDone(entry, D(d), ctx));
+    }
+  }
+
+  it("counts perfect days back from today; an unfinished today doesn't break it", async () => {
+    const items = [item({ title: "Read", createdAt: "2026-10-01T08:00:00.000Z" })];
+    const occs: Occurrence[] = [];
+    await doneOn(items, occs, [1, 2, 3, 5, 6, 7]);
+    expect(dayStreak(items, occs, D(1), D(8))).toEqual({ current: 3, best: 3 });
+    await doneOn(items, occs, [8]);
+    expect(dayStreak(items, occs, D(1), D(8))).toEqual({ current: 4, best: 4 });
+  });
+
+  it("breaks on a missed past day; days with nothing due are neutral", async () => {
+    const weekdays = item({ title: "Gym", schedule: { v: 1, kind: "weekdays", weekdays: [1] } });
+    const items = [weekdays];
+    const occs: Occurrence[] = [];
+    // Mondays: 5th and 12th Oct 2026. Only the 12th is done.
+    const entry = buildDay(items, occs, D(12)).find((e) => e.item.id === weekdays.id)!;
+    apply(items, occs, await toggleDone(entry, D(12), ctx));
+    expect(dayStreak(items, occs, D(1), D(14))).toEqual({ current: 1, best: 1 });
   });
 });

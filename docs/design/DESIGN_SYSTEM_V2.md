@@ -99,7 +99,7 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | Radius | Cards 20; tiles 20; inputs and buttons 14; chips and segmented controls 999 |
 | Spacing | 4-pt base. Screen gutter 16. Card padding 16. Row height ≥ 56. Touch targets ≥ 44. |
 | Shadow | One level only: `0 4px 16px rgb(27 26 34 / 6%)` on cards; none in dark mode, where the border is used instead |
-| Rings | 6–8 px stroke with round caps on `--track`, % centred in Number style |
+| Rings | 6–8 px stroke with round caps on `--track`, % centred in Number style. Exception: the Today summary card ring is 112 px with a 10 px stroke, segmented per item in status colors (done, in progress, to do, missed) |
 | Bars | 6 px wide, fully rounded, on `--track` |
 
 ## 5. Components

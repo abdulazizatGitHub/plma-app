@@ -20,7 +20,6 @@ import {
   type EntryState,
   canLog,
   dayAccess,
-  todayLocalDate,
   type DayAccess,
 } from "@life/shared";
 import { AlertTriangle, ArrowRight, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
@@ -33,6 +32,7 @@ import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
 import { usePlanIsComplete, useStepLock } from "@/lib/v2/use-plans";
 import { useNow } from "@/lib/v2/use-now";
+import { useToday } from "@/lib/v2/use-today";
 
 const MOVE_LABEL: Record<EntryState, string> = { todo: "To Do", in_progress: "In Progress", done: "Done", not_today: "Not today" };
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -177,7 +177,8 @@ function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry
 export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp }: EntryRowProps) {
   // Daily items belong to their day: today is live, yesterday can still be logged,
   // older days are history, future days are for planning (see day-access.ts).
-  const access = accessProp ?? dayAccess(date, todayLocalDate());
+  const today = useToday() ?? date;
+  const access = accessProp ?? dayAccess(date, today);
   const readOnly = !canLog(access);
   const run = useActions();
   const router = useRouter();

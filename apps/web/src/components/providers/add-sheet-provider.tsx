@@ -7,6 +7,7 @@ import { Sheet, Toast, type ToastData } from "@/components/kit";
 import { TaskForm } from "@/components/today/task-form";
 import { whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 type AddSheetState = {
   /** Opens quick add; the day defaults to the one shown on Today. */
@@ -35,6 +36,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   const run = useActions();
   const nextSortOrder = useNextSortOrder();
   const router = useRouter();
+  const appToday = useToday();
   const close = useCallback(() => setMode(null), []);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
 
   /** Tell the user where the task went, with a way to get there (owner: tasks seemed to vanish). */
   const confirm = (draft: TaskDraft, edited: boolean) => {
-    const today = todayLocalDate();
+    const today = appToday ?? todayLocalDate();
     const verb = edited ? "Saved" : "Added";
     if (draft.date === null) {
       setToast({ message: `${verb} to Pending`, action: { label: "View", onClick: () => router.push("/pending") } });
@@ -102,7 +104,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
                     categoryId: editing.categoryId,
                     priority: editing.priority,
                   }
-                : { date: defaultDate ?? todayLocalDate() }
+                : { date: defaultDate ?? appToday ?? todayLocalDate() }
             }
             submitLabel={editing ? "Save" : "Add task"}
             onNewPlan={

@@ -11,7 +11,6 @@ import {
   normalisePrayerKey,
   prayerKeyOf,
   prayerMark,
-  todayLocalDate,
   weekdayOf,
   type DayEntry,
   type DayPrayerTimes,
@@ -27,6 +26,7 @@ import { formatTime } from "@/lib/v2/category-style";
 import { longDate } from "@/lib/v2/dates";
 import { useActions, usePrayerTimes, useUserSettings } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
+import { useToday } from "@/lib/v2/use-today";
 
 const CHIP: Record<PrayerMark, PrayerChip["status"]> = { prayed: "done", qada: "qada", missed: "missed", open: "open" };
 const TIME_KEYS = ["fajr", "sunrise", "dhuhr", "asr", "maghrib", "isha"];
@@ -61,7 +61,7 @@ export function PrayerGroup({ entry, date }: { entry: DayEntry; date: string }) 
   const { ensure } = useLocation();
   const [chipMenu, setChipMenu] = useState<{ child: DayEntry; anchor: HTMLElement } | null>(null);
   const [allOpen, setAllOpen] = useState(false);
-  const today = todayLocalDate();
+  const today = useToday() ?? date;
   const isToday = date === today;
   const children = entry.children ?? [];
   const friday = weekdayOf(date) === 5 && settings.jumuahLabel;
