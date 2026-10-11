@@ -25,7 +25,7 @@ import type { LocalStore } from "./local-store";
 const noop = () => () => undefined;
 
 /** Re-renders when the store changes. */
-function useStoreVersion(store: LocalStore | null) {
+export function useStoreVersion(store: LocalStore | null) {
   return useSyncExternalStore(
     store ? store.subscribe : noop,
     () => store?.version ?? -1,
