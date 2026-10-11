@@ -10,6 +10,11 @@ type TourStep = { target: string; title: string; body: string };
 /** First-run tips on Today (owner, 2026-10-11): each points at the real control. */
 export const TOUR_STEPS: TourStep[] = [
   { target: "ring", title: "Your day at a glance", body: "The ring fills as you finish today's items. Skipped or moved items don't count against you." },
+  {
+    target: "prayers",
+    title: "Your prayers",
+    body: "Tap a prayer once you've prayed it — in any order. Hold one (or use ⋯) for prayed late (qada) or missed.",
+  },
   { target: "tiles", title: "To Do · In Progress · Done", body: "Tap a tile to see only those items. Tap it again to see everything." },
   {
     target: "list",

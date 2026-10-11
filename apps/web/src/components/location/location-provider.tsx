@@ -35,10 +35,11 @@ type LocationApi = {
 
 const LocationContext = createContext<LocationApi | null>(null);
 
-export function useLocation() {
-  const ctx = useContext(LocationContext);
-  if (!ctx) throw new Error("useLocation must be used within LocationProvider");
-  return ctx;
+/** Outside the app shell (tests, the UI kit page) location is simply unavailable. */
+const INERT: LocationApi = { ensure: () => Promise.resolve(), chooseCity: () => Promise.resolve() };
+
+export function useLocation(): LocationApi {
+  return useContext(LocationContext) ?? INERT;
 }
 
 function CityPicker({ onPick }: { onPick: (city: City) => void }) {

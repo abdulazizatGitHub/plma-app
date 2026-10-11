@@ -32,6 +32,7 @@ function PackIcon({ pack, size = "h-9 w-9" }: { pack: StarterPack; size?: string
 
 /** "Every day · 10,000 steps" for a suggestion (what it will look like on Today). */
 function describe(spec: PackItem): string {
+  if (spec.prayerSet) return "Fajr · Zuhr · Asr · Maghrib · Isha — times for your location";
   const parts = [scheduleSummary({ schedule: spec.schedule ?? DAILY })];
   if (spec.type === "group") parts.push(`${spec.children?.length ?? 0} sub-items`);
   else if (spec.tracking && spec.tracking.kind !== "quantity" && spec.tracking.kind !== "duration") {
