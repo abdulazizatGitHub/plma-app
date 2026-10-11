@@ -51,7 +51,7 @@ Last updated: **2026-10-11**
 
 ## Testing & tooling
 
-- Vitest across `packages/shared`, `apps/api`, `apps/web` (279 tests) — `npm run test`
+- Vitest across `packages/shared`, `apps/api`, `apps/web` (278 tests) — `npm run test`
 - ESLint (typescript-eslint, `no-explicit-any` as error) — `npm run lint`
 - `tsc --noEmit` per workspace — `npm run typecheck`
 
