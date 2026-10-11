@@ -25,7 +25,7 @@ import type { LocalStore } from "./local-store";
 const noop = () => () => undefined;
 
 /** Re-renders when the store changes. */
-function useStoreVersion(store: LocalStore | null) {
+export function useStoreVersion(store: LocalStore | null) {
   return useSyncExternalStore(
     store ? store.subscribe : noop,
     () => store?.version ?? -1,
@@ -125,10 +125,14 @@ export function useOverdue(today: string | null): DayEntry[] {
   return useMemo(() => {
     if (!store || !today) return [];
     const out: DayEntry[] = [];
-    for (const item of readItems(store)) {
+    const all = readItems(store);
+    const plans = new Map(all.filter((i) => i.type === "plan" && !i.archivedAt).map((i) => [i.id, i]));
+    for (const item of all) {
       const s = item.schedule;
-      if (item.parentId || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
-      const [entry] = buildDay([item], readOccurrences(store, s.date), s.date);
+      // Plan steps can be overdue too; other children belong to their parent.
+      const plan = item.parentId ? plans.get(item.parentId) : undefined;
+      if ((item.parentId && !plan) || item.type === "plan" || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
+      const [entry] = buildDay(plan ? [plan, item] : [item], readOccurrences(store, s.date), s.date);
       const status = entry?.occurrence?.status;
       if (entry && status !== "done" && status !== "skipped" && status !== "moved") out.push(entry);
     }
@@ -149,11 +153,17 @@ function addDaysIso(iso: string, n: number) {
 export function usePending(): Item[] {
   const { store } = useStore();
   const version = useStoreVersion(store);
-  return useMemo(
-    () => (store ? pendingItems(readItems(store)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : []),
+  return useMemo(() => {
+    if (!store) return [];
+    // An undated plan step ticked on its plan (e.g. "Payment cleared") is done, not pending.
+    const done = new Set(
+      (store.query("occurrences", `WHERE "status" = 'done' AND "deleted_at" IS NULL`) as unknown as Occurrence[]).map((o) => o.itemId),
+    );
+    return pendingItems(readItems(store))
+      .filter((i) => !done.has(i.id))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store, version],
-  );
+  }, [store, version]);
 }
 
 export function useCategories(): Category[] {

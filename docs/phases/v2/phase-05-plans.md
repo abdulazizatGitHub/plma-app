@@ -26,7 +26,16 @@ Multi-step, dated plans for things like restaurant collabs and university work, 
 
 ## Acceptance
 
-- [ ] "Collab — Café X" with shoot Tue, edit Wed, post Fri. Post stays locked until Payment cleared is ticked.
-- [ ] Rule "post weekdays Tue/Fri, gap ≥ 1 day": picking Thursday shows a warning and suggests Friday. Saving anyway is still allowed.
-- [ ] Quiz on 12 Oct 10:00 for course "DSA" appears on Today on 12 Oct.
-- [ ] A content category with no active plans shows "Nothing upcoming" and no warning.
+- [x] "Collab — Café X" with shoot Tue, edit Wed, post Fri. Post stays locked until Payment cleared is ticked.
+- [x] Rule "post weekdays Tue/Fri, gap ≥ 1 day": picking Thursday shows a warning and suggests Friday. Saving anyway is still allowed.
+- [x] Quiz on 12 Oct 10:00 for course "DSA" appears on Today on 12 Oct.
+- [x] A content category with no active plans shows "Nothing upcoming" and no warning.
+
+**Verified 2026-10-11** in a browser against the real API and Supabase (throwaway account, deleted afterwards), 10/10:
+- the collab's Post stays locked until Payment cleared is ticked
+- with the Post rule (Tue/Fri, gap ≥ 1), Thursday warns and suggests Friday, and Thursday is saved anyway
+- the DSA quiz at 10:00 shows on Today on its date
+- an empty Content category shows "Nothing upcoming" with no warning
+- the server holds the plans, the Post→Payment link and both rules
+
+Per-step reminders (PLN-03, second half) move to Phase 6.

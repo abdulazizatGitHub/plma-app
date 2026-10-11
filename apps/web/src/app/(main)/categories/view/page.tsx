@@ -8,7 +8,9 @@ import {
   isPinned,
   moveItem,
   pinItem,
+  planProgress,
   sortItems,
+  STARTER_PACKS,
   todayLocalDate,
   unarchiveCategory,
   unarchiveItem,
@@ -20,16 +22,21 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useEffect, useMemo, useState } from "react";
 import { CategorySheet } from "@/components/categories/category-sheet";
 import { ItemListRow } from "@/components/categories/item-list-row";
+import { PlanCard } from "@/components/plans/plan-card";
 import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, Ring } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { toneInkClass } from "@/lib/theme/tokens";
 import { useActions, useAllItems, useCategory } from "@/lib/v2/use-day";
+import { usePlansData } from "@/lib/v2/use-plans";
+
+/** Starter packs whose categories hold plans: Content creation and University. */
+const PLAN_PACKS = new Set(STARTER_PACKS.filter((p) => p.name === "Content creation" || p.name === "University").map((p) => p.id));
 
 const GROUPS: { title: string; match: (i: Item) => boolean }[] = [
   { title: "Routines", match: (i) => i.type === "group" },
   { title: "Habits", match: (i) => i.type !== "group" && i.schedule.kind !== "once" },
-  { title: "Tasks", match: (i) => i.type !== "group" && i.schedule.kind === "once" },
+  { title: "Tasks", match: (i) => i.type !== "group" && i.type !== "plan" && i.schedule.kind === "once" },
 ];
 
 /** One category: its items by kind, reorder / pin / archive, add (CAT-02, ITM-05). */
@@ -47,7 +54,12 @@ function CategoryView() {
   useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
 
   const mine = useMemo(() => items.filter((i) => i.categoryId === id && !i.parentId), [items, id]);
-  const live = sortItems(mine.filter((i) => !i.archivedAt));
+  const live = sortItems(mine.filter((i) => !i.archivedAt && i.type !== "plan"));
+  const plansData = usePlansData();
+  const plansHere = plansData.plans.filter((p) => p.categoryId === id && !p.archivedAt);
+  const activePlans = plansHere.filter((p) => !planProgress(p, plansData.steps, plansData.occs, today ?? "1970-01-01").complete);
+  // Content and university categories always show their plans (or "Nothing upcoming").
+  const plansFriendly = Boolean(category && (PLAN_PACKS.has(category.sourceTemplateId ?? "") || /content|collab|universit|study|course/i.test(category.name)));
   const archived = mine.filter((i) => i.archivedAt && i.archivedAt !== category?.archivedAt);
   const progress = useMemo(() => (today ? dayProgress(buildDay(items.filter((i) => i.categoryId === id), [], today)) : null), [items, id, today]);
   const subCount = (i: Item) => items.filter((c) => c.parentId === i.id && !c.deletedAt).length;
@@ -113,6 +125,22 @@ function CategoryView() {
           </>
         )}
       </div>
+
+      {plansHere || plansFriendly ? (
+        <section aria-label="Plans" className="space-y-1.5">
+          <h2 className="flex items-baseline gap-1.5 text-[15px] font-semibold text-ink">
+            Plans <span className="text-[12px] font-normal text-ink-2">{activePlans.length}</span>
+            <Link href="/plans?new=1" className="ml-auto text-[12px] font-medium text-link">
+              New plan
+            </Link>
+          </h2>
+          {activePlans.length ? (
+            activePlans.map((p) => <PlanCard key={p.id} plan={p} steps={plansData.steps} occs={plansData.occs} today={today ?? "1970-01-01"} />)
+          ) : (
+            <p className="card px-3 py-3 text-[13px] text-ink-2">Nothing upcoming.</p>
+          )}
+        </section>
+      ) : null}
 
       {GROUPS.map(({ title, match }) => {
         const list = (category.archivedAt ? sortItems(mine) : live).filter(match);

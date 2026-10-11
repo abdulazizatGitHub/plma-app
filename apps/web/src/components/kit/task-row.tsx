@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal } from "lucide-react";
+import { Lock, MoreHorizontal } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 import type { ItemState } from "./status-tile";
 import { TaskCheck } from "./task-check";
@@ -32,6 +32,8 @@ type TaskRowProps = {
   children?: ReactNode;
   /** It's this item's time now (inside its prayer or time window). */
   highlight?: boolean;
+  /** Can't be ticked yet: shows a lock with this reason instead of the check (plan steps). */
+  locked?: string;
 };
 
 const LONG_PRESS_MS = 500;
@@ -49,6 +51,7 @@ export function TaskRow({
   tags,
   children,
   highlight = false,
+  locked,
 }: TaskRowProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const row = useRef<HTMLDivElement>(null);
@@ -78,7 +81,18 @@ export function TaskRow({
       }}
     >
       <div className={children || tags ? "pt-1" : ""}>
-        <TaskCheck state={state} label={title} onToggle={onToggle} />
+        {locked ? (
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label={`${title}: locked — ${locked}`}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-2 hover:bg-track"
+          >
+            <Lock className="h-4 w-4" aria-hidden />
+          </button>
+        ) : (
+          <TaskCheck state={state} label={title} onToggle={onToggle} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <button

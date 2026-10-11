@@ -7,7 +7,7 @@
 | 2 | [Today](./phase-02-today.md) | R1 | Built and verified |
 | 3 | [Categories and items](./phase-03-categories-items.md) | R1 | Done (2026-10-11) |
 | 4 | [Spiritual](./phase-04-spiritual.md) | R1 | Done (2026-10-11) |
-| 5 | [Plans](./phase-05-plans.md) | R1 | Not started |
+| 5 | [Plans](./phase-05-plans.md) | R1 | Done (2026-10-11) |
 | 6 | [Reminders](./phase-06-reminders.md) | R2 | Not started |
 | 7 | [History and analytics](./phase-07-history.md) | R2 | Not started |
 | 8 | [Motivation](./phase-08-motivation.md) | R2 | Not started |

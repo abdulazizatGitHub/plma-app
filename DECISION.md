@@ -532,3 +532,42 @@ Use this template for each decision:
 - **Consequences:**
   - Always-on location (and prayer reminders) wait for the native app (Phases 6 and 11). The layer already models that level.
   - Day parts aren't user-editable yet.
+
+### 2026-10-11 — Branching, quality gates, first push; v2 Phase 5: Plans
+
+- **Context:** The owner created `github.com/abdulazizatGitHub/plma-app` and asked for pre-commit and on-push checks (tests, lint, typecheck, error, bug and security checks) and for a branching model. They then asked for Phase 5 (Plans).
+- **Decision (branching):**
+  - **Environment branches:** `dev` → `preprod` → `main`, with `main` live and `preprod` the test deployment.
+  - **Short-lived branches:** `feature/*` and `fix/*` merge into `dev`; `hotfix/*` branches from `main` and is merged back down afterwards.
+  - **Versions are semver tags** on `main` (`v0.4.0` = Phases 0–4), not long-lived version branches, so fixes never need copying between them.
+  - The old v1 app is kept as the tag `v1-final`.
+  - Details are in `docs/guides/BRANCHING_AND_CI.md`.
+- **Decision (gates):**
+  - **Pre-commit (Husky + lint-staged):**
+    - a guard blocks env files, files over 2 MB and `console.log` in app source
+    - ESLint `--fix` runs per workspace (web uses its own ESLint 9)
+    - secretlint uses the recommended preset plus patterns for JWTs, Supabase / Stripe / AWS keys and DB URLs with passwords
+  - **Pre-push:** `npm run verify` (typecheck, lint, tests, `npm audit --omit=dev --audit-level=high`).
+  - **CI:** ci (including build and secret scan), CodeQL `security-and-quality`, gitleaks over the full history, dependency review, release on `v*` tags, and Dependabot into `dev`.
+  - **Security fixes on the way:**
+    - Next 16.3.6 → 16.3.8 (cache poisoning, SSRF and other advisories)
+    - `npm audit fix` for sharp and source-map-js
+    - production dependencies now have 0 vulnerabilities
+  - The full history was scanned before the first push; it contains only placeholders and the local docker dev password.
+- **Decision (Phase 5):**
+  - **A plan** is an item of type `plan` that never appears on Today itself. Its steps are dated one-off tasks with `meta.stepKind`, and they appear on Today on their dates with the plan as context. Undated steps sit in Pending until done.
+  - **"Waits for"** links are `item_dependencies` rows, and loops are refused. A locked step shows a lock and the reason instead of its tick.
+  - **Cadence rules** are `cadence_rules` rows per step kind, scoped to the plan or to the whole category:
+    - `weekdays` = allowed days
+    - `gapDays` = minimum days between steps **of the same kind** (across the category's plans for category rules)
+    - The checker warns and suggests the next three valid dates; the picked date is always saved.
+  - **Presets are data:**
+    - content collab: Shoot, Edit, Payment cleared, Post; Post waits for Payment
+    - university course: quick-add Assignment, Quiz, Presentation, Teacher meeting, FYP
+    - blank
+  - **Where plans live:** `/plans` and `/plans/view?id=` (precached), a Plans section in categories ("Nothing upcoming" for content and university categories without active plans), Categories → Plans, and quick add → New plan.
+  - **Edit queues:** rule edits are queued against the stored rows, like settings edits, so quick taps never duplicate rules.
+- **Consequences:**
+  - Per-step reminders (PLN-03, second half) arrive with Phase 6.
+  - Branch protection and Actions settings are the owner's to switch on in GitHub.
+  - The first push's CI didn't start: GitHub listed the workflows as active, but no runs appeared. Check Settings → Actions → General.
