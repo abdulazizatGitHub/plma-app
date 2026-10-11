@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { AppNav } from "@/components/layout/app-nav";
+import { LocationProvider } from "@/components/location/location-provider";
 import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { RequireAuth } from "@/components/providers/require-auth";
@@ -10,6 +11,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
     <RequireAuth>
       <StoreProvider>
         <AddSheetProvider>
+          <LocationProvider>
           <OnboardingGate />
           <AppHeader />
           <div className="min-h-0 w-full flex-1 lg:pl-56">
@@ -18,6 +20,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
             </main>
           </div>
           <AppNav />
+          </LocationProvider>
         </AddSheetProvider>
       </StoreProvider>
     </RequireAuth>

@@ -3,7 +3,12 @@
 import {
   buildDay,
   dayProgress,
+  defaultUserSettings,
   pendingItems,
+  prayerTimes,
+  updateSettings,
+  type DayPrayerTimes,
+  type UserSettings,
   type ActionContext,
   type Category,
   type Change,
@@ -235,4 +240,67 @@ export function useNextCategoryOrder() {
     const all = store.query("categories", `WHERE "deleted_at" IS NULL`) as unknown as Category[];
     return all.reduce((max, c) => Math.max(max, c.sortOrder + 1), 0);
   }, [store]);
+}
+
+/** The synced settings row with defaults filled in (the device's zone until the first pull). */
+function readUserSettings(store: LocalStore | null, userId: string | undefined): UserSettings {
+  const fallback = defaultUserSettings(userId ?? "00000000-0000-4000-8000-000000000000", new Date(0).toISOString(), Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Karachi");
+  const row = store && userId ? (store.query("userSettings", `WHERE "user_id" = ? AND "deleted_at" IS NULL LIMIT 1`, [userId])[0] as Partial<UserSettings> | undefined) : undefined;
+  if (!row) return fallback;
+  const filled = { ...fallback } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(row)) if (v !== null && v !== undefined) filled[k] = v;
+  for (const k of ["lat", "lng", "locationLabel", "quietFrom", "quietTo"] as const) filled[k] = row[k] ?? null;
+  return filled as UserSettings;
+}
+
+export function useUserSettings(): UserSettings {
+  const { store } = useStore();
+  const { user } = useAuth();
+  const version = useStoreVersion(store);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => readUserSettings(store, user?.id), [store, user, version]);
+}
+
+type SettingsPatch = Parameters<typeof updateSettings>[1];
+/** One queue for every settings write in the tab, so quick edits never overwrite each other. */
+let settingsQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Saves settings edits in order, each applied to the latest stored row. Pass
+ * a function to build the patch from the current settings (e.g. +1 minute).
+ */
+export function useSaveSettings() {
+  const { store } = useStore();
+  const { user } = useAuth();
+  const run = useActions();
+  return useCallback(
+    (patch: SettingsPatch | ((current: UserSettings) => SettingsPatch)) => {
+      settingsQueue = settingsQueue
+        .then(() =>
+          run((ctx) => {
+            const current = readUserSettings(store, user?.id);
+            return updateSettings(current, typeof patch === "function" ? patch(current) : patch, ctx);
+          }),
+        )
+        .catch(() => undefined);
+      return settingsQueue;
+    },
+    [store, user, run],
+  );
+}
+
+/** Prayer times for a day from the user's settings (offline; Karachi until a location is set). */
+export function usePrayerTimes(date: string | null): DayPrayerTimes | null {
+  const settings = useUserSettings();
+  return useMemo(() => (date ? prayerTimes(date, settings) : null), [date, settings]);
+}
+
+/** The prayer block (Daily prayers) and its prayers, if the user has one. */
+export function usePrayerSet(): { group: Item | null; prayers: Item[] } {
+  const { items } = useAllItems();
+  return useMemo(() => {
+    const group = items.find((i) => i.meta.prayerSet === true && !i.archivedAt) ?? null;
+    const prayers = group ? items.filter((i) => i.parentId === group.id && !i.archivedAt).sort((a, b) => a.sortOrder - b.sortOrder) : [];
+    return { group, prayers };
+  }, [items]);
 }

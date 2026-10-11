@@ -1,5 +1,5 @@
 import type { Change, ActionContext } from "./actions.js";
-import { categorySchema, itemSchema, type Category, type Item } from "./entities.js";
+import { categorySchema, itemSchema, userSettingsSchema, type Category, type Item, type UserSettings } from "./entities.js";
 import type { Schedule, Tracking } from "./tracking.js";
 
 /*
@@ -247,3 +247,17 @@ export function sortItems<T extends Pick<Item, "meta" | "sortOrder" | "createdAt
 
 /** The v1 prayer set (and future prayer groups) render as prayer chips, not a routine. */
 export const isPrayerGroup = (i: Pick<Item, "meta">) => i.meta.prayerSet === true;
+
+// ---- Settings --------------------------------------------------------------------
+
+/** Rounds a coordinate to 2 decimals (~1 km): enough for prayer times, kinder to privacy. */
+export const roundCoord = (v: number) => Math.round(v * 100) / 100;
+
+/** Prayer and location settings edits (PRY-05, PRY-10). */
+export function updateSettings(existing: UserSettings, patch: Partial<Omit<UserSettings, "id" | "userId" | "createdAt">>, ctx: ActionContext): Change[] {
+  const next = { ...existing, ...patch, updatedAt: ctx.now };
+  if (next.lat !== null) next.lat = roundCoord(next.lat);
+  if (next.lng !== null) next.lng = roundCoord(next.lng);
+  return [{ entity: "userSettings", row: userSettingsSchema.parse(next) }];
+}
+

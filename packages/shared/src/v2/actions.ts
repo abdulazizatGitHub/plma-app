@@ -1,6 +1,6 @@
 import type { DayEntry } from "./day.js";
 import { MOVED_SLOT_PREFIX } from "./day.js";
-import type { Category, Item, Occurrence } from "./entities.js";
+import type { Category, Item, Occurrence, UserSettings } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
 import { entryState } from "./progress.js";
 
@@ -9,7 +9,11 @@ import { entryState } from "./progress.js";
  * rows to save locally (and sync); nothing here touches storage.
  */
 
-export type Change = { entity: "categories"; row: Category } | { entity: "items"; row: Item } | { entity: "occurrences"; row: Occurrence };
+export type Change =
+  | { entity: "userSettings"; row: UserSettings }
+  | { entity: "categories"; row: Category }
+  | { entity: "items"; row: Item }
+  | { entity: "occurrences"; row: Occurrence };
 
 export type ActionContext = { userId: string; now: string; deviceId: string | null };
 

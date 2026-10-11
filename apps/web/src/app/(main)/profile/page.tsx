@@ -37,6 +37,10 @@ export default function ProfilePage() {
           ]}
         />
       </section>
+      <Link href="/settings/prayer" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
+        <span className="flex-1">Prayer settings</span>
+        <span className="text-[12px] font-normal text-ink-2">Location, times, your prayers</span>
+      </Link>
       <section className="card p-5">
         <h2 className="mb-1 text-[15px] font-medium text-ink">Help</h2>
         <p className="mb-3 text-[13px] text-ink-2">A quick walk through Today: the ring, the tiles, marking things done and adding more.</p>
