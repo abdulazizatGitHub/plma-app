@@ -17,6 +17,8 @@ export type DayEntry = {
   occurrence: Occurrence | null;
   /** Prayer-style groups: their children, each with its own occurrence. */
   children?: DayEntry[];
+  /** For a plan step: the plan it belongs to (shown as context on Today). */
+  plan?: Item;
 };
 
 const live = (o: Occurrence) => !o.deletedAt;
@@ -44,10 +46,14 @@ export function buildDay(items: Item[], occurrences: Occurrence[], date: string)
 
   const sorted = [...liveItems].sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
   for (const item of sorted) {
-    if (item.parentId) continue; // children render inside their parent
+    if (item.type === "plan") continue; // a plan is a container; its steps show on their dates
+    const plan = item.parentId ? byId.get(item.parentId) : undefined;
+    // Children render inside their parent, except plan steps (PLN-06), which stand alone.
+    if (item.parentId && plan?.type !== "plan") continue;
     const touched = occ.has(`${item.id}|`);
     if (!isDueOn(item, date) && !touched) continue;
     const e = entry(item);
+    if (plan) e.plan = plan;
     if (item.type === "group") {
       e.children = sorted.filter((c) => c.parentId === item.id && (isDueOn(c, date) || occ.has(`${c.id}|`))).map((c) => entry(c));
     }
@@ -63,7 +69,8 @@ export function buildDay(items: Item[], occurrences: Occurrence[], date: string)
   return entries;
 }
 
-/** One-off tasks without a date (the Pending list). */
+/** One-off tasks without a date (the Pending list), including undated plan steps. */
 export function pendingItems(items: Item[]): Item[] {
-  return items.filter((i) => !i.parentId && isPending(i));
+  const plans = new Set(items.filter((i) => i.type === "plan" && !i.deletedAt && !i.archivedAt).map((i) => i.id));
+  return items.filter((i) => i.type !== "plan" && isPending(i) && (!i.parentId || plans.has(i.parentId)));
 }
