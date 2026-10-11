@@ -1,7 +1,7 @@
 "use client";
 
-import type { CadenceRule, Item, ItemDependency, Occurrence } from "@life/shared";
-import { useMemo } from "react";
+import { lockOf, planProgress, type CadenceRule, type Item, type ItemDependency, type Occurrence } from "@life/shared";
+import { useCallback, useMemo } from "react";
 import { useStore } from "@/components/providers/store-provider";
 import { useStoreVersion } from "./use-day";
 
@@ -39,4 +39,37 @@ export function usePlansData(): PlansData {
     return { plans, steps, deps, rules, occs, ready: true };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, version]);
+}
+
+/** For a plan step on Today: what it waits for (only queried for plan steps). */
+export function useStepLock(step: Item | null, isPlanStep: boolean): { locked: boolean; waitingFor: Item[] } {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(() => {
+    if (!store || !step || !isPlanStep) return { locked: false, waitingFor: [] };
+    const deps = store.query("itemDependencies", `WHERE "item_id" = ? AND "deleted_at" IS NULL`, [step.id]) as unknown as ItemDependency[];
+    if (!deps.length) return { locked: false, waitingFor: [] };
+    const ids = deps.map((d) => d.dependsOnId);
+    const marks = ids.map(() => "?").join(",");
+    const others = store.query("items", `WHERE "id" IN (${marks}) AND "deleted_at" IS NULL`, ids) as unknown as Item[];
+    const occs = store.query("occurrences", `WHERE "item_id" IN (${marks}) AND "deleted_at" IS NULL`, ids) as unknown as Occurrence[];
+    return lockOf(step, deps, others, occs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, version, step, isPlanStep]);
+}
+
+/** Whether every step of a plan is done right now (read straight from the store, e.g. after a tick). */
+export function usePlanIsComplete() {
+  const { store } = useStore();
+  return useCallback(
+    (planId: string, today: string) => {
+      if (!store) return false;
+      const steps = store.query("items", `WHERE "parent_id" = ? AND "deleted_at" IS NULL`, [planId]) as unknown as Item[];
+      if (!steps.length) return false;
+      const ids = steps.map((s) => s.id);
+      const occs = store.query("occurrences", `WHERE "item_id" IN (${ids.map(() => "?").join(",")}) AND "deleted_at" IS NULL`, ids) as unknown as Occurrence[];
+      return planProgress({ id: planId }, steps, occs, today).complete;
+    },
+    [store],
+  );
 }

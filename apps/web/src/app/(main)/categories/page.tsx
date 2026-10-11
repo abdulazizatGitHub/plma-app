@@ -111,6 +111,9 @@ export default function CategoriesPage() {
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-ink">Categories</h1>
         <div className="flex gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => router.push("/plans")}>
+            Plans
+          </Button>
           {active.length > 1 ? (
             <Button size="sm" variant="secondary" aria-pressed={reordering} onClick={() => setReordering((r) => !r)}>
               {reordering ? "Done" : "Reorder"}

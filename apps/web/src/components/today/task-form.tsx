@@ -35,10 +35,12 @@ type TaskFormProps = {
   onSubmit: (draft: TaskDraft) => void;
   /** Opens the full editor with what was typed so far. */
   onMoreOptions?: (draft: TaskDraft) => void;
+  /** Opens the New-plan sheet (plans have several dated steps). */
+  onNewPlan?: () => void;
 };
 
 /** Quick add / edit for tasks: title, day + optional time, category, importance. */
-export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions }: TaskFormProps) {
+export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions, onNewPlan }: TaskFormProps) {
   const today = todayLocalDate();
   const form = useForm(
     {
@@ -129,6 +131,11 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
           className="flex min-h-8 w-full items-center justify-center text-[12px] font-medium text-link"
         >
           More options — repeat, count, checklist, routine
+        </button>
+      ) : null}
+      {onNewPlan ? (
+        <button type="button" onClick={onNewPlan} className="flex min-h-8 w-full items-center justify-center text-[12px] font-medium text-link">
+          New plan — collab, course, multi-step work
         </button>
       ) : null}
       <DisabledHint

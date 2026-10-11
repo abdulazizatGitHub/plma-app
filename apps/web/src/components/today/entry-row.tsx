@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  STEP_KINDS,
   checklistSteps,
+  stepKindOf,
   describeSchedule,
   entryState,
   entryWindow,
@@ -16,13 +18,15 @@ import {
   type Category,
   type DayEntry,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Moon, Play, Repeat2, Timer } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
+import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
+import { usePlanIsComplete, useStepLock } from "@/lib/v2/use-plans";
 import { useNow } from "@/lib/v2/use-now";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -37,7 +41,7 @@ export function entryCaption(entry: DayEntry, category: Category | undefined): s
 }
 
 /** The tag line under a row title: category, time, progress, priority, schedule, history. */
-function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when?: string): ReactNode[] {
+function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when?: string, lockedBy?: string): ReactNode[] {
   const item = entry.item;
   const o = entry.occurrence;
   const t = item.tracking;
@@ -47,6 +51,14 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   const Icon = categoryIcon(category);
   const tags: ReactNode[] = [];
   if (dueLabel) tags.push(<Tag key="due" tone="todo" icon={<AlertTriangle />}>{dueLabel}</Tag>);
+  if (entry.plan) {
+    tags.push(<Tag key="plan" icon={<Route />}>{entry.plan.title}</Tag>);
+    const kind = stepKindOf(item);
+    if (kind !== "custom" && STEP_KINDS[kind].label !== item.title) tags.push(<Tag key="kind">{STEP_KINDS[kind].label}</Tag>);
+    const course = typeof item.meta.course === "string" ? item.meta.course : typeof entry.plan.meta.course === "string" ? entry.plan.meta.course : null;
+    if (course && course !== entry.plan.title) tags.push(<Tag key="course">{course}</Tag>);
+  }
+  if (lockedBy) tags.push(<Tag key="lock" icon={<Lock />}>Waits for {lockedBy}</Tag>);
   if (category) {
     tags.push(
       <Tag key="cat" color={`var(--cat-${categoryTone(category)})`} icon={<Icon />}>
@@ -145,6 +157,10 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
 export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowProps) {
   const run = useActions();
   const router = useRouter();
+  const { notify } = useAddSheet();
+  const lock = useStepLock(entry.item, Boolean(entry.plan));
+  const lockedBy = lock.locked && entryState(entry) !== "done" ? lock.waitingFor.map((w) => w.title).join(", ") : undefined;
+  const planComplete = usePlanIsComplete();
   const openKey = `${date}|${entry.key}`;
   const [showSteps, setShowStepsState] = useState(() => openChecklists.has(openKey));
   const setShowSteps = (update: (v: boolean) => boolean) =>
@@ -154,7 +170,18 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       else openChecklists.delete(openKey);
       return next;
     });
-  const open = () => router.push(`/items/view?id=${entry.item.id}`);
+  // A plan step opens its plan; anything else its own page.
+  const open = () => router.push(entry.plan ? `/plans/view?id=${entry.plan.id}` : `/items/view?id=${entry.item.id}`);
+  const tick = () => {
+    if (lockedBy) {
+      notify({ message: `${entry.item.title} waits for ${lockedBy} — tick that first.` });
+      return;
+    }
+    const plan = entry.plan;
+    void run((ctx) => toggleDone(entry, date, ctx)).then(() => {
+      if (plan && entryState(entry) !== "done" && planComplete(plan.id, date)) notify({ message: `Plan complete — ${plan.title}` });
+    });
+  };
   const state = entryState(entry);
   const visible: ItemState = state === "not_today" ? "todo" : state;
   const t = entry.item.tracking;
@@ -174,7 +201,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
     } else when = range;
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
-  const list = entryTags(entry, category, dueLabel, when);
+  const list = entryTags(entry, category, dueLabel, when, lockedBy);
   const tags = list.length ? list : undefined;
 
   if (t.kind === "quantity") {
@@ -217,7 +244,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       tags={tags}
       state={visible}
       priority={entry.item.priority}
-      onToggle={() => void run((ctx) => toggleDone(entry, date, ctx))}
+      onToggle={tick}
+      locked={lockedBy}
       onOpen={open}
       highlight={highlight}
       onMore={(anchor) => onMore(entry, anchor)}

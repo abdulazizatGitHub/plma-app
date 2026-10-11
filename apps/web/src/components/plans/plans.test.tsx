@@ -1,11 +1,13 @@
 import "fake-indexeddb/auto";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { createPlan, type CadenceRule, type Item, type ItemDependency, type Occurrence } from "@life/shared";
+import { createPlan, todayLocalDate, updateStep, type CadenceRule, type Item, type ItemDependency, type Occurrence } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import PlansPage from "@/app/(main)/plans/page";
 import PlanViewPage from "@/app/(main)/plans/view/page";
+import CategoryViewPage from "@/app/(main)/categories/view/page";
+import { TodayScreen } from "@/components/today/today-screen";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 
@@ -136,6 +138,40 @@ describe("Plan page", () => {
     fireEvent.click(within(sheet).getByRole("button", { name: "Save" }));
     expect(within(sheet).getByRole("alert")).toHaveTextContent(/loop/);
     expect(deps()).toHaveLength(1);
+  });
+});
+
+describe("Plans on Today and in categories", () => {
+  it("a step shows on its date with its plan; a locked one explains why instead of ticking", async () => {
+    seedCollab();
+    const post = items().find((i) => i.title === "Post")!;
+    const [c] = updateStep(post, { date: todayLocalDate(), time: "18:00" }, { userId: USER, now: "2026-10-11T09:00:00.000Z", deviceId: null });
+    store.save(c.entity, c.row as unknown as StoredRow);
+    render(
+      <AddSheetProvider>
+        <TodayScreen />
+      </AddSheetProvider>,
+    );
+    const lockBtn = await screen.findByRole("button", { name: "Post: locked — Payment cleared" });
+    expect(screen.getByText("Collab — Café X")).toBeInTheDocument();
+    expect(screen.getByText("Waits for Payment cleared")).toBeInTheDocument();
+    fireEvent.click(lockBtn);
+    expect(await screen.findByRole("status")).toHaveTextContent("Post waits for Payment cleared — tick that first.");
+    expect(store.query("occurrences")).toHaveLength(0);
+  });
+
+  it("a content category with no active plans says Nothing upcoming, with no warnings", async () => {
+    const cat = { id: uid(), userId: USER, createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z", deletedAt: null, name: "Content", icon: "video", color: "sky", sortOrder: 0, archivedAt: null, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null };
+    store.save("categories", cat as unknown as StoredRow);
+    params = new URLSearchParams({ id: cat.id });
+    render(
+      <AddSheetProvider>
+        <CategoryViewPage />
+      </AddSheetProvider>,
+    );
+    const plans = await screen.findByRole("region", { name: "Plans" });
+    expect(within(plans).getByText("Nothing upcoming.")).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
 

@@ -125,10 +125,14 @@ export function useOverdue(today: string | null): DayEntry[] {
   return useMemo(() => {
     if (!store || !today) return [];
     const out: DayEntry[] = [];
-    for (const item of readItems(store)) {
+    const all = readItems(store);
+    const plans = new Map(all.filter((i) => i.type === "plan" && !i.archivedAt).map((i) => [i.id, i]));
+    for (const item of all) {
       const s = item.schedule;
-      if (item.parentId || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
-      const [entry] = buildDay([item], readOccurrences(store, s.date), s.date);
+      // Plan steps can be overdue too; other children belong to their parent.
+      const plan = item.parentId ? plans.get(item.parentId) : undefined;
+      if ((item.parentId && !plan) || item.type === "plan" || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
+      const [entry] = buildDay(plan ? [plan, item] : [item], readOccurrences(store, s.date), s.date);
       const status = entry?.occurrence?.status;
       if (entry && status !== "done" && status !== "skipped" && status !== "moved") out.push(entry);
     }

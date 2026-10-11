@@ -105,6 +105,14 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
                 : { date: defaultDate ?? todayLocalDate() }
             }
             submitLabel={editing ? "Save" : "Add task"}
+            onNewPlan={
+              editing
+                ? undefined
+                : () => {
+                    close();
+                    router.push("/plans?new=1");
+                  }
+            }
             onMoreOptions={(draft) => {
               close();
               const q = new URLSearchParams();
