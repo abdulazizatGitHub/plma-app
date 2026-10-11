@@ -15,6 +15,7 @@ Last updated: **2026-10-11**
 | **v2 Phase 1** | **Built and verified.** Accounts, v2 schema plus RLS, sync, IndexedDB store. Last step: the owner signs up and runs the v1 data migration. |
 | **v2 Phase 2** | **Built and verified.** Today, Pending, Categories (read-only), Progress (7 days), Profile; v1 removed; offline launch verified. |
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
+| **v2 Phase 4** | **Built and verified.** Prayer times (adhan-js, Karachi + Hanafi, nudges and fixed times), just-in-time location, prayer block with times, now, Jumu'ah, qada / missed, prayer editing, prayer anchors and the now highlight, Day view, insights and qada recovery, Progress card. Browser 16/16. |
 | **Setup & tour (2026-10-11)** | Done. Interests first, then tick suggestions (none pre-ticked, editable targets); spotlight tour (replay in Profile); overdue badge by the date. Browser 9/9. |
 | **Responsive pass (2026-10-10)** | Done. Compact density, phone-first layout with a tablet column and a desktop side rail, Upcoming and Overdue on Today, optional task time, add toast with View, tagged rows. |
 | **Polish (2026-10-10)** | Done. OTP auth with full validation, branded email templates (owner pastes), top bar and user menu, 4 reference themes, pointer cursors, digits-only numeric inputs. |
@@ -31,7 +32,7 @@ Last updated: **2026-10-11**
 | 04 | [prayer-quran](./docs/phases/phase-04-prayer-quran.md) | Done | Yes |
 | 05 | [health](./docs/phases/phase-05-health.md) | Done | Yes |
 | 06–14 (v1 plan) | [archive](./docs/phases/archive/) | Superseded by v2 | — |
-| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–3 done · 4 next | see phase docs |
+| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–4 done · 5 next | see phase docs |
 
 ---
 
@@ -42,13 +43,13 @@ Last updated: **2026-10-11**
   2. Sign up, then enter the 6-digit code from the email.
   3. Run `npm run db:migrate:v1 -w @life/api -- --email <you>` (dry run), then again with `--apply`.
   4. Update or delete the stale `apps/api/.env`.
-- **Next:** v2 Phase 4 (Spiritual): prayer times (Karachi + Hanafi), missed → qada, Quran anchors (Kahf on Friday after Zuhr), prayer insights.
+- **Next:** v2 Phase 5 (Plans: content collab and university plans).
 
 ---
 
 ## Testing & tooling
 
-- Vitest across `packages/shared`, `apps/api`, `apps/web` (225 tests) — `npm run test`
+- Vitest across `packages/shared`, `apps/api`, `apps/web` (260 tests) — `npm run test`
 - ESLint (typescript-eslint, `no-explicit-any` as error) — `npm run lint`
 - `tsc --noEmit` per workspace — `npm run typecheck`
 

@@ -115,6 +115,10 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **DateStrip** | 7 days in a row, selected = `--primary` pill with ink text, dot for days with items | ref 1 weekly bars row |
 | **BottomNav** | White bar; 4 icons plus a center **+** (56 px, `--primary-strong` with a white icon) | ref 2 |
 | **Sheet** | Bottom sheet for add, edit, and actions; 20 px top radius | — |
+| **PrayerRow (v2)** | Chips carry the local time; the current prayer gets a 2 px primary ring; subtitle "Asr now · until 5:36 PM" / "Maghrib in 42 min"; hold or right-click a chip → On time / Qada / Missed / Clear; qada = progress fill, missed = red outline; footer for "approximate · Set location" | ref 3 ring, ref 2 chips |
+| **Location sheet** | Our pre-prompt before the browser's: Always (disabled on web), While using (primary), Choose a city, Never (text button); city search over bundled cities | — |
+| **Now highlight** | A row whose time window contains now gets a 2 px primary ring (`data-now`) | — |
+| **Day view** | Sections per prayer-based day part, with a time range and a "Now" tag | ref 1 |
 | **ConfirmSheet** | Small "Delete …?" sheet: body text, Cancel and a red-filled confirm button | — |
 | **GroupRow** (routine) | Card with a 28 px ring, title, "3/5" tag and category tag; expands to its sub-items as TaskRows; done when all sub-items are done | ref 2 project card |
 | **Checklist row** | TaskRow with a "2/5 steps" tag and a "Show steps" toggle listing small tick rows | — |

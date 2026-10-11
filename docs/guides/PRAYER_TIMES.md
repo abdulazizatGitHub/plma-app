@@ -77,7 +77,9 @@ Calculated times are the astronomical *start* of each prayer. Mosques often add 
 
 ## Checklist for Phase 4
 
-- [ ] Add `adhan` (npm) to `packages/shared`.
-- [ ] `user_settings` columns: `lat`, `lng`, `location_label`, `calc_method` (default `karachi`), `madhab` (default `hanafi`), `prayer_offsets` (jsonb).
-- [ ] Settings UI: location (GPS / city list), method, madhab, offsets, and today's times preview.
-- [ ] Test: Karachi on a fixed date matches AlAdhan `method=1&school=1` within 1 minute.
+- [x] Add `adhan` (npm) to `packages/shared`.
+- [x] `user_settings` columns: `lat`, `lng`, `location_label`, `calc_method` (default `karachi`), `madhab` (default `hanafi`), `prayer_offsets` (jsonb).
+- [x] Settings UI: location (GPS / city list), method, madhab, offsets, and today's times preview.
+- [x] Test: Karachi on a fixed date matches AlAdhan `method=1&school=1` within 1 minute.
+
+**Implemented 2026-10-11** (v2 Phase 4). Location is asked just in time via the app's own sheet (Always needs the phone app; While using; Choose a city; Never). Settings live at Profile → Prayer settings (`/settings/prayer`).

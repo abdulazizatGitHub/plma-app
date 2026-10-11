@@ -494,3 +494,41 @@ Use this template for each decision:
   - **Overdue badge:** an "N overdue" badge by the date jumps to the Overdue list. The ring stays today's plan.
 - **Consequences:** Rule-based suggestions; no AI service, and it works offline. Later questions (student or working…) can narrow the suggestions.
 
+### 2026-10-11 — v2 Phase 4: prayer times, just-in-time location, qada, anchors, day parts, insights
+
+- **Context:** Phase 4 (PRY-01…10, SCH-03/04, TOD-06/07). Owner decisions (2026-10-11):
+  - Daily prayers is an unticked setup suggestion.
+  - Location is asked **just in time**, at the level the feature needs (Never / While using / Always). A covered grant never re-asks; a feature that needs more than was granted re-asks.
+  - Today gets a Day view by prayer-based parts.
+  - On Fridays, Zuhr reads "Jumu'ah".
+- **Decision:**
+  - **Prayer times on the device** with adhan-js (`@life/shared`), so there's no API key and they work offline.
+    - Karachi method + Hanafi Asr by default; 12 methods.
+    - Per-prayer ±30 min nudges and optional fixed times.
+    - Karachi coordinates until a location is set, flagged *approximate*.
+    - The accuracy test matches AlAdhan within 1 minute (Karachi in October, Lahore in January).
+  - **Location layer** (`lib/location`): features call `ensure(level, reason)`.
+    - The app's own sheet comes before the browser prompt. It offers Always (disabled on web: needs the phone app), While using, Choose a city, and Never.
+    - Never and a picked city are respected. A blocked browser offers a city.
+    - Coordinates are rounded to ~1 km.
+    - While in use, the fix is refreshed at most every 6 h. A move over 25 km offers "Update prayer times?" and never changes silently.
+    - ~70 cities are bundled for offline search and naming.
+  - **Missed is derived:** an unmarked prayer on a past day reads as missed. No midnight job; history and insights agree offline. Qada is `done` + `detail.qada`; explicit Missed is stored.
+  - **Prayer block:**
+    - One tap prayed or clear, in any order.
+    - Hold or right-click a chip for On time / Qada / Missed / Clear. The ⋯ sheet sets every prayer of the day; it's the visible alternative to hold.
+    - Chips show times, the current prayer is ringed, and the header shows a countdown.
+  - **Prayer set editing** in Prayer settings: rename, reorder, remove, and add Tahajjud / Duha / Witr with their place in the day. Ids and keys stay stable, so history follows renames.
+  - **Anchors:** repeating items can be at a set time or before / at / after a prayer plus a delay.
+    - Windows: after X = X → next prayer; before X = previous → X; at = ±30 min.
+    - Windows order rows and ring the row "now"; they never lock ticking.
+  - **Day view:** After Fajr, Morning, After Zuhr, After Asr, Evening, Night, plus Anytime, computed from the day's prayer times.
+  - **Insights** (`prayerInsights`, on occurrences):
+    - week and month totals, rate per prayer, most consistent and most missed
+    - on-time streak (qada doesn't extend it) and a suggestion
+    - a 30-day missed list with "Mark as qada"
+    - The v1 `computeMonthlyPrayerReport` is kept only as a regression test, because its log format no longer exists.
+  - **Settings sync:** `user_settings` gains `prayer_manual`, `jumuah_label` and `location_mode` (migration 0002). The local store now adds missing columns on open. Settings writes are queued and applied to the latest row, so quick edits never overwrite each other.
+- **Consequences:**
+  - Always-on location (and prayer reminders) wait for the native app (Phases 6 and 11). The layer already models that level.
+  - Day parts aren't user-editable yet.

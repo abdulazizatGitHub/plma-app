@@ -32,8 +32,12 @@ A customisable prayer block, one-tap marking in any order, prayer-time anchors, 
 
 ## Acceptance
 
-- [ ] Mark Asr while Fajr is unmarked, then mark Fajr as qada. Both count.
-- [ ] "Surah Kahf · Friday · after Zuhr" appears only on Fridays, highlighted between Zuhr and Asr. It does not appear on other days.
-- [ ] Renaming Zuhr → Dhuhr and adding Tahajjud updates the ring, insights, and history.
-- [ ] Insights for a fixture month match hand-calculated totals, including the most-missed prayer.
-- [ ] Karachi prayer times on a fixture date match a reference source within 1 minute.
+- [x] Mark Asr while Fajr is unmarked, then mark Fajr as qada. Both count.
+- [x] "Surah Kahf · Friday · after Zuhr" appears only on Fridays, highlighted between Zuhr and Asr. It does not appear on other days.
+- [x] Renaming Zuhr → Dhuhr and adding Tahajjud updates the ring, insights, and history.
+- [x] Insights for a fixture month match hand-calculated totals, including the most-missed prayer.
+- [x] Karachi prayer times on a fixture date match a reference source within 1 minute.
+
+**Verified 2026-10-11:**
+- Unit tests cover the AlAdhan comparison (Karachi and Lahore, within 1 minute) and a hand-calculated fixture month (125 on time, 5 qada, 20 missed; most missed Isha).
+- A browser run against the real API and Supabase passed 16/16, using a throwaway account deleted afterwards: Asr then Fajr as qada; Kahf on Friday after Zuhr only; Dhuhr rename + Tahajjud; insights; Jumu'ah; and location asked once, then silent.
