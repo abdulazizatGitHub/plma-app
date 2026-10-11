@@ -60,7 +60,7 @@ Default in `docker-compose.yml`:
 **`DATABASE_URL`:**
 
 ```env
-DATABASE_URL=postgresql://life:life_dev@127.0.0.1:5434/life
+DATABASE_URL=postgresql://life:<password>@127.0.0.1:5434/life  # docker-compose dev password: see docker-compose.yml
 ```
 
 Apply schema (if `npm run db:migrate` fails on Windows):
@@ -86,7 +86,7 @@ GRANT ALL PRIVILEGES ON DATABASE life TO life_app;
 2. Set:
 
 ```env
-DATABASE_URL=postgresql://life_app:choose_a_strong_password@127.0.0.1:5432/life
+DATABASE_URL=postgresql://life_app:<the password you chose>@127.0.0.1:5432/life
 ```
 
 3. Run migrations from `apps/api` (see above).

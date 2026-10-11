@@ -1,0 +1,13 @@
+# gitleaks: default rules, plus an allowlist for documented local-dev placeholders.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Placeholders and the local docker dev password (not real secrets)"
+regexes = [
+  '''life:life_dev@''',
+  '''choose_a_strong_password''',
+  '''\[YOUR[_-]?PASSWORD\]''',
+  '''USER:PASSWORD@HOST''',
+  '''ci-placeholder-anon-key''',
+]
