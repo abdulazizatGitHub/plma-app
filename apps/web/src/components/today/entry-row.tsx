@@ -22,14 +22,14 @@ import {
   dayAccess,
   type DayAccess,
 } from "@life/shared";
-import { AlertTriangle, ArrowRight, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bell, BellOff, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
-import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
+import { useActions, useItemReminders, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
 import { usePlanIsComplete, useStepLock } from "@/lib/v2/use-plans";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
@@ -229,6 +229,25 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
   const list = entryTags(entry, category, dueLabel, when, lockedBy);
+  // Only an item's own reminder gets a tag; the priority's default would put a bell on every row.
+  const custom = useItemReminders(entry.item.id)[0];
+  if (custom && access !== "history" && entryState(entry) !== "done") {
+    const t = custom.trigger;
+    const label = !custom.enabled
+      ? "No reminder"
+      : t.type === "at" || t.type === "time"
+        ? formatTime(t.time)
+        : t.type === "beforeDue"
+          ? `${t.min} min before`
+          : t.type === "prayer"
+            ? `${Math.abs(t.offsetMin ?? 0) ? `${Math.abs(t.offsetMin ?? 0)} min ` : ""}${t.relation === "before" ? "before" : "after"} ${PRAYER_NAME[normalisePrayerKey(t.prayer)] ?? t.prayer}`
+            : "Reminder";
+    list.push(
+      <Tag key="reminder" icon={custom.enabled ? <Bell /> : <BellOff />}>
+        {label}
+      </Tag>,
+    );
+  }
   if (access === "history" && entryState(entry) !== "done" && entryState(entry) !== "not_today" && !dueLabel) {
     list.unshift(<Tag key="missed" tone="todo">Missed</Tag>);
   }

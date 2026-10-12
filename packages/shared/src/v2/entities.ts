@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { clockSchema, idSchema, instantSchema, localDateSchema, syncedRowSchema } from "./primitives.js";
+import { DEFAULT_REMINDER_PROFILES, reminderProfilesSchema } from "./reminders/model.js";
 import { anchorSchema, scheduleSchema, trackingSchema, triggerSchema } from "./tracking.js";
 
 /*
@@ -18,6 +19,12 @@ const provenance = {
   sourceTemplateVersion: z.number().int().nullable(),
   adoptedAt: instantSchema.nullable(),
 };
+
+/**
+ * A column added after devices already had the table: their local copy holds
+ * NULL until the next pull refills it, so NULL reads as the default.
+ */
+const added = <T extends z.ZodType>(schema: T, fallback: z.input<T>) => z.preprocess((v) => v ?? fallback, schema);
 
 export const userSettingsSchema = syncedRowSchema.extend({
   /** IANA zone, e.g. Asia/Karachi. */
@@ -42,6 +49,15 @@ export const userSettingsSchema = syncedRowSchema.extend({
   locationMode: z.enum(["unset", "device", "city", "never"]).default("unset"),
   quietFrom: clockSchema.nullable(),
   quietTo: clockSchema.nullable(),
+  /** The global reminders switch (REM-04). */
+  notificationsEnabled: added(z.boolean(), true),
+  /** Reminder window per priority (REM-02), editable in Settings. */
+  reminderProfiles: added(reminderProfilesSchema, DEFAULT_REMINDER_PROFILES),
+  /** When untimed items are reminded. */
+  checkinTime: added(clockSchema, "20:00"),
+  /** Optional nudges (REM-06); null = off. */
+  planTomorrowAt: clockSchema.nullable().default(null),
+  morningSummaryAt: clockSchema.nullable().default(null),
   /** Who sees achievements & progress (owner A-3, SOC-06). */
   visibility: z.enum(VISIBILITIES),
 });
@@ -53,6 +69,8 @@ export const categorySchema = syncedRowSchema.extend({
   color: z.string().min(1).max(24),
   sortOrder: z.number().int(),
   archivedAt: instantSchema.nullable(),
+  /** Its items don't remind (REM-04). */
+  remindersMuted: added(z.boolean(), false),
   ...provenance,
 });
 export type Category = z.infer<typeof categorySchema>;
@@ -117,6 +135,8 @@ export const reminderSchema = syncedRowSchema.extend({
   repeatUntilDone: z.boolean(),
   maxRepeats: z.number().int().min(0).max(48),
   enabled: z.boolean(),
+  /** Snooze length; null = the priority's. */
+  snoozeMin: z.number().int().min(1).max(240).nullable().default(null),
   /** Computed by the server; clients send null. */
   nextFireAt: instantSchema.nullable(),
 });
@@ -145,6 +165,11 @@ export function defaultUserSettings(userId: string, now: string, timezone = "Asi
     locationMode: "unset",
     quietFrom: null,
     quietTo: null,
+    notificationsEnabled: true,
+    reminderProfiles: DEFAULT_REMINDER_PROFILES,
+    checkinTime: "20:00",
+    planTomorrowAt: null,
+    morningSummaryAt: null,
     visibility: "friends",
   };
 }

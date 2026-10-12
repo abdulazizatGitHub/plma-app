@@ -9,7 +9,7 @@ import {
   type Category,
   type DayEntry,
 } from "@life/shared";
-import { ArrowDown, ArrowRight, ArrowUp, Archive, MoreHorizontal, Package, Pencil, Plus, Tag as TagIcon, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Archive, Bell, BellOff, MoreHorizontal, Package, Pencil, Plus, Tag as TagIcon, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -83,7 +83,7 @@ export default function CategoriesPage() {
     return (
       <CategoryCard
         key={key}
-        name={name}
+        name={category?.remindersMuted ? `${name} · muted` : name}
         tone={categoryTone(category)}
         icon={<Icon className="h-4.5 w-4.5" />}
         done={p.done}
@@ -198,6 +198,17 @@ export default function CategoriesPage() {
             onClick={() => {
               setEditing({ category: menu.category });
               setMenu(null);
+            }}
+          />
+          <PopoverMenuItem
+            icon={menu.category.remindersMuted ? <Bell /> : <BellOff />}
+            label={menu.category.remindersMuted ? "Unmute reminders" : "Mute reminders"}
+            onClick={() => {
+              const c = menu.category;
+              const muted = !c.remindersMuted;
+              void run((ctx) => [{ entity: "categories", row: { ...c, remindersMuted: muted, updatedAt: ctx.now } }]);
+              setMenu(null);
+              notify({ message: muted ? `“${c.name}” won't remind you` : `“${c.name}” reminds again` });
             }}
           />
           <PopoverMenuItem

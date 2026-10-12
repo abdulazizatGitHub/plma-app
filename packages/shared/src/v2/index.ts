@@ -21,3 +21,6 @@ export * from "./plans/cadence.js";
 export * from "./plans/plan-actions.js";
 export * from "./day-access.js";
 export * from "./streak.js";
+export * from "./reminders/model.js";
+export * from "./reminders/schedule.js";
+export * from "./reminders/actions.js";

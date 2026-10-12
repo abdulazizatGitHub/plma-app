@@ -26,4 +26,11 @@ export const env = {
   corsOrigins: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
   port: Number(process.env.PORT ?? 4000),
   host: process.env.HOST ?? "0.0.0.0",
+  /** Web Push (Phase 6). Without them reminders are off and the rest of the API still runs. */
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? process.env.VAPID_PUBLIC_KEY ?? "",
+  vapidPrivateKey: process.env.VAPID_PRIVATE_KEY ?? "",
+  vapidSubject: process.env.VAPID_SUBJECT ?? "mailto:reminders@example.com",
+  reminderActionSecret: process.env.REMINDER_ACTION_SECRET ?? "",
+  /** Set to "off" to run an API instance without the reminder scheduler. */
+  reminderJobs: process.env.REMINDER_JOBS ?? "on",
 };

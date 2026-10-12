@@ -8,6 +8,9 @@ import { db, pg } from "./db/index.js";
 import { env } from "./env.js";
 import { createTokenVerifier } from "./lib/auth.js";
 import { transientDbErrors } from "./lib/errors.js";
+import { webPushSender } from "./reminders/push.js";
+import { registerActionRoute } from "./reminders/routes.js";
+import { planDebouncer, planUser, replanAll, tick } from "./reminders/service.js";
 import { apiRoutes } from "./routes/v1.js";
 
 const app = Fastify({ logger: true });
@@ -59,7 +62,39 @@ if (!env.supabaseUrl) {
 }
 
 const verify = createTokenVerifier({ supabaseUrl: env.supabaseUrl, jwtSecret: env.supabaseJwtSecret });
-await app.register(apiRoutes(pg, verify));
+
+// Reminders (Phase 6): Web Push when VAPID keys are set; otherwise the rest of the API runs without them.
+const pushReady = !!(env.vapidPublicKey && env.vapidPrivateKey && env.reminderActionSecret);
+if (!pushReady) app.log.warn("VAPID keys / REMINDER_ACTION_SECRET not set — reminders are off");
+const send = pushReady ? webPushSender({ publicKey: env.vapidPublicKey, privateKey: env.vapidPrivateKey, subject: env.vapidSubject }) : null;
+const onJobError = (err: unknown) => app.log.error({ err }, "reminder job failed");
+const replanSoon = planDebouncer((userId) => planUser(pg, userId), 3000, onJobError);
+const reminderDeps = { sql: pg, send, actionSecret: env.reminderActionSecret, vapidPublicKey: env.vapidPublicKey, replanSoon };
+registerActionRoute(app, reminderDeps);
+await app.register(apiRoutes(pg, verify, reminderDeps));
+
+if (send && env.reminderJobs !== "off") {
+  // The queue table is the job queue (FOR UPDATE SKIP LOCKED): safe with several instances.
+  let ticking = false;
+  const runTick = async () => {
+    if (ticking) return;
+    ticking = true;
+    try {
+      await tick({ sql: pg, send, actionSecret: env.reminderActionSecret });
+    } catch (err) {
+      onJobError(err);
+    } finally {
+      ticking = false;
+    }
+  };
+  setTimeout(() => {
+    void runTick();
+    setInterval(() => void runTick(), 60_000);
+  }, 60_000 - (Date.now() % 60_000) + 1_000);
+  const sweep = () => void replanAll(pg).catch(onJobError);
+  setTimeout(sweep, 10_000);
+  setInterval(sweep, 60 * 60_000);
+}
 
 try {
   await app.listen({ port: env.port, host: env.host });

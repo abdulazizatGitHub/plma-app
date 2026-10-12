@@ -122,6 +122,19 @@ export const userSettings = pgTable("user_settings", {
   dayEndHour: smallint("day_end_hour").notNull().default(0),
   quietFrom: text("quiet_from"),
   quietTo: text("quiet_to"),
+  notificationsEnabled: boolean("notifications_enabled").notNull().default(true),
+  reminderProfiles: jsonb("reminder_profiles")
+    .$type<Record<string, unknown>>()
+    .notNull()
+    .default({
+      low: { enabled: false, leadMin: 0, repeatEveryMin: null, maxRepeats: 0, snoozeMin: 10 },
+      medium: { enabled: true, leadMin: 0, repeatEveryMin: null, maxRepeats: 0, snoozeMin: 10 },
+      high: { enabled: true, leadMin: 0, repeatEveryMin: 30, maxRepeats: 1, snoozeMin: 10 },
+      critical: { enabled: true, leadMin: 0, repeatEveryMin: 30, maxRepeats: 6, snoozeMin: 10 },
+    }),
+  checkinTime: text("checkin_time").notNull().default("20:00"),
+  planTomorrowAt: text("plan_tomorrow_at"),
+  morningSummaryAt: text("morning_summary_at"),
   visibility: text("visibility").notNull().default("friends"),
   ...syncedColumns,
 });
@@ -136,6 +149,7 @@ export const categories = pgTable(
     color: text("color").notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     archivedAt: ts("archived_at"),
+    remindersMuted: boolean("reminders_muted").notNull().default(false),
     ...provenanceColumns,
     ...syncedColumns,
   },
@@ -243,13 +257,79 @@ export const reminders = pgTable(
     repeatUntilDone: boolean("repeat_until_done").notNull().default(false),
     maxRepeats: integer("max_repeats").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
+    snoozeMin: integer("snooze_min"),
     nextFireAt: ts("next_fire_at"),
     ...syncedColumns,
   },
   (t) => [
     index("reminders_user_synced_idx").on(t.userId, t.syncedAt),
     index("reminders_next_fire_idx").on(t.nextFireAt),
+    // One active reminder per item (owner, 2026-10-12). Not a unique index: two offline
+    // devices may each create one; the latest live row wins (shared `customReminders`).
+    index("reminders_item_idx").on(t.itemId),
   ],
+);
+
+/** Web Push endpoints (server-only, never synced). One row per browser/device. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    failures: integer("failures").notNull().default(0),
+    lastSuccessAt: ts("last_success_at"),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("push_subscriptions_user_idx").on(t.userId)],
+);
+
+/**
+ * Upcoming reminder fires (server-only). The planner rewrites a user's pending
+ * rows from the shared `plannedFires`; the tick sends the due ones.
+ */
+export const reminderQueue = pgTable(
+  "reminder_queue",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    /** item|date|slot|attempt, or nudge:kind|date — one row per fire. */
+    key: text("key").notNull(),
+    kind: text("kind").notNull(),
+    itemId: uuid("item_id").references(() => items.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    slot: text("slot").notNull().default(""),
+    attempt: integer("attempt").notNull().default(0),
+    fireAt: ts("fire_at").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    snoozeMin: integer("snooze_min").notNull().default(10),
+    /** pending → sent | skipped (done by then) | failed. */
+    status: text("status").notNull().default("pending"),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("reminder_queue_user_key_idx").on(t.userId, t.key),
+    index("reminder_queue_due_idx").on(t.status, t.fireAt),
+  ],
+);
+
+/** What was actually sent (REM history, debugging). */
+export const reminderDeliveries = pgTable(
+  "reminder_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    key: text("key").notNull(),
+    itemId: uuid("item_id"),
+    sentAt: ts("sent_at").defaultNow().notNull(),
+    devices: integer("devices").notNull().default(0),
+    action: text("action"),
+  },
+  (t) => [index("reminder_deliveries_user_idx").on(t.userId, t.sentAt)],
 );
 
 /** Starter packs and (Phase 12) public templates. Server-managed, never synced from clients. */

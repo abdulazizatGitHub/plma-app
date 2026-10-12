@@ -10,7 +10,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { AccountCard } from "@/components/settings/account-card";
 import type { ThemeMode } from "@/lib/theme/theme-utils";
 
-/** Account, sync status, theme and appearance. Settings for prayer, reminders… arrive with their phases. */
+/** Account, theme, your day, and links to prayer and reminder settings. */
 export default function ProfilePage() {
   const { theme, setTheme, mode, setMode } = useTheme();
   const { store } = useStore();
@@ -64,6 +64,10 @@ export default function ProfilePage() {
       <Link href="/settings/prayer" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
         <span className="flex-1">Prayer settings</span>
         <span className="text-[12px] font-normal text-ink-2">Location, times, your prayers</span>
+      </Link>
+      <Link href="/settings/notifications" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
+        <span className="flex-1">Reminders</span>
+        <span className="text-[12px] font-normal text-ink-2">Notifications, quiet hours, priorities</span>
       </Link>
       <section className="card p-5">
         <h2 className="mb-1 text-[15px] font-medium text-ink">Help</h2>

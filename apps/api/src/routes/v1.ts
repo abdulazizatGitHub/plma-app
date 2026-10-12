@@ -2,6 +2,7 @@ import { packById, syncPullQueryV2Schema } from "@life/shared";
 import type { FastifyInstance } from "fastify";
 import type { Sql } from "postgres";
 import { requireAuth, type TokenVerifier } from "../lib/auth.js";
+import { registerPushRoutes, type ReminderRouteDeps } from "../reminders/routes.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
 import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
@@ -10,7 +11,7 @@ import { existingCategories, packPushBody, packSummaries } from "../templates/pa
  * Authenticated v1 API (SYSTEM_DESIGN §6). Identity comes only from the
  * verified Supabase JWT; every query is scoped to that user.
  */
-export function apiRoutes(sql: Sql, verify: TokenVerifier) {
+export function apiRoutes(sql: Sql, verify: TokenVerifier, reminders?: ReminderRouteDeps) {
   const ensureUser = userBootstrapper(sql);
   const lookup = postgresLookup(sql);
 
@@ -50,6 +51,8 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier) {
           result = await applyPush(sql, userId, plan.rows);
         }
         const { accepted, stale } = result;
+        // Reminders follow the data: re-plan this user's upcoming fires shortly.
+        reminders?.replanSoon(userId);
         return { serverTime: new Date().toISOString(), accepted, stale };
       } catch (err) {
         // Two devices created the same item/date occurrence with different ids.
@@ -75,6 +78,8 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier) {
       const { accepted } = await applyPush(sql, userId, plan.rows);
       return { applied: true, accepted };
     });
+
+    if (reminders) registerPushRoutes(app, reminders);
 
     done();
   };

@@ -115,7 +115,7 @@ export function mapV1ToV2(input: { userId: string; now: string; definitions: V1D
     };
     const id = stableId(`category:${userId}:${def.category}`);
     categoryIds.set(def.category, id);
-    categories.push({ ...row(id), ...style, sortOrder: categories.length, archivedAt: null, ...provenance });
+    categories.push({ ...row(id), ...style, sortOrder: categories.length, archivedAt: null, remindersMuted: false, ...provenance });
   }
 
   const items: Item[] = [];

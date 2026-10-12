@@ -2,6 +2,7 @@
 
 import {
   buildDay,
+  customReminders,
   dayProgress,
   defaultUserSettings,
   pendingItems,
@@ -19,6 +20,7 @@ import {
   type DayProgress,
   type Item,
   type Occurrence,
+  type Reminder,
 } from "@life/shared";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -262,7 +264,7 @@ function readUserSettings(store: LocalStore | null, userId: string | undefined):
   if (!row) return fallback;
   const filled = { ...fallback } as Record<string, unknown>;
   for (const [k, v] of Object.entries(row)) if (v !== null && v !== undefined) filled[k] = v;
-  for (const k of ["lat", "lng", "locationLabel", "quietFrom", "quietTo"] as const) filled[k] = row[k] ?? null;
+  for (const k of ["lat", "lng", "locationLabel", "quietFrom", "quietTo", "planTomorrowAt", "morningSummaryAt"] as const) filled[k] = row[k] ?? null;
   return filled as UserSettings;
 }
 
@@ -335,4 +337,26 @@ export function useDayStreak(today: string | null): DayStreak {
     return dayStreak(items, occs, from, today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, version, today]);
+}
+
+/** An item's custom reminder rows (normally one; the latest live one applies). */
+export function useItemReminders(itemId: string | null | undefined): Reminder[] {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => (store && itemId ? (store.query("reminders", `WHERE "item_id" = ? AND "deleted_at" IS NULL ORDER BY "updated_at" DESC`, [itemId]) as unknown as Reminder[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, itemId, version],
+  );
+}
+
+/** Every live custom reminder, by item (for row bells). */
+export function useCustomReminders(): Map<string, Reminder> {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => customReminders(store ? (store.query("reminders", `WHERE "deleted_at" IS NULL`) as unknown as Reminder[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, version],
+  );
 }
