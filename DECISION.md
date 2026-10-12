@@ -722,3 +722,19 @@ Use this template for each decision:
   - **The editor's Reminder section** reads Default / Custom / Off. Its choices are chips (before-minutes, prayer, before/after, offset) and a collapsible "Repeat & snooze". Priority cards in Settings use chips too.
   - **No change** to schema or data shapes.
 - **Not done:** making the row's bell tag a button. Tags sit inside the row's own button, and nested buttons aren't valid; the menu and toast cover access.
+
+### 2026-10-13 — Calendar picker in the app's look; compact reminder popup
+
+- **Context:** The owner found two problems:
+  - "Move to a date…" still used the browser's date box, which looked out of place.
+  - In the reminder popup, the Repeat options and the Set button sat below the fold on a phone, so they seemed to be missing.
+- **Decision:**
+  - **`DateField` / `Calendar`** (kit) replace every date entry: Move to a date, the task form, the item editor's date and active range, and plan steps.
+    - The calendar is a Monday-first month grid: today outlined, the picked day filled. One tap on a day picks it.
+    - The move popup and plan steps add quick chips: Tomorrow · Day after · Next Monday · In a week.
+    - **"Move to a date…"** opens its own popup; one tap moves the task, and a toast offers View.
+  - **Compact reminder popup:**
+    - One-tap picks scroll sideways in a single row.
+    - The **Repeat** chips (and day circles) come right under them.
+    - The wheels show 3 rows.
+    - The **Set** button is pinned at the bottom, and its label says what will happen: "Remind me today · 6:45 PM" or "Repeat Weekdays · 6:45 PM".

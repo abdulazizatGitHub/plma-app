@@ -1,9 +1,10 @@
 "use client";
 
-import { STEP_KINDS, checkCadence, stepKindOf, type CadenceRule, type Item, type Occurrence } from "@life/shared";
+import { STEP_KINDS, checkCadence, stepKindOf, todayLocalDate, type CadenceRule, type Item, type Occurrence } from "@life/shared";
 import { Check, Lock, MoreHorizontal } from "lucide-react";
 import { createElement } from "react";
-import { Tag, TimeField } from "@/components/kit";
+import { DateField, Tag, TimeField } from "@/components/kit";
+import { useToday } from "@/lib/v2/use-today";
 import { formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
 import { stepIcon } from "./plan-icons";
@@ -28,6 +29,7 @@ type StepRowProps = {
  * warn and suggest; the picked date is saved either way.
  */
 export function StepRow({ step, plan, done, waitingFor, rules, peers, onToggle, onDate, onMore }: StepRowProps) {
+  const today = useToday() ?? todayLocalDate();
   const kind = stepKindOf(step);
   const s = step.schedule.kind === "once" ? step.schedule : { date: null, time: undefined };
   const date = s.date;
@@ -85,16 +87,18 @@ export function StepRow({ step, plan, done, waitingFor, rules, peers, onToggle, 
 
       {!done ? (
         <div className="flex flex-wrap items-center gap-2 pl-9.5">
-          <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
-            Date
-            <input
-              type="date"
-              aria-label={`${step.title} date`}
-              value={date ?? ""}
-              onChange={(e) => onDate(e.target.value || null, e.target.value ? time : null)}
-              className="h-8 rounded-[10px] border border-border bg-surface px-2 text-[13px] text-ink"
-            />
-          </label>
+          <DateField
+            label={`${step.title} date`}
+            hideLabel
+            size="sm"
+            floating
+            optional
+            quick
+            placeholder="Add date"
+            today={today}
+            value={date ?? ""}
+            onChange={(v) => onDate(v || null, v ? time : null)}
+          />
           {date ? (
             <TimeField
               label={`${step.title} time`}
