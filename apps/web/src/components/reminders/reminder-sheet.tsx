@@ -85,13 +85,12 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
     if (error) return;
     if (scope === "day") {
       const s = dayState;
-      void run((ctx) =>
-        setDayReminder(entry, date, s.mode === "auto" ? null : s.mode === "off" ? { ...customDraft(s), enabled: false } : { ...customDraft(s), enabled: true }, ctx),
-      );
+      const { days: _everyDay, ...once } = customDraft(s);
+      void run((ctx) => setDayReminder(entry, date, s.mode === "auto" ? null : { ...once, enabled: s.mode !== "off" }, ctx));
       notify({ message: s.mode === "auto" ? `Usual reminder ${when}` : s.mode === "off" ? `No reminder ${when}` : `Reminder set for ${when}` });
     } else {
       void run((ctx) => reminderChanges(entry.item.id, rows, everyState, everyStart, ctx));
-      notify({ message: everyState.mode === "auto" ? "Back to the priority's reminder" : "Everyday reminder saved" });
+      notify({ message: everyState.mode === "auto" ? "Back to the priority's reminder" : "Repeating reminder saved" });
     }
     onClose();
   };
@@ -109,8 +108,8 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
         value={scope}
         onChange={setScope}
         options={[
-          { value: "day", label: date === today ? "Today only" : `${shortDate(date)} only` },
-          { value: "everyday", label: entry.item.schedule.kind === "once" ? "This task" : "Every day" },
+          { value: "day", label: date === today ? "Once (today)" : `Once (${shortDate(date)})` },
+          { value: "everyday", label: entry.item.schedule.kind === "once" ? "This task" : "Repeat" },
         ]}
       />
       {scope === "day" ? (
@@ -126,7 +125,16 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
           autoSummary={`Usual: ${usual}`}
         />
       ) : (
-        <ReminderSection title={null} value={everyState} onChange={setEveryState} preview={entry.item} settings={settings} category={category} prayerOptions={prayerOptions} />
+        <ReminderSection
+          title={null}
+          value={everyState}
+          onChange={setEveryState}
+          preview={entry.item}
+          settings={settings}
+          category={category}
+          prayerOptions={prayerOptions}
+          showDays={entry.item.schedule.kind !== "once"}
+        />
       )}
       {error ? (
         <p role="alert" className="text-[12px] text-todo">

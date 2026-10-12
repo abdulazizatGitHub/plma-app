@@ -77,7 +77,7 @@ export const ENTITY_SPECS: Record<SyncEntity, EntitySpec> = {
   reminders: {
     schema: reminderSchema,
     table: "reminders",
-    json: ["trigger"],
+    json: ["trigger", "days"],
     bool: ["repeatUntilDone", "enabled"],
     refs: { itemId: "items" },
   },

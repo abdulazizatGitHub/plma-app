@@ -689,3 +689,13 @@ Use this template for each decision:
     - A time that has already passed today can't be saved.
     - The row shows "6:15 PM (this day)".
   - **Hidden** on locked days, for prayers (they remind at their own times), and for done items.
+
+### 2026-10-12 — Reminders repeat on chosen days, like an alarm
+
+- **Context:** The owner wanted reminders to repeat like an alarm: every day, the full week, or specific days.
+- **Decision:**
+  - **Days:** a custom reminder has `days` (weekdays, 0 = Sunday; null = every day). Migration 0005 adds `reminders.days`.
+  - **Picker:** the Reminder section (editor and "Remind me…") offers **Repeat on: Every day / Weekdays / Weekends / Pick days**, with Mon–Sun chips. Picking all seven, or none of the presets, stores every day.
+  - **Popup switch:** in the "Remind me…" popup the top switch is **Once (today) / Repeat**.
+  - **Due days only:** a reminder still fires only on days its item is due. Monthly and every-N-days items therefore remind on their own days, with no separate monthly reminder.
+  - **Row tag** reads e.g. "6:00 PM · Mon, Wed, Fri".

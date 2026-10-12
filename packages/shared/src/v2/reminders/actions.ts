@@ -15,7 +15,15 @@ export type CustomReminderDraft = {
   maxRepeats: number;
   /** null = the priority's snooze. */
   snoozeMin: number | null;
+  /** Days of the week (0 = Sunday); null or all seven = every day the item is due. */
+  days?: number[] | null;
 };
+
+/** Sorted, unique weekdays; every day (or none) = null. */
+export function normaliseDays(days: number[] | null | undefined): number[] | null {
+  const set = [...new Set((days ?? []).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+  return set.length === 0 || set.length === 7 ? null : set;
+}
 
 const rem = (row: Reminder): Change => ({ entity: "reminders", row: reminderSchema.parse(row) });
 
@@ -29,6 +37,7 @@ export function saveCustomReminder(itemId: string, existing: Reminder | null | u
         repeatUntilDone: repeats > 0,
         maxRepeats: repeats,
         snoozeMin: draft.snoozeMin,
+        days: normaliseDays(draft.days),
         enabled: true,
       }
     : { enabled: false };
@@ -46,6 +55,7 @@ export function saveCustomReminder(itemId: string, existing: Reminder | null | u
       repeatUntilDone: false,
       maxRepeats: 0,
       snoozeMin: null,
+      days: null,
       nextFireAt: null,
       ...fields,
     }),
