@@ -673,3 +673,19 @@ Use this template for each decision:
     - Isha: "best before" Islamic midnight (midpoint of Maghrib and Fajr)
     - Asr: before the sun yellows (about 20 min before Maghrib)
     - Shown in the headline and the check-in; never a status.
+
+### 2026-10-12 — "Remind me…" from a row's menu (today only, or every day)
+
+- **Context:** The owner wanted to set a reminder straight from a task's ⋯ menu, with a popup. They chose **today only** by default, using the existing Phase 6 reminder (priority / custom / off, repeat, snooze) rather than a new set of quick picks.
+- **Decision:**
+  - **Menu item:** "Remind me…" opens a sheet with **Today only / Every day**, plus the same Reminder section as the item editor.
+  - **Today only:**
+    - Stored on that day's occurrence (`detail.reminder`), so it syncs with the day.
+    - It replaces the item's usual reminder for that day only. "Usual" puts it back; "Off" silences just that day.
+    - One reminder is still active per item per day. The global switch and category mute still apply.
+  - **Every day:** saves the item's own custom reminder, exactly as in the editor.
+  - **Defaults and checks:**
+    - A new reminder for today defaults to about 30 minutes from now.
+    - A time that has already passed today can't be saved.
+    - The row shows "6:15 PM (this day)".
+  - **Hidden** on locked days, for prayers (they remind at their own times), and for done items.

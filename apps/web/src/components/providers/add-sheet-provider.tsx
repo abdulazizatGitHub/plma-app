@@ -1,9 +1,10 @@
 "use client";
 
-import { createTask, todayLocalDate, updateTask, type Item, type TaskDraft } from "@life/shared";
+import { createTask, todayLocalDate, updateTask, type DayEntry, type Item, type TaskDraft } from "@life/shared";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Sheet, Toast, type ToastData } from "@/components/kit";
+import { ReminderSheet } from "@/components/reminders/reminder-sheet";
 import { TaskForm } from "@/components/today/task-form";
 import { whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
@@ -13,6 +14,8 @@ type AddSheetState = {
   /** Opens quick add; the day defaults to the one shown on Today. */
   openAdd: () => void;
   openEdit: (item: Item) => void;
+  /** "Remind me…" for one row on one day (today only, or its everyday reminder). */
+  openReminder: (entry: DayEntry, date: string) => void;
   /** Today tells us which day is on screen, so + plans *that* day. */
   setDefaultDate: (date: string | null) => void;
   /** Today registers how to jump to a day (for the toast's "View"). */
@@ -31,6 +34,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>(null);
   const [defaultDate, setDefaultDate] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [reminderFor, setReminderFor] = useState<{ entry: DayEntry; date: string } | null>(null);
   const showDay = useRef<((date: string) => void) | null>(null);
   const categories = useCategories();
   const run = useActions();
@@ -49,6 +53,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
     () => ({
       openAdd: () => setMode({ kind: "add" }),
       openEdit: (item) => setMode({ kind: "edit", item }),
+      openReminder: (entry, date) => setReminderFor({ entry, date }),
       setDefaultDate,
       registerShowDay: (show) => {
         showDay.current = show;
@@ -138,6 +143,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
           />
         ) : null}
       </Sheet>
+      <ReminderSheet entry={reminderFor?.entry ?? null} date={reminderFor?.date ?? ""} today={appToday ?? todayLocalDate()} onClose={() => setReminderFor(null)} />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </AddSheetContext.Provider>
   );

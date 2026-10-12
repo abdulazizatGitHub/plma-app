@@ -3,6 +3,7 @@ import { MOVED_SLOT_PREFIX } from "./day.js";
 import type { CadenceRule, Category, Item, ItemDependency, Occurrence, Reminder, UserSettings } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
 import { entryState } from "./progress.js";
+import type { DayReminder } from "./reminders/model.js";
 
 /*
  * Pure builders for Today's actions (FLX-01…03, TRK-01/02/05). Each returns the
@@ -243,4 +244,12 @@ export function updateTask(existing: Item, draft: TaskDraft, ctx: ActionContext)
 /** Soft delete — syncs as a tombstone. */
 export function deleteItem(existing: Item, ctx: ActionContext): Change[] {
   return [item({ ...existing, deletedAt: ctx.now, updatedAt: ctx.now })];
+}
+
+/** Set (or with null, clear) this day's own reminder for the entry ("Remind me…", today only). */
+export async function setDayReminder(entry: DayEntry, date: string, reminder: DayReminder | null, ctx: ActionContext): Promise<Change[]> {
+  const detail = { ...(entry.occurrence?.detail ?? {}) };
+  delete detail.reminder;
+  if (reminder) detail.reminder = reminder;
+  return [occ(await occurrenceWith(entry, date, ctx, { detail: Object.keys(detail).length ? detail : null }))];
 }

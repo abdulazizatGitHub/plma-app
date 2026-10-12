@@ -10,6 +10,8 @@ import {
   plannedFires,
   prayerTimes,
   saveCustomReminder,
+  setDayReminder,
+  buildDay,
   type ActionContext,
   type Category,
   type Item,
@@ -142,4 +144,20 @@ describe("plannedFires", () => {
       ["Plan tomorrow", "1 thing on tomorrow so far — add or move anything else."],
     ]);
   });
+
+  it("a today-only reminder replaces the item's usual one for that day only; Off silences just that day", async () => {
+    const walk = item({ title: "Walk", priority: "high", schedule: { v: 1, kind: "daily", anchor: { type: "time", time: "07:30" } } });
+    const entry = buildDay([walk], [], "2026-10-12")[0];
+    const [c] = await setDayReminder(entry, "2026-10-12", { enabled: true, trigger: { type: "at", time: "18:15" }, repeatEveryMin: null, maxRepeats: 0, snoozeMin: 5 }, ctx);
+    const occs = [c.row as Occurrence];
+    const fires = plannedFires(input([walk], { occurrences: occs }), pk("00:00"), pk("23:59", 13));
+    expect(fires.map((f) => `${f.date} ${clocks([f])[0]}`)).toEqual(["2026-10-12 18:15", "2026-10-13 07:30", "2026-10-13 08:00"]);
+    expect(fires[0]).toMatchObject({ kind: "custom", snoozeMin: 5 });
+
+    const [off] = await setDayReminder(buildDay([walk], occs, "2026-10-12")[0], "2026-10-12", { enabled: false, trigger: { type: "at", time: "09:00" }, repeatEveryMin: null, maxRepeats: 0, snoozeMin: null }, ctx);
+    expect(plannedFires(input([walk], { occurrences: [off.row as Occurrence] }), ...day()).length).toBe(0);
+    const [cleared] = await setDayReminder(buildDay([walk], [off.row as Occurrence], "2026-10-12")[0], "2026-10-12", null, ctx);
+    expect(clocks(plannedFires(input([walk], { occurrences: [cleared.row as Occurrence] }), ...day()))).toEqual(["07:30", "08:00"]);
+  });
 });
+
