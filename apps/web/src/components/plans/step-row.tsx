@@ -3,7 +3,7 @@
 import { STEP_KINDS, checkCadence, stepKindOf, type CadenceRule, type Item, type Occurrence } from "@life/shared";
 import { Check, Lock, MoreHorizontal } from "lucide-react";
 import { createElement } from "react";
-import { Tag } from "@/components/kit";
+import { Tag, TimeField } from "@/components/kit";
 import { formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
 import { stepIcon } from "./plan-icons";
@@ -96,16 +96,16 @@ export function StepRow({ step, plan, done, waitingFor, rules, peers, onToggle, 
             />
           </label>
           {date ? (
-            <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
-              Time
-              <input
-                type="time"
-                aria-label={`${step.title} time`}
-                value={time ?? ""}
-                onChange={(e) => onDate(date, e.target.value || null)}
-                className="h-8 rounded-[10px] border border-border bg-surface px-2 text-[13px] text-ink"
-              />
-            </label>
+            <TimeField
+              label={`${step.title} time`}
+              hideLabel
+              size="sm"
+              floating
+              optional
+              placeholder="Add time"
+              value={time ?? ""}
+              onChange={(v) => onDate(date, v || null)}
+            />
           ) : null}
         </div>
       ) : null}

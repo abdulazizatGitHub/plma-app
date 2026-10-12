@@ -4,10 +4,9 @@ import { DEFAULT_REMINDER_PROFILES, PRIORITIES, type ReminderProfile, type Remin
 import { ArrowLeft, BellOff, BellRing, Share, SquarePlus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Button, Checkbox, TextField } from "@/components/kit";
+import { Button, Checkbox, ChipChoice, TimeField } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
-import { RepeatFields, repeatDraft, repeatErrors, repeatValues, type RepeatDraft } from "@/components/reminders/repeat-fields";
-import { sanitizeDigits } from "@/lib/forms/validators";
+import { RepeatFields, chipsWith, repeatDraft, repeatErrors, repeatValues, type RepeatDraft } from "@/components/reminders/repeat-fields";
 import { formatTime } from "@/lib/v2/category-style";
 import { usePush } from "@/lib/v2/push";
 import { useActions, useAllCategories, useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
@@ -26,8 +25,6 @@ function Card({ title, children, hint }: { title: string; hint?: ReactNode; chil
   );
 }
 
-const timeInput = "h-10 w-32 rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong";
-
 function profileSummary(p: ReminderProfile): string {
   if (!p.enabled) return "No reminder";
   const when = p.leadMin ? `${p.leadMin} min before` : "At its time";
@@ -40,6 +37,7 @@ function PriorityCard({ priority, profile, onSave }: { priority: (typeof PRIORIT
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState(profile.enabled);
   const [lead, setLead] = useState(String(profile.leadMin));
+  const leadOptions = chipsWith([0, 5, 10, 15, 30, 60], Number(lead), (n) => (n ? `${n} min before` : "At its time"));
   const [rep, setRep] = useState<RepeatDraft>(() => repeatDraft(profile.repeatEveryMin, profile.maxRepeats, profile.snoozeMin));
   const reset = () => {
     setEnabled(profile.enabled);
@@ -48,7 +46,6 @@ function PriorityCard({ priority, profile, onSave }: { priority: (typeof PRIORIT
   };
   const leadError = lead === "" || Number(lead) > 1440 ? "0 to 1440 minutes" : null;
   const valid = !enabled || (!leadError && Object.keys(repeatErrors(rep)).length === 0);
-  const id = `prio-${priority}`;
   return (
     <li className="rounded-xl border border-border p-3">
       <div className="flex items-center gap-2">
@@ -84,16 +81,9 @@ function PriorityCard({ priority, profile, onSave }: { priority: (typeof PRIORIT
           </Checkbox>
           {enabled ? (
             <>
-              <TextField
-                id={`${id}-lead`}
-                label="Minutes before the item's time"
-                hint="0 = at its time. Untimed items remind at your check-in time."
-                inputMode="numeric"
-                value={lead}
-                onChange={(e) => setLead(sanitizeDigits(e.target.value, 4))}
-                error={leadError}
-              />
-              <RepeatFields idPrefix={id} value={rep} onChange={setRep} />
+              <ChipChoice legend="When" options={leadOptions} value={lead} onChange={setLead} />
+              <p className="-mt-1 text-[11.5px] text-ink-2">Untimed items remind at your check-in time.</p>
+              <RepeatFields value={rep} onChange={setRep} />
             </>
           ) : null}
           <div className="flex gap-2">
@@ -218,21 +208,12 @@ export default function NotificationSettingsPage() {
           Quiet hours — nothing arrives; reminders wait until they end
         </Checkbox>
         {quietOn ? (
-          <div className="flex flex-wrap items-center gap-2 text-[13px] text-ink">
-            <label className="flex items-center gap-2">
-              From
-              <input type="time" aria-label="Quiet from" className={timeInput} value={settings.quietFrom ?? ""} onChange={(e) => e.target.value && void save({ quietFrom: e.target.value })} />
-            </label>
-            <label className="flex items-center gap-2">
-              to
-              <input type="time" aria-label="Quiet to" className={timeInput} value={settings.quietTo ?? ""} onChange={(e) => e.target.value && void save({ quietTo: e.target.value })} />
-            </label>
+          <div className="flex flex-wrap gap-3 pl-7">
+            <TimeField label="Quiet from" value={settings.quietFrom ?? "22:00"} onChange={(v) => v && void save({ quietFrom: v })} />
+            <TimeField label="Quiet to" value={settings.quietTo ?? "07:00"} onChange={(v) => v && void save({ quietTo: v })} />
           </div>
         ) : null}
-        <label className="flex flex-wrap items-center gap-2 text-[13px] text-ink">
-          Check-in time for untimed items
-          <input type="time" aria-label="Check-in time" className={timeInput} value={settings.checkinTime ?? "20:00"} onChange={(e) => e.target.value && void save({ checkinTime: e.target.value })} />
-        </label>
+        <TimeField label="Check-in time for untimed items" value={settings.checkinTime ?? "20:00"} onChange={(v) => v && void save({ checkinTime: v })} />
       </Card>
 
       <Card
@@ -263,13 +244,17 @@ export default function NotificationSettingsPage() {
             Morning summary — what&apos;s on today
           </Checkbox>
           {settings.morningSummaryAt ? (
-            <input type="time" aria-label="Morning summary time" className={`${timeInput} ml-7`} value={settings.morningSummaryAt} onChange={(e) => e.target.value && void save({ morningSummaryAt: e.target.value })} />
+            <div className="pl-7">
+              <TimeField label="Morning summary time" hideLabel value={settings.morningSummaryAt} onChange={(v) => v && void save({ morningSummaryAt: v })} />
+            </div>
           ) : null}
           <Checkbox checked={!!settings.planTomorrowAt} onChange={(on) => void save({ planTomorrowAt: on ? "21:00" : null })}>
             Plan tomorrow — an evening nudge to set up the next day
           </Checkbox>
           {settings.planTomorrowAt ? (
-            <input type="time" aria-label="Plan tomorrow time" className={`${timeInput} ml-7`} value={settings.planTomorrowAt} onChange={(e) => e.target.value && void save({ planTomorrowAt: e.target.value })} />
+            <div className="pl-7">
+              <TimeField label="Plan tomorrow time" hideLabel value={settings.planTomorrowAt} onChange={(v) => v && void save({ planTomorrowAt: v })} />
+            </div>
           ) : null}
         </div>
       </Card>

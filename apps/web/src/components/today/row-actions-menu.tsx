@@ -61,6 +61,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
 
   return (
     <PopoverMenu anchor={anchor} onClose={onClose} label={entry.item.title}>
+      {date !== null && access !== "history" && !prayers && state !== "done" ? (
+        <PopoverMenuItem
+          icon={<Bell />}
+          label="Remind me…"
+          onClick={() => {
+            onClose();
+            openReminder(entry, date);
+          }}
+        />
+      ) : null}
       {date === null ? (
         <>
           <PopoverMenuItem icon={<CalendarDays />} label="Do it today" onClick={() => moveAction(today)} />
@@ -112,16 +122,6 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
       ) : null}
       {oneOff && date !== null ? (
         <PopoverMenuItem icon={<CalendarClock />} label="Mark pending (no date)" onClick={() => moveAction(null)} />
-      ) : null}
-      {date !== null && access !== "history" && !prayers && state !== "done" ? (
-        <PopoverMenuItem
-          icon={<Bell />}
-          label="Remind me…"
-          onClick={() => {
-            onClose();
-            openReminder(entry, date);
-          }}
-        />
       ) : null}
       <PopoverMenuDivider />
       <PopoverMenuItem

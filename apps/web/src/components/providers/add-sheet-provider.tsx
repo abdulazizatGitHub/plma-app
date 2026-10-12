@@ -64,7 +64,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   );
 
   /** Tell the user where the task went, with a way to get there (owner: tasks seemed to vanish). */
-  const confirm = (draft: TaskDraft, edited: boolean) => {
+  const confirm = (draft: TaskDraft, edited: boolean, remind?: () => void) => {
     const today = appToday ?? todayLocalDate();
     const verb = edited ? "Saved" : "Added";
     if (draft.date === null) {
@@ -73,7 +73,8 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
     }
     const where = whenLabel(draft.date, today, ", ");
     if (draft.date === (defaultDate ?? today) && showDay.current) {
-      setToast({ message: `${verb} to ${where}` });
+      // It's on screen already, so the toast offers the next likely step: a reminder.
+      setToast({ message: `${verb} to ${where}`, action: remind && draft.date >= today ? { label: "Remind me", onClick: remind } : undefined });
       return;
     }
     const target = draft.date;
@@ -134,11 +135,18 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
               router.push(`/items/edit?${q.toString()}`);
             }}
             onSubmit={(draft) => {
-              void run((ctx) =>
-                editing ? updateTask(editing, draft, ctx) : createTask(crypto.randomUUID(), draft, nextSortOrder(), ctx),
-              );
+              const id = editing?.id ?? crypto.randomUUID();
+              let saved: Item | null = null;
+              void run((ctx) => {
+                const changes = editing ? updateTask(editing, draft, ctx) : createTask(id, draft, nextSortOrder(), ctx);
+                saved = (changes.find((c) => c.entity === "items" && c.row.id === id)?.row as Item | undefined) ?? null;
+                return changes;
+              });
               close();
-              confirm(draft, Boolean(editing));
+              const day = draft.date;
+              confirm(draft, Boolean(editing), () => {
+                if (saved && day) setReminderFor({ entry: { key: `${id}|`, item: saved, slot: "", occurrence: null }, date: day });
+              });
             }}
           />
         ) : null}

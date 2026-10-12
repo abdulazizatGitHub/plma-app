@@ -4,6 +4,7 @@ import { buildDay, entryState, setQuantity, todayLocalDate, type Item } from "@l
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { pickTime } from "@/test/time-field";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore } from "@/lib/v2/local-store";
 import { initialState, toDraft, validate, type EditorState } from "./editor-state";
@@ -164,7 +165,7 @@ describe("ItemEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Habit · repeats" }));
     fireEvent.click(screen.getByRole("button", { name: "At a time" }));
     expect(screen.getByRole("button", { name: "Add" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText(/^Time\*?$/), { target: { value: "07:30" } });
+    pickTime("Time", "07:30");
     expect(screen.getByRole("button", { name: "Add" })).toBeEnabled();
   });
 });

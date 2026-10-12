@@ -23,3 +23,5 @@ export { Tag, type TagTone } from "./tag";
 export { Toast, type ToastData } from "./toast";
 export { ColorPicker, IconPicker, Pill, PillGroup } from "./pickers";
 export { Heatmap, monthDates, shiftMonth, type HeatMark } from "./heatmap";
+export { TimeField, TimeWheel, from12, label12, to12 } from "./time-wheel";
+export { ChipChoice } from "./chip-choice";

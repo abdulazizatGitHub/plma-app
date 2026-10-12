@@ -15,9 +15,8 @@ import {
 } from "@life/shared";
 import { Bell } from "lucide-react";
 import Link from "next/link";
-import { PillGroup, SegmentedTabs, TextField } from "@/components/kit";
-import { sanitizeDigits } from "@/lib/forms/validators";
-import { RepeatFields, repeatDraft, repeatErrors, repeatValues, type RepeatDraft } from "./repeat-fields";
+import { ChipChoice, PillGroup, SegmentedTabs, TimeField } from "@/components/kit";
+import { RepeatFields, chipsWith, repeatDraft, repeatErrors, repeatValues, type RepeatDraft } from "./repeat-fields";
 
 /*
  * The item's reminder (REM-01, owner 2026-10-12): Auto follows the priority's
@@ -78,7 +77,7 @@ export function draftDays(s: Pick<ReminderEditorState, "daysMode" | "days">): nu
 }
 
 const MODES = [
-  { value: "auto", label: "Auto" },
+  { value: "auto", label: "Default" },
   { value: "custom", label: "Custom" },
   { value: "off", label: "Off" },
 ] as const;
@@ -150,26 +149,65 @@ type Props = {
   settings: UserSettings;
   category: Category | null;
   prayerOptions: { key: string; title: string }[];
-  /** For one day ("Remind me…"): Auto reads "Usual" and describes the item's everyday reminder. */
-  autoLabel?: string;
-  autoSummary?: string;
   /** Heading; null hides it (inside a sheet that has its own title). */
   title?: string | null;
   /** Offer "Repeat on" days (repeating items, not a one-day reminder). */
   showDays?: boolean;
 };
 
-export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions, autoLabel, autoSummary, title = "Reminder", showDays = false }: Props) {
+/** Days picker shared with the "Remind me…" popup: presets plus Mon–Sun circles. */
+export function DaysPicker({
+  mode,
+  days,
+  onChange,
+  hidePresets,
+}: {
+  mode: DaysMode;
+  days: number[];
+  onChange: (mode: DaysMode, days: number[]) => void;
+  /** Only the day circles (the caller shows its own presets). */
+  hidePresets?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      {hidePresets ? null : <PillGroup legend="Repeat on" options={DAYS_MODES} value={mode} onChange={(v) => onChange(v, days)} />}
+      {mode === "pick" ? (
+        <div role="group" aria-label="Days" className="flex flex-wrap gap-1.5">
+          {WEEK.map(([d, name]) => {
+            const on = days.includes(d);
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onChange(mode, on ? days.filter((x) => x !== d) : [...days, d])}
+                className={`h-10 w-10 rounded-full text-[12px] font-medium ${on ? "bg-primary-strong text-on-primary-strong" : "bg-track text-ink hover:bg-border"}`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Once · snooze 10 min" / "Every 30 min, up to 6 more · snooze 10 min". */
+export function repeatSummary(r: RepeatDraft): string {
+  const nag = r.repeat ? `Every ${r.every} min, ${Number(r.times) >= 48 ? "until done" : `up to ${r.times} more`}` : "Once";
+  return `${nag} · snooze ${r.snooze} min`;
+}
+
+export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions, title = "Reminder", showDays = false }: Props) {
   const set = <K extends keyof ReminderEditorState>(k: K, v: ReminderEditorState[K]) => onChange({ ...s, [k]: v });
   const auto = effectiveReminder(preview, null, settings, category);
   const summary =
     s.mode === "auto"
-      ? (autoSummary ?? describeReminder(auto, preview, settings.checkinTime))
+      ? describeReminder(auto, preview, settings.checkinTime)
       : s.mode === "off"
-        ? "Off for this item — no reminder whatever its priority."
-        : autoLabel
-          ? "Custom — replaces the usual reminder for this day only."
-          : "Custom — replaces the priority's reminder for this item.";
+        ? "No reminder for this item, whatever its priority."
+        : "Your own reminder — it replaces the priority's for this item.";
   return (
     <section aria-label="Reminder" className={title === null ? "space-y-3" : "card space-y-3 p-3.5"}>
       {title !== null ? (
@@ -177,19 +215,14 @@ export function ReminderSection({ value: s, onChange, preview, settings, categor
           <Bell className="h-3.5 w-3.5" aria-hidden /> {title}
         </h2>
       ) : null}
-      <SegmentedTabs
-        label="Reminder"
-        options={MODES.map((m) => (m.value === "auto" && autoLabel ? { value: m.value, label: autoLabel } : { ...m }))}
-        value={s.mode}
-        onChange={(v) => set("mode", v)}
-      />
+      <SegmentedTabs label="Reminder" options={[...MODES]} value={s.mode} onChange={(v) => set("mode", v)} />
       <p className="text-[12px] text-ink-2" aria-live="polite">
         {summary}
-        {s.mode === "auto" && !autoLabel ? (
+        {s.mode === "auto" ? (
           <>
             {" "}
             <Link href="/settings/notifications" className="font-medium text-primary-strong underline-offset-2 hover:underline">
-              Change priority windows
+              Change defaults
             </Link>
           </>
         ) : null}
@@ -198,70 +231,41 @@ export function ReminderSection({ value: s, onChange, preview, settings, categor
         <div className="space-y-3">
           <PillGroup legend="Remind me" options={WHENS} value={s.when} onChange={(v) => set("when", v)} />
           {s.when === "at" ? (
-            <TextField label="Time" type="time" value={s.time} onChange={(e) => set("time", e.target.value)} />
+            <TimeField label="Time" value={s.time} onChange={(time) => time && set("time", time)} />
           ) : s.when === "before" ? (
-            <TextField
-              label="Minutes before its time"
-              hint="Untimed items count back from your check-in time."
-              inputMode="numeric"
-              value={s.before}
-              onChange={(e) => set("before", sanitizeDigits(e.target.value, 5))}
-            />
+            <ChipChoice legend="How long before its time" options={chipsWith([5, 10, 15, 30, 60], Number(s.before), (n) => `${n} min`)} value={s.before} onChange={(v) => set("before", v)} />
           ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <TextField label="Minutes" inputMode="numeric" value={s.offset} onChange={(e) => set("offset", sanitizeDigits(e.target.value, 3))} />
-              <label className="block">
-                <span className="mb-1 block text-[12px] font-medium text-ink">Before / after</span>
-                <select
+            <div className="space-y-2.5">
+              <ChipChoice legend="Prayer" options={prayerOptions.map((p) => ({ value: p.key, label: p.title }))} value={s.prayer} onChange={(v) => set("prayer", v)} />
+              <div className="flex flex-wrap gap-3">
+                <ChipChoice
+                  legend="Before or after"
+                  options={[
+                    { value: "before", label: "Before" },
+                    { value: "after", label: "After" },
+                  ]}
                   value={s.relation}
-                  onChange={(e) => set("relation", e.target.value as "before" | "after")}
-                  className="h-10 w-full rounded-[12px] border border-border bg-surface px-2 text-[14px] text-ink outline-none focus:border-primary-strong"
-                >
-                  <option value="before">before</option>
-                  <option value="after">after</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[12px] font-medium text-ink">Prayer</span>
-                <select
-                  value={s.prayer}
-                  onChange={(e) => set("prayer", e.target.value)}
-                  className="h-10 w-full rounded-[12px] border border-border bg-surface px-2 text-[14px] text-ink outline-none focus:border-primary-strong"
-                >
-                  {prayerOptions.map((p) => (
-                    <option key={p.key} value={p.key}>
-                      {p.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  onChange={(v) => set("relation", v)}
+                />
+                <ChipChoice legend="By" options={chipsWith([0, 5, 10, 15, 30], Number(s.offset), (n) => (n ? `${n} min` : "At it"))} value={s.offset} onChange={(v) => set("offset", v)} />
+              </div>
             </div>
           )}
           {showDays ? (
-            <div className="space-y-2">
-              <PillGroup legend="Repeat on" options={DAYS_MODES} value={s.daysMode} onChange={(v) => set("daysMode", v)} />
-              {s.daysMode === "pick" ? (
-                <div role="group" aria-label="Days" className="flex flex-wrap gap-1.5">
-                  {WEEK.map(([d, name]) => {
-                    const on = s.days.includes(d);
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => set("days", on ? s.days.filter((x) => x !== d) : [...s.days, d])}
-                        className={`min-h-9 min-w-11 rounded-full px-2.5 text-[12px] font-medium ${on ? "bg-primary-strong text-on-primary-strong" : "bg-track text-ink hover:bg-border"}`}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
+            <>
+              <DaysPicker mode={s.daysMode} days={s.days} onChange={(daysMode, days) => onChange({ ...s, daysMode, days })} />
               <p className="text-[11.5px] text-ink-2">Only on days the item is due — a monthly item reminds on its day of the month.</p>
-            </div>
+            </>
           ) : null}
-          <RepeatFields idPrefix="item-reminder" value={s.repeat} onChange={(repeat) => set("repeat", repeat)} />
+          <details className="group rounded-xl border border-border px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[13px] text-ink">
+              <span className="font-medium">Repeat &amp; snooze</span>
+              <span className="truncate text-[12px] text-ink-2">{repeatSummary(s.repeat)}</span>
+            </summary>
+            <div className="pt-3">
+              <RepeatFields value={s.repeat} onChange={(repeat) => set("repeat", repeat)} />
+            </div>
+          </details>
         </div>
       ) : null}
     </section>

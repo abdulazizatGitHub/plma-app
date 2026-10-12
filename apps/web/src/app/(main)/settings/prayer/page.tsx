@@ -12,7 +12,7 @@ import {
 import { ArrowLeft, LocateFixed, MapPin, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Button, Checkbox, Pill, SegmentedTabs } from "@/components/kit";
+import { Button, Checkbox, Pill, SegmentedTabs, TimeField } from "@/components/kit";
 import { ListEditor, newRow, type ListRow } from "@/components/items/list-editor";
 import { useLocation } from "@/components/location/location-provider";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
@@ -157,21 +157,27 @@ export default function PrayerSettingsPage() {
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </span>
-                <input
-                  type="time"
-                  aria-label={`${LABEL[k]} fixed time`}
-                  value={manual}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    void save((s) => {
-                      const next = { ...s.prayerManual };
-                      if (value) next[k] = value;
-                      else delete next[k];
-                      return { prayerManual: next };
-                    });
-                  }}
-                  className="ml-auto h-8 w-28 min-w-0 rounded-[10px] border border-border bg-surface px-1.5 text-[12px] text-ink"
-                />
+                <span className="ml-auto">
+                  <TimeField
+                    label={`${LABEL[k]} fixed time`}
+                    hideLabel
+                    size="sm"
+                    floating
+                    optional
+                    minuteStep={1}
+                    placeholder="Fixed time"
+                    start={times?.clock[k] ?? "12:00"}
+                    value={manual}
+                    onChange={(value) =>
+                      void save((s) => {
+                        const next = { ...s.prayerManual };
+                        if (value) next[k] = value;
+                        else delete next[k];
+                        return { prayerManual: next };
+                      })
+                    }
+                  />
+                </span>
               </li>
             );
           })}

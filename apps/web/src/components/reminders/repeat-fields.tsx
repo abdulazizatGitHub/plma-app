@@ -1,15 +1,17 @@
 "use client";
 
-import { Checkbox, TextField } from "@/components/kit";
-import { sanitizeDigits } from "@/lib/forms/validators";
+import { ChipChoice } from "@/components/kit";
 
 /*
- * Repeat and snooze, as the user sets them (owner, 2026-10-12): per priority
- * in Settings, or per item on a custom reminder. Strings while editing so
- * fields can be empty; `repeatErrors` says what's wrong before saving.
+ * Repeat-until-done and snooze, picked from chips (owner, 2026-10-13: no
+ * typing). Per priority in Settings, or per item. Values stay strings in the
+ * draft so the shapes saved are unchanged.
  */
 
 export type RepeatDraft = { repeat: boolean; every: string; times: string; snooze: string };
+
+/** "Until done" = the most repeats a reminder may have. */
+export const UNTIL_DONE = 48;
 
 export const repeatDraft = (everyMin: number | null, maxRepeats: number, snoozeMin: number): RepeatDraft => ({
   repeat: !!everyMin && maxRepeats > 0,
@@ -24,7 +26,7 @@ export function repeatErrors(d: RepeatDraft): Partial<Record<"every" | "times" |
   const times = Number(d.times);
   const snooze = Number(d.snooze);
   if (d.repeat && (!d.every || every < 5 || every > 1440)) out.every = "5 to 1440 minutes";
-  if (d.repeat && (!d.times || times < 1 || times > 48)) out.times = "1 to 48 times";
+  if (d.repeat && (!d.times || times < 1 || times > UNTIL_DONE)) out.times = `1 to ${UNTIL_DONE} times`;
   if (!d.snooze || snooze < 1 || snooze > 240) out.snooze = "1 to 240 minutes";
   return out;
 }
@@ -35,26 +37,33 @@ export const repeatValues = (d: RepeatDraft) => ({
   snoozeMin: Number(d.snooze),
 });
 
-export function RepeatFields({ value, onChange, idPrefix }: { value: RepeatDraft; onChange: (d: RepeatDraft) => void; idPrefix: string }) {
-  const errors = repeatErrors(value);
-  const num = (key: "every" | "times" | "snooze", max = 4) => ({
-    value: value[key],
-    inputMode: "numeric" as const,
-    onChange: (e: { target: { value: string } }) => onChange({ ...value, [key]: sanitizeDigits(e.target.value, max) }),
-    error: errors[key] ?? null,
-  });
+/** The usual chips, plus the current value if it's something else (e.g. 20 min saved earlier). */
+export function chipsWith(values: readonly number[], current: number, label: (n: number) => string) {
+  const all = values.includes(current) || !Number.isFinite(current) || current <= 0 ? [...values] : [...values, current].sort((a, b) => a - b);
+  return all.map((v) => ({ value: String(v), label: label(v) }));
+}
+
+const minutes = (n: number) => `${n} min`;
+
+export function RepeatFields({ value, onChange }: { value: RepeatDraft; onChange: (d: RepeatDraft) => void; idPrefix?: string }) {
+  const nag = value.repeat ? value.every : "off";
   return (
-    <div className="space-y-2.5">
-      <Checkbox checked={value.repeat} onChange={(repeat) => onChange({ ...value, repeat })}>
-        Repeat until done
-      </Checkbox>
+    <div className="space-y-3">
+      <ChipChoice
+        legend="Remind again until done"
+        options={[{ value: "off", label: "Once" }, ...chipsWith([10, 15, 30, 60], Number(value.every), (n) => `Every ${n} min`)]}
+        value={nag}
+        onChange={(v) => onChange(v === "off" ? { ...value, repeat: false } : { ...value, repeat: true, every: v })}
+      />
       {value.repeat ? (
-        <div className="grid grid-cols-2 gap-2">
-          <TextField id={`${idPrefix}-every`} label="Every (minutes)" {...num("every")} />
-          <TextField id={`${idPrefix}-times`} label="Up to (more times)" {...num("times", 2)} />
-        </div>
+        <ChipChoice
+          legend="Up to"
+          options={chipsWith([1, 3, 6, UNTIL_DONE], Number(value.times), (n) => (n === UNTIL_DONE ? "Until done" : `${n} more`))}
+          value={value.times}
+          onChange={(times) => onChange({ ...value, times })}
+        />
       ) : null}
-      <TextField id={`${idPrefix}-snooze`} label="Snooze for (minutes)" hint="What “Snooze” on the notification waits." {...num("snooze", 3)} />
+      <ChipChoice legend="Snooze for" options={chipsWith([5, 10, 15, 30], Number(value.snooze), minutes)} value={value.snooze} onChange={(snooze) => onChange({ ...value, snooze })} />
     </div>
   );
 }
