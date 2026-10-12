@@ -29,6 +29,13 @@
       "when": 1791746081931,
       "tag": "0003_day_end_hour",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791815010924,
+      "tag": "0004_reminders",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Progress tracker
 
-Last updated: **2026-10-11**
+Last updated: **2026-10-12**
 
 ## Overall
 
@@ -16,6 +16,8 @@ Last updated: **2026-10-11**
 | **v2 Phase 2** | **Built and verified.** Today, Pending, Categories (read-only), Progress (7 days), Profile; v1 removed; offline launch verified. |
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
 | **v2 Phase 5** | **Built and verified.** Plans: presets (content collab, university course, blank), dated steps on Today, "waits for" locks, cadence warnings and suggestions, rules per plan or category, /plans and the plan page, category Plans section. Browser 10/10. |
+| **v2 Phase 6** | **Built; desktop-verified.** Reminders by priority (window, repeat and snooze editable in Settings), a custom reminder per item that replaces the auto one, Web Push with Done / Snooze on the notification, quiet hours, global switch, category mute, morning summary and plan-tomorrow nudges, iOS install guide. Desktop Chrome E2E 13/13. **Android and iPhone checks wait for a preprod deploy (HTTPS).** |
+| **Day lock & summary (2026-10-12)** | Done. Days lock at the user's day-end hour (midnight–4 AM); Today summary card with segmented ring, prayers bar and perfect-day streak. |
 | **Repo & gates (2026-10-11)** | Pushed to GitHub (`main` / `preprod` / `dev`, tags `v0.4.0`, `v1-final`). Pre-commit and pre-push hooks, CI, CodeQL, gitleaks, dependency review, Dependabot. Next 16.3.8 security update. |
 | **v2 Phase 4** | **Built and verified.** Prayer times (adhan-js, Karachi + Hanafi, nudges and fixed times), just-in-time location, prayer block with times, now, Jumu'ah, qada / missed, prayer editing, prayer anchors and the now highlight, Day view, insights and qada recovery, Progress card. Browser 16/16. |
 | **Setup & tour (2026-10-11)** | Done. Interests first, then tick suggestions (none pre-ticked, editable targets); spotlight tour (replay in Profile); overdue badge by the date. Browser 9/9. |
@@ -45,7 +47,8 @@ Last updated: **2026-10-11**
   2. Sign up, then enter the 6-digit code from the email.
   3. Run `npm run db:migrate:v1 -w @life/api -- --email <you>` (dry run), then again with `--apply`.
   4. Update or delete the stale `apps/api/.env`.
-- **Next:** v2 Phase 6 (Reminders and alarms, including per-step plan reminders).
+- **Owner to-do (Phase 6):** set `VAPID_SUBJECT` in `.env.local` to a contact address of your choice (it is sent to browser push services); add the four push keys to the hosting env when preprod is deployed.
+- **Next:** deploy preprod (HTTPS) to check reminders on Android and an installed iPhone; then v2 Phase 7 (History).
 
 ---
 

@@ -1,6 +1,6 @@
 import type { DayEntry } from "./day.js";
 import { MOVED_SLOT_PREFIX } from "./day.js";
-import type { CadenceRule, Category, Item, ItemDependency, Occurrence, UserSettings } from "./entities.js";
+import type { CadenceRule, Category, Item, ItemDependency, Occurrence, Reminder, UserSettings } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
 import { entryState } from "./progress.js";
 
@@ -15,7 +15,8 @@ export type Change =
   | { entity: "items"; row: Item }
   | { entity: "occurrences"; row: Occurrence }
   | { entity: "itemDependencies"; row: ItemDependency }
-  | { entity: "cadenceRules"; row: CadenceRule };
+  | { entity: "cadenceRules"; row: CadenceRule }
+  | { entity: "reminders"; row: Reminder };
 
 export type ActionContext = { userId: string; now: string; deviceId: string | null };
 

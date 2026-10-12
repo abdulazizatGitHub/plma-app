@@ -7,10 +7,11 @@ import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField } from "@/c
 import { sanitizeDigits } from "@/lib/forms/validators";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useLocation } from "@/components/location/location-provider";
-import { useActions, useCategories, useNextSortOrder, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
+import { useActions, useAllCategories, useCategories, useItemReminders, useNextSortOrder, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
 import { useToday } from "@/lib/v2/use-today";
 import { firstError, initialState, isOnce, toDraft, validate, type EditorPreset, type EditorState } from "./editor-state";
 import { ListEditor } from "./list-editor";
+import { ReminderSection, initialReminderState, reminderChanges, reminderErrors, type ReminderEditorState } from "@/components/reminders/reminder-section";
 
 const KINDS = [
   { value: "task", label: "Task · once" },
@@ -111,8 +112,13 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
     : DEFAULT_PRAYER_OPTIONS;
   const [s, setState] = useState<EditorState>(() => initialState(item, existingChildren, preset, today));
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const reminderRows = useItemReminders(item?.id);
+  const allCategories = useAllCategories();
+  const [reminderStart] = useState<ReminderEditorState>(() => initialReminderState(reminderRows, settings, item?.priority ?? "medium"));
+  const [reminder, setReminder] = useState<ReminderEditorState>(reminderStart);
   const errors = validate(s);
-  const valid = Object.keys(errors).length === 0;
+  const reminderError = reminderErrors(reminder);
+  const valid = Object.keys(errors).length === 0 && !reminderError;
   const set = <K extends keyof EditorState>(key: K, value: EditorState[K]) => setState((prev) => ({ ...prev, [key]: value }));
   const touch = (key: string) => () => setTouched((t) => new Set(t).add(key));
   const shown = (key: keyof typeof errors) => (touched.has(key) ? (errors[key] ?? null) : null);
@@ -146,7 +152,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         saved = changes[0].row as Item;
         changes.push(...saveChildren(saved, [], children, ctx, newId));
       }
-      return changes;
+      return [...changes, ...reminderChanges(saved.id, reminderRows, reminder, reminderStart, ctx)];
     }).then(() => {
       if (saved) onSaved(saved, !item);
       // Prayer anchors use prayer times: ask for location now if it was never set (just in time).
@@ -354,6 +360,15 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         </div>
       </Section>
 
+      <ReminderSection
+        value={reminder}
+        onChange={setReminder}
+        preview={{ priority: s.priority, schedule: valid ? toDraft(s, today).draft.schedule : (item?.schedule ?? { v: 1, kind: "daily" }), meta: item?.meta ?? {} }}
+        settings={settings}
+        category={allCategories.find((c) => c.id === s.categoryId) ?? null}
+        prayerOptions={prayerOptions.filter((p) => p.key !== "sunrise")}
+      />
+
       <div className="flex gap-2">
         <Button type="button" variant="secondary" size="lg" className="flex-1" onClick={onCancel}>
           Cancel
@@ -362,7 +377,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
           {item ? "Save" : "Add"}
         </Button>
       </div>
-      <DisabledHint show={!valid} message={firstError(errors) ?? ""} />
+      <DisabledHint show={!valid} message={firstError(errors) ?? reminderError ?? ""} />
     </form>
   );
 }

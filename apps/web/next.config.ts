@@ -18,7 +18,7 @@ if (existsSync(rootEnv)) {
 // App routes precached so every screen opens offline, even before its first
 // visit. Revisioned per build so a new deploy refreshes them.
 const BUILD_REVISION = Date.now().toString(36);
-const OFFLINE_ROUTES = ["/", "/categories", "/categories/view", "/items/edit", "/items/view", "/plans", "/plans/view", "/settings/prayer", "/pending", "/welcome", "/progress", "/profile", "/sign-in"];
+const OFFLINE_ROUTES = ["/", "/categories", "/categories/view", "/items/edit", "/items/view", "/plans", "/plans/view", "/settings/prayer", "/settings/notifications", "/pending", "/welcome", "/progress", "/profile", "/sign-in"];
 
 const withSerwist = withSerwistInit({
   swSrc: "src/sw.ts",

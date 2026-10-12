@@ -619,3 +619,36 @@ Use this template for each decision:
   - a per-prayer bar
   - the perfect-day streak: current and best
 - **Streak rule (`dayStreak`):** consecutive days at 100%. Days with nothing due are neutral. An unfinished today doesn't break the run until it locks. Badges and rewards (Phase 8) build on these locked days.
+
+### 2026-10-12 — Phase 6 reminders: priority windows, one reminder per item, queue table instead of pg-boss
+
+- **Context:** The owner chose reminders that follow priority, with each priority's window editable in Settings. Any item can have its own reminder; when it does, the auto reminder is off, so only one is active at a time. Repeat and snooze are the user's to set, per priority or per item.
+- **Decision (model):**
+  - **Auto reminders are virtual:** they are derived from `user_settings.reminder_profiles`, so editing a priority applies to every item at once.
+  - **A custom reminder is a `reminders` row.**
+    - "Off" is a row with `enabled=false`; "Back to auto" deletes it.
+    - Two offline devices could each make one, so the latest live row wins; there is no unique index, which would break sync.
+  - Defaults per REM-02 (both editable):
+
+    | Priority | Default |
+    |---|---|
+    | low | off |
+    | medium | once |
+    | high | once, plus one follow-up after 30 min |
+    | critical | every 30 min, up to 6 more, until done |
+
+    Snooze is 10 min for all of them.
+  - **Untimed items** remind at a check-in time (default 8 PM).
+  - **Quiet hours** delay fires to their end; a run of repeats continues from there.
+- **Decision (server):**
+  - **No pg-boss.** The `reminder_queue` table is the queue. The tick runs every minute with `FOR UPDATE SKIP LOCKED`, which is safe with several instances, and avoids a second Postgres driver and the pooler's limits.
+  - **Planning:**
+    - The planner rewrites a user's future fires 3 s after any sync push, plus an hourly sweep.
+    - Fires that are due but not yet sent are kept. A race in E2E showed that a replan could otherwise drop them.
+  - **The notification's Done and Snooze** carry a 24-hour HMAC-signed token for exactly one fire.
+    - Done writes the occurrence as a tap would (shared `toggleDone`), never on a locked day.
+    - Snooze waits the item's snooze length.
+- **Limits:**
+  - Push needs HTTPS: Android and iPhone are checked after the preprod deploy.
+  - iPhone needs the app installed to the Home Screen, which the settings page explains.
+  - Delivery can be a minute late. Exact alarms come with the native wrap (Phase 11).

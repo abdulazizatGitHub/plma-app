@@ -41,11 +41,11 @@ export const ENTITY_SPECS: Record<SyncEntity, EntitySpec> = {
   userSettings: {
     schema: userSettingsSchema,
     table: "user_settings",
-    json: ["prayerOffsets", "dayParts", "prayerManual"],
-    bool: ["jumuahLabel"],
+    json: ["prayerOffsets", "dayParts", "prayerManual", "reminderProfiles"],
+    bool: ["jumuahLabel", "notificationsEnabled"],
     refs: {},
   },
-  categories: { schema: categorySchema, table: "categories", json: [], bool: [], refs: {} },
+  categories: { schema: categorySchema, table: "categories", json: [], bool: ["remindersMuted"], refs: {} },
   items: {
     schema: itemSchema,
     table: "items",
