@@ -3,8 +3,7 @@
 import { createItem, normalisePrayerKey, prayerKeyOf, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Checkbox, DateField, Pill, PillGroup, SegmentedTabs, TextField, TimeField } from "@/components/kit";
-import { sanitizeDigits } from "@/lib/forms/validators";
+import { Button, Checkbox, ChipChoice, DateField, NumberStepper, Pill, PillGroup, SegmentedTabs, StickyActions, TextField, TimeField } from "@/components/kit";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useLocation } from "@/components/location/location-provider";
 import { useActions, useAllCategories, useCategories, useItemReminders, useNextSortOrder, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
@@ -46,7 +45,7 @@ const RELATIONS = [
   { value: "at", label: "At" },
   { value: "after", label: "After" },
 ] as const;
-const OFFSETS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
+const OFFSETS = [0, 5, 10, 15, 30, 45, 60];
 const DEFAULT_PRAYER_OPTIONS = [
   { key: "fajr", title: "Fajr" },
   { key: "sunrise", title: "Sunrise" },
@@ -122,13 +121,6 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
   const set = <K extends keyof EditorState>(key: K, value: EditorState[K]) => setState((prev) => ({ ...prev, [key]: value }));
   const touch = (key: string) => () => setTouched((t) => new Set(t).add(key));
   const shown = (key: keyof typeof errors) => (touched.has(key) ? (errors[key] ?? null) : null);
-  const digits = (key: "target" | "step" | "targetMin" | "everyN" | "monthDay", max = 7) => ({
-    value: s[key],
-    inputMode: "numeric" as const,
-    onChange: (e: { target: { value: string } }) => set(key, sanitizeDigits(e.target.value, max)),
-    onBlur: touch(key),
-    error: shown(key),
-  });
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -180,7 +172,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
           <div className="flex flex-wrap gap-1.5">
             {[{ id: null, name: "None", color: "" }, ...categories].map((c) => (
               <Pill key={c.id ?? "none"} selected={s.categoryId === c.id} onClick={() => set("categoryId", c.id)}>
-                {c.id ? <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: `var(--cat-${categoryTone(c)})` }} /> : null}
+                {c.id ? <span aria-hidden className="h-2.5 w-2.5 rounded-full ring-1 ring-ink/25" style={{ background: `var(--cat-${categoryTone(c)})` }} /> : null}
                 {c.name}
               </Pill>
             ))}
@@ -209,13 +201,19 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         <Section title="Track it as">
           <SegmentedTabs label="Track it as" options={[...TRACKS]} value={s.track} onChange={(v) => set("track", v)} />
           {s.track === "quantity" ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div>
               <TextField label="Unit" placeholder="steps" required maxLength={24} value={s.unit} onChange={(e) => set("unit", e.target.value)} onBlur={touch("unit")} error={shown("unit")} />
-              <TextField label="Target" placeholder="10000" {...digits("target")} />
-              <TextField label="Step" required placeholder="500" {...digits("step", 6)} />
             </div>
           ) : null}
-          {s.track === "duration" ? <TextField label="Target minutes" placeholder="20" hint="Log time with +5 min taps." {...digits("targetMin", 4)} /> : null}
+          {s.track === "quantity" ? (
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              <NumberStepper label="Target" unit={s.unit || undefined} step={Number(s.step) || 1} min={1} value={s.target} onChange={(v) => (set("target", v), touch("target")())} error={shown("target")} />
+              <NumberStepper label="Each tap adds" required min={1} max={999_999} value={s.step} onChange={(v) => (set("step", v), touch("step")())} error={shown("step")} />
+            </div>
+          ) : null}
+          {s.track === "duration" ? (
+            <NumberStepper label="Target" unit="min" step={5} min={1} max={1440} hint="Log time with +5 min taps." value={s.targetMin} onChange={(v) => (set("targetMin", v), touch("targetMin")())} error={shown("targetMin")} />
+          ) : null}
           {s.track === "checklist" ? (
             <ListEditor
               legend="Step"
@@ -292,8 +290,10 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
                 {shown("weekdays") ? <p role="alert" className="mt-1 text-[12px] text-ink">{errors.weekdays}</p> : null}
               </fieldset>
             ) : null}
-            {s.repeat === "everyNDays" ? <TextField label="Every how many days?" required {...digits("everyN", 3)} /> : null}
-            {s.repeat === "monthly" ? <TextField label="Day of the month" required hint="Short months use their last day." {...digits("monthDay", 2)} /> : null}
+            {s.repeat === "everyNDays" ? <NumberStepper label="Every" unit="days" required min={2} max={365} value={s.everyN} onChange={(v) => (set("everyN", v), touch("everyN")())} error={shown("everyN")} /> : null}
+            {s.repeat === "monthly" ? (
+              <NumberStepper label="On day" unit="of the month" required min={1} max={31} hint="Short months use their last day." value={s.monthDay} onChange={(v) => (set("monthDay", v), touch("monthDay")())} error={shown("monthDay")} />
+            ) : null}
             <PillGroup legend="Time of day" options={TIME_OF_DAY} value={s.timeOfDay} onChange={(v) => set("timeOfDay", v)} />
             {s.timeOfDay === "time" ? (
               <TimeField
@@ -309,36 +309,13 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
             {s.timeOfDay === "prayer" ? (
               <div className="space-y-2">
                 <SegmentedTabs label="Before, at or after" options={[...RELATIONS]} value={s.anchorRelation} onChange={(v) => set("anchorRelation", v)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block">
-                    <span className="mb-1 block text-[12px] font-medium text-ink">Prayer</span>
-                    <select
-                      value={s.anchorPrayer}
-                      onChange={(e) => set("anchorPrayer", e.target.value)}
-                      className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
-                    >
-                      {prayerOptions.map((p) => (
-                        <option key={p.key} value={p.key}>
-                          {p.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[12px] font-medium text-ink">Plus</span>
-                    <select
-                      value={s.anchorOffset}
-                      onChange={(e) => set("anchorOffset", Number(e.target.value))}
-                      className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
-                    >
-                      {OFFSETS.map((m) => (
-                        <option key={m} value={m}>
-                          {m ? `${m} min` : "No delay"}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
+                <ChipChoice legend="Prayer" options={prayerOptions.map((p) => ({ value: p.key, label: p.title }))} value={s.anchorPrayer} onChange={(v) => set("anchorPrayer", v)} />
+                <ChipChoice
+                  legend="Plus"
+                  options={(OFFSETS.includes(s.anchorOffset) ? OFFSETS : [...OFFSETS, s.anchorOffset].sort((a, b) => a - b)).map((m) => ({ value: m, label: m ? `${m} min` : "No delay" }))}
+                  value={s.anchorOffset}
+                  onChange={(v) => set("anchorOffset", v)}
+                />
                 <p className="text-[12px] text-ink-2">
                   {s.anchorRelation === "after"
                     ? "Shown from that prayer until the next one."
@@ -387,15 +364,17 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         showDays={!once}
       />
 
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" size="lg" className="flex-1" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button type="submit" size="lg" className="flex-[2]" disabled={!valid}>
-          {item ? "Save" : "Add"}
-        </Button>
-      </div>
-      <DisabledHint show={!valid} message={firstError(errors) ?? reminderError ?? ""} />
+      <StickyActions>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" size="lg" className="flex-1" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" size="lg" className="flex-[2]" disabled={!valid}>
+            {item ? "Save" : "Add"}
+          </Button>
+        </div>
+        <DisabledHint show={!valid} message={firstError(errors) ?? reminderError ?? ""} />
+      </StickyActions>
     </form>
   );
 }

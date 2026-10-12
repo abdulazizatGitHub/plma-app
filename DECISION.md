@@ -738,3 +738,29 @@ Use this template for each decision:
     - The **Repeat** chips (and day circles) come right under them.
     - The wheels show 3 rows.
     - The **Set** button is pinned at the bottom, and its label says what will happen: "Remind me today · 6:45 PM" or "Repeat Weekdays · 6:45 PM".
+
+### 2026-10-13 — Design audit: tap, don't type; no native pickers; actions in reach
+
+- **Context:** The owner asked for every issue like the browser date box and the hidden Repeat options to be found and fixed simply.
+- **How it was audited:** a scripted browser sweep of every screen and sheet, at phone and desktop size, light and dark, checking for:
+  - native controls
+  - off-screen primary actions
+  - overflow and truncation
+  - tap-target size
+  - contrast
+  - unnamed controls
+
+  Screenshots were also reviewed by eye.
+- **Fixed:**
+  - **Native dropdowns:**
+    - "My day ends at": chips
+    - prayer calculation method: `ChoiceSheet`
+    - prayer anchor's prayer and offset: chips
+    - plan rules' step gap: chips
+  - **Typed numbers:** targets, each-tap amount, minutes, every-N-days, day of the month and setup targets use `NumberStepper`.
+  - **Actions in reach:** sticky Save/Add in the item editor, sticky Next/Finish in setup.
+  - **Reminder popup:** Repeat chips wrap.
+  - **Prayer block:** the subtitle stays short; "best before" lives in the card line and the check-in.
+  - **Dark mode:** the sky and yellow category fills are toned down like the rest (the "Content" tag was unreadable).
+  - **Visibility:** category dots get an outline; "Change defaults" gets a readable link color and a proper tap height.
+- **Left as is (by design):** the OTP code boxes and the quantity value on rows are typeable text; the "UI kit (dev)" link exists only in development.

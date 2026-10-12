@@ -132,6 +132,19 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 
 Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 
+## 5b. Controls — tap, don't type (owner, 2026-10-13)
+
+- **No browser-native pickers.**
+  - **Dates:** `DateField` / `Calendar`, a month grid with one-tap quick chips.
+  - **Times:** `TimeField` / `TimeWheel`, scroll wheels.
+  - **Long lists:** `ChoiceSheet`, a sheet of radio rows.
+  - **Short lists:** `ChipChoice`.
+- **Numbers:** `NumberStepper` (− value +). The value stays typeable for big jumps, and the step follows the unit (500 steps, 5 min, 1 page).
+- **Primary actions stay in reach.** Long sheets pin their main button to the bottom; long pages use `StickyActions` above the bottom bar.
+- **Chip rows wrap.** They don't scroll sideways, so the chosen chip is always visible. The one exception is the reminder popup's one-tap picks, where every chip is an action, not a selection.
+- **Category dots** have a thin outline, so pale colors stay visible on chips.
+- **Dark mode:** every category fill is toned down, so light text stays readable on it.
+
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 
 - **Phone first.**

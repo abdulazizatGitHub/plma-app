@@ -115,7 +115,7 @@ describe("Plan page", () => {
     // Quick taps: both land on the same rule.
     fireEvent.click(postRules.getByRole("button", { name: "Tue" }));
     fireEvent.click(postRules.getByRole("button", { name: "Fri" }));
-    fireEvent.change(postRules.getByLabelText("Post gap"), { target: { value: "1" } });
+    fireEvent.click(within(postRules.getByRole("group", { name: /^Keep post steps apart by/ })).getByRole("button", { name: "1 day+" }));
     await waitFor(() => {
       const rules = (store.query("cadenceRules") as unknown as CadenceRule[]).filter((r) => !r.deletedAt);
       expect(rules.map((r) => r.rule)).toEqual(expect.arrayContaining([{ type: "weekdays", days: [2, 5] }, { type: "gapDays", n: 1 }]));

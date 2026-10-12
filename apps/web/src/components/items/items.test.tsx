@@ -73,9 +73,9 @@ describe("ItemEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Habit · repeats" }));
     fireEvent.click(screen.getByRole("tab", { name: "Count" }));
     fireEvent.change(screen.getByLabelText(/^Unit/), { target: { value: "steps" } });
-    fireEvent.change(screen.getByLabelText(/^Target/), { target: { value: "10a000" } });
-    expect(screen.getByLabelText(/^Target/)).toHaveValue("10000"); // digits only
-    fireEvent.change(screen.getByLabelText(/^Step/), { target: { value: "500" } });
+    fireEvent.change(screen.getByRole("textbox", { name: /^Target/ }), { target: { value: "10a000" } });
+    expect(screen.getByRole("textbox", { name: /^Target/ })).toHaveValue("10000"); // digits only
+    fireEvent.change(screen.getByRole("textbox", { name: /^Each tap adds/ }), { target: { value: "500" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
     const [steps] = items();
@@ -152,7 +152,7 @@ describe("ItemEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: "Some days" }));
     for (const d of ["Mon", "Tue", "Wed", "Thu"]) fireEvent.click(screen.getByRole("button", { name: d })); // keep Fri
     fireEvent.click(screen.getByRole("button", { name: "Around a prayer" }));
-    fireEvent.change(screen.getByLabelText("Prayer"), { target: { value: "dhuhr" } });
+    fireEvent.click(within(screen.getByRole("group", { name: "Prayer" })).getByRole("button", { name: "Zuhr" }));
     expect(screen.getByText(/Shown from that prayer until the next one/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());

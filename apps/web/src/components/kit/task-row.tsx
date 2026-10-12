@@ -116,7 +116,7 @@ export function TaskRow({
           ) : meta ? (
             <span className="mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-2">
               {categoryColor ? (
-                <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: categoryColor }} />
+                <span aria-hidden className="h-2.5 w-2.5 rounded-full ring-1 ring-ink/25" style={{ background: categoryColor }} />
               ) : null}
               <span className="truncate">{meta}</span>
             </span>

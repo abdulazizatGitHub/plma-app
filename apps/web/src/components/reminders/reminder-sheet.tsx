@@ -189,8 +189,8 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
         <h3 className="text-[12px] font-medium text-ink">Or pick a time</h3>
         {!oneOff ? (
           <>
-            <div className="no-scrollbar -mx-4 overflow-x-auto px-4">
-              <div className="w-max">
+            <div>
+              <div>
                 <ChipChoice<RepeatChoice>
                   legend="Repeat"
                   hideLegend

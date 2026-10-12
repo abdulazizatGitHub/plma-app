@@ -12,7 +12,7 @@ import {
 import { ArrowLeft, LocateFixed, MapPin, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Button, Checkbox, Pill, SegmentedTabs, TimeField } from "@/components/kit";
+import { Button, Checkbox, ChoiceSheet, Pill, SegmentedTabs, TimeField } from "@/components/kit";
 import { ListEditor, newRow, type ListRow } from "@/components/items/list-editor";
 import { useLocation } from "@/components/location/location-provider";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
@@ -94,20 +94,12 @@ export default function PrayerSettingsPage() {
       ) : null}
 
       <Card title="Calculation">
-        <label className="block">
-          <span className="mb-1 block text-[12px] font-medium text-ink">Method</span>
-          <select
-            value={settings.calcMethod}
-            onChange={(e) => void save({ calcMethod: e.target.value })}
-            className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
-          >
-            {Object.entries(PRAYER_METHODS).map(([key, m]) => (
-              <option key={key} value={key}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ChoiceSheet
+          label="Method"
+          value={settings.calcMethod}
+          options={Object.entries(PRAYER_METHODS).map(([key, m]) => ({ value: key, label: m.label }))}
+          onChange={(calcMethod) => void save({ calcMethod })}
+        />
         <div>
           <span className="mb-1 block text-[12px] font-medium text-ink">Asr</span>
           <SegmentedTabs

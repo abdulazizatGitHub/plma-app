@@ -66,9 +66,9 @@
   --cat-peach: color-mix(in srgb, #e9cfc8 30%, #25242e);
   --cat-lime: color-mix(in srgb, #e6ecca 30%, #25242e);
   --cat-pink: color-mix(in srgb, #f6e4e2 30%, #25242e);
-  --cat-sky: #86cfe2;
+  --cat-sky: color-mix(in srgb, #86cfe2 40%, #25242e);
   --cat-teal: #2e9499;
-  --cat-yellow: #fdc703;
+  --cat-yellow: color-mix(in srgb, #fdc703 35%, #25242e);
 
   --shadow-card: none;
 }
