@@ -28,7 +28,7 @@ function card(date: string, today: string, streak = { current: 0, best: 0 }) {
   const b = item({ title: "Walk" });
   const rows = buildDay([a, b], [done(a, date)], date);
   return render(
-    <DaySummaryCard access={date === today ? "live" : "history"} rows={rows} progress={dayProgress(rows)} prayers={null} date={date} today={today} streak={streak} nextUp="Asr · 3:59 PM" />,
+    <DaySummaryCard access={date === today ? "live" : "history"} rows={rows} progress={dayProgress(rows)} prayers={null} date={date} today={today} streak={streak} nextUp="next: Asr at 3:59 PM" />,
   );
 }
 
@@ -37,7 +37,7 @@ describe("DaySummaryCard", () => {
     card("2026-10-12", "2026-10-12", { current: 3, best: 7 });
     expect(screen.getByRole("img", { name: "50% of the day done" })).toBeInTheDocument();
     expect(screen.getByText("1 of 2 done")).toBeInTheDocument();
-    expect(screen.getByText(/1 left · next: Asr · 3:59 PM/)).toBeInTheDocument();
+    expect(screen.getByText(/1 left · next: Asr at 3:59 PM/)).toBeInTheDocument();
     expect(screen.getByText(/perfect days in a row/).textContent).toContain("3");
     expect(screen.getByText(/Best/).textContent).toContain("7");
   });

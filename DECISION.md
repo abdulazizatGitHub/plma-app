@@ -652,3 +652,24 @@ Use this template for each decision:
   - Push needs HTTPS: Android and iPhone are checked after the preprod deploy.
   - iPhone needs the app installed to the Home Screen, which the settings page explains.
   - Delivery can be a minute late. Exact alarms come with the native wrap (Phase 11).
+
+### 2026-10-12 — Prayer timing: now / next / not marked yet; Isha after midnight; never assume qada
+
+- **Context:**
+  - In the evening, the Today card said "next: Fajr · 4:48 AM". After Isha, the code took *tomorrow's* Fajr and matched it to *today's* unmarked Fajr.
+  - Prayers whose time had passed looked just like open ones.
+  - Isha, which is valid until Fajr, locked at midnight.
+- **Decision** (shared `prayer/timing.ts`):
+  - **A prayer's time runs until the next prayer.**
+    - At 9 PM it reads "Isha now · until 5:13 AM tomorrow"; after Isha is marked, "next: Fajr tomorrow · 5:13 AM".
+    - The prayer whose time it is leads the card's next-up line.
+  - **Never assume qada (owner):** people pray on time and mark later, or mark everything at night.
+    - A prayer whose time passed reads "time passed, not marked": a dashed, neutral chip, not qada and not missed.
+    - Tapping it records **prayed on time**. A toast offers "Prayed late?" to switch it to qada.
+    - "Mark today's prayers" has **All on time**.
+    - An unmarked prayer becomes missed only when its day closes.
+  - **Isha after midnight:** while yesterday's Isha is unmarked and before Fajr, Today shows "Isha (Mon) · still on time until …" with **Prayed** (on time), even though yesterday has locked. After Fajr it is a normal closed-day prayer.
+  - **Hanafi preferred times are notes only:**
+    - Isha: "best before" Islamic midnight (midpoint of Maghrib and Fajr)
+    - Asr: before the sun yellows (about 20 min before Maghrib)
+    - Shown in the headline and the check-in; never a status.

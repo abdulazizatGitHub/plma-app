@@ -15,6 +15,7 @@ export * from "./prayer/windows.js";
 export * from "./prayer/day-parts.js";
 export * from "./prayer/prayer-set.js";
 export * from "./prayer/insights.js";
+export * from "./prayer/timing.js";
 export * from "./plans/presets.js";
 export * from "./plans/plan-state.js";
 export * from "./plans/cadence.js";
