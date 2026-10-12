@@ -367,6 +367,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         settings={settings}
         category={allCategories.find((c) => c.id === s.categoryId) ?? null}
         prayerOptions={prayerOptions.filter((p) => p.key !== "sunrise")}
+        showDays={!once}
       />
 
       <div className="flex gap-2">

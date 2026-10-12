@@ -37,7 +37,45 @@ export type ReminderEditorState = {
   relation: "before" | "after";
   offset: string;
   repeat: RepeatDraft;
+  /** Which days it reminds on, like an alarm. */
+  daysMode: DaysMode;
+  /** The picked days (0 = Sunday) when `daysMode` is "pick". */
+  days: number[];
 };
+
+export type DaysMode = "every" | "weekdays" | "weekends" | "pick";
+const DAYS_MODES = [
+  { value: "every", label: "Every day" },
+  { value: "weekdays", label: "Weekdays" },
+  { value: "weekends", label: "Weekends" },
+  { value: "pick", label: "Pick days" },
+] as const;
+/** Monday first; values are JS weekdays (0 = Sunday). */
+const WEEK = [
+  [1, "Mon"],
+  [2, "Tue"],
+  [3, "Wed"],
+  [4, "Thu"],
+  [5, "Fri"],
+  [6, "Sat"],
+  [0, "Sun"],
+] as const;
+
+function daysModeOf(days: number[] | null | undefined): DaysMode {
+  const key = days ? [...days].sort((a, b) => a - b).join(",") : "";
+  if (!days || days.length === 7) return "every";
+  if (key === "1,2,3,4,5") return "weekdays";
+  if (key === "0,6") return "weekends";
+  return "pick";
+}
+
+/** The weekdays the editor describes; null = every day. */
+export function draftDays(s: Pick<ReminderEditorState, "daysMode" | "days">): number[] | null {
+  if (s.daysMode === "weekdays") return [1, 2, 3, 4, 5];
+  if (s.daysMode === "weekends") return [0, 6];
+  if (s.daysMode === "pick") return s.days.length && s.days.length < 7 ? [...s.days].sort((a, b) => a - b) : null;
+  return null;
+}
 
 const MODES = [
   { value: "auto", label: "Auto" },
@@ -62,6 +100,8 @@ export function initialReminderState(rows: Reminder[], settings: Pick<UserSettin
     relation: "after",
     offset: "10",
     repeat: r?.enabled ? repeatDraft(r.repeatEveryMin, r.maxRepeats, r.snoozeMin ?? p.snoozeMin) : repeatDraft(p.repeatEveryMin, p.maxRepeats, p.snoozeMin),
+    daysMode: daysModeOf(r?.enabled ? r.days : null),
+    days: r?.enabled && r.days ? [...r.days] : [1, 2, 3, 4, 5],
   };
   const t = r?.enabled ? r.trigger : null;
   if (t?.type === "at" || t?.type === "time") return { ...base, when: "at", time: t.time };
@@ -75,6 +115,7 @@ export function reminderErrors(s: ReminderEditorState): string | null {
   if (s.when === "at" && !/^\d{2}:\d{2}$/.test(s.time)) return "Pick a reminder time";
   if (s.when === "before" && (!s.before || Number(s.before) > 10080)) return "Reminder: minutes before must be 0–10080";
   if (s.when === "prayer" && (s.offset === "" || Number(s.offset) > 180)) return "Reminder: prayer offset must be 0–180 minutes";
+  if (s.daysMode === "pick" && s.days.length === 0) return "Reminder: pick at least one day";
   const r = repeatErrors(s.repeat);
   const first = r.every ?? r.times ?? r.snooze;
   return first ? `Reminder: ${first}` : null;
@@ -83,7 +124,7 @@ export function reminderErrors(s: ReminderEditorState): string | null {
 /** The custom reminder the editor describes (time, repeat, snooze). */
 export function customDraft(s: ReminderEditorState) {
   const v = repeatValues(s.repeat);
-  return { trigger: trigger(s), repeatEveryMin: v.repeatEveryMin, maxRepeats: v.maxRepeats, snoozeMin: v.snoozeMin };
+  return { trigger: trigger(s), repeatEveryMin: v.repeatEveryMin, maxRepeats: v.maxRepeats, snoozeMin: v.snoozeMin, days: draftDays(s) };
 }
 
 function trigger(s: ReminderEditorState): Trigger {
@@ -98,8 +139,7 @@ export function reminderChanges(itemId: string, rows: Reminder[], s: ReminderEdi
   if (s.mode === "auto") return clearCustomReminder(rows, ctx);
   const newId = () => crypto.randomUUID();
   if (s.mode === "off") return saveCustomReminder(itemId, rows[0], null, ctx, newId);
-  const v = repeatValues(s.repeat);
-  return saveCustomReminder(itemId, rows[0], { trigger: trigger(s), repeatEveryMin: v.repeatEveryMin, maxRepeats: v.maxRepeats, snoozeMin: v.snoozeMin }, ctx, newId);
+  return saveCustomReminder(itemId, rows[0], customDraft(s), ctx, newId);
 }
 
 type Props = {
@@ -115,9 +155,11 @@ type Props = {
   autoSummary?: string;
   /** Heading; null hides it (inside a sheet that has its own title). */
   title?: string | null;
+  /** Offer "Repeat on" days (repeating items, not a one-day reminder). */
+  showDays?: boolean;
 };
 
-export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions, autoLabel, autoSummary, title = "Reminder" }: Props) {
+export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions, autoLabel, autoSummary, title = "Reminder", showDays = false }: Props) {
   const set = <K extends keyof ReminderEditorState>(k: K, v: ReminderEditorState[K]) => onChange({ ...s, [k]: v });
   const auto = effectiveReminder(preview, null, settings, category);
   const summary =
@@ -195,6 +237,30 @@ export function ReminderSection({ value: s, onChange, preview, settings, categor
               </label>
             </div>
           )}
+          {showDays ? (
+            <div className="space-y-2">
+              <PillGroup legend="Repeat on" options={DAYS_MODES} value={s.daysMode} onChange={(v) => set("daysMode", v)} />
+              {s.daysMode === "pick" ? (
+                <div role="group" aria-label="Days" className="flex flex-wrap gap-1.5">
+                  {WEEK.map(([d, name]) => {
+                    const on = s.days.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => set("days", on ? s.days.filter((x) => x !== d) : [...s.days, d])}
+                        className={`min-h-9 min-w-11 rounded-full px-2.5 text-[12px] font-medium ${on ? "bg-primary-strong text-on-primary-strong" : "bg-track text-ink hover:bg-border"}`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <p className="text-[11.5px] text-ink-2">Only on days the item is due — a monthly item reminds on its day of the month.</p>
+            </div>
+          ) : null}
           <RepeatFields idPrefix="item-reminder" value={s.repeat} onChange={(repeat) => set("repeat", repeat)} />
         </div>
       ) : null}

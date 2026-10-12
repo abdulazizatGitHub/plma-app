@@ -137,6 +137,8 @@ export const reminderSchema = syncedRowSchema.extend({
   enabled: z.boolean(),
   /** Snooze length; null = the priority's. */
   snoozeMin: z.number().int().min(1).max(240).nullable().default(null),
+  /** Days of the week it reminds (0 = Sunday), like an alarm; null = every day the item is due. */
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7).nullable().default(null),
   /** Computed by the server; clients send null. */
   nextFireAt: instantSchema.nullable(),
 });

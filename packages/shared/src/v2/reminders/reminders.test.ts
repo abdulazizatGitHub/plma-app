@@ -11,6 +11,7 @@ import {
   prayerTimes,
   saveCustomReminder,
   setDayReminder,
+  describeDays,
   buildDay,
   type ActionContext,
   type Category,
@@ -158,6 +159,20 @@ describe("plannedFires", () => {
     expect(plannedFires(input([walk], { occurrences: [off.row as Occurrence] }), ...day()).length).toBe(0);
     const [cleared] = await setDayReminder(buildDay([walk], [off.row as Occurrence], "2026-10-12")[0], "2026-10-12", null, ctx);
     expect(clocks(plannedFires(input([walk], { occurrences: [cleared.row as Occurrence] }), ...day()))).toEqual(["07:30", "08:00"]);
+  });
+
+  it("repeats on chosen weekdays like an alarm (only on days the item is due)", () => {
+    const steps = item({ title: "Steps" });
+    const [c] = saveCustomReminder(steps.id, null, { trigger: { type: "at", time: "18:00" }, repeatEveryMin: null, maxRepeats: 0, snoozeMin: null, days: [1, 3, 5] }, ctx, uid);
+    const r = c.row as Reminder;
+    expect(r.days).toEqual([1, 3, 5]);
+    // Mon 12 → Sun 18 Oct 2026: Mon, Wed, Fri only.
+    const fires = plannedFires(input([steps], { reminders: [r] }), pk("00:00"), pk("23:59", 18));
+    expect(fires.map((f) => f.date)).toEqual(["2026-10-12", "2026-10-14", "2026-10-16"]);
+    expect(describeReminder(effectiveReminder(steps, r, settings()), steps)).toBe("Custom: at 6:00 PM · Mon, Wed, Fri");
+    const [all] = saveCustomReminder(steps.id, r, { trigger: { type: "at", time: "18:00" }, repeatEveryMin: null, maxRepeats: 0, snoozeMin: null, days: [0, 1, 2, 3, 4, 5, 6] }, ctx, uid);
+    expect((all.row as Reminder).days).toBeNull();
+    expect([describeDays([1, 2, 3, 4, 5]), describeDays([6, 0]), describeDays(null), describeDays([0, 2])]).toEqual(["Weekdays", "Weekends", "Every day", "Tue, Sun"]);
   });
 });
 

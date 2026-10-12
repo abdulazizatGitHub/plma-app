@@ -1,6 +1,7 @@
 import { buildDay, type DayEntry } from "../day.js";
 import type { Category, Item, Occurrence, Reminder, UserSettings } from "../entities.js";
 import { entryState } from "../progress.js";
+import { weekdayOf } from "../schedule.js";
 import { prayerKeyOf } from "../prayer/prayer-set.js";
 import { clockIn, prayerTimes, zonedInstant, type DayPrayerTimes, type PrayerTimeKey } from "../prayer/times.js";
 import { anchorWindow, normalisePrayerKey } from "../prayer/windows.js";
@@ -30,6 +31,8 @@ export type EffectiveReminder =
       repeatEveryMin: number | null;
       maxRepeats: number;
       snoozeMin: number;
+      /** Weekdays it reminds on (0 = Sunday); null = every day the item is due. */
+      days?: number[] | null;
     };
 
 export type ReminderSettings = Pick<
@@ -84,6 +87,7 @@ export function effectiveReminder(
       repeatEveryMin: repeats ? custom.repeatEveryMin : null,
       maxRepeats: repeats,
       snoozeMin: custom.snoozeMin ?? profile.snoozeMin,
+      days: custom.days ?? null,
     };
   }
   if (!profile.enabled) return { source: "off", reason: "priority-off" };
@@ -234,6 +238,7 @@ export function plannedFires(input: ReminderInput, from: Date, to: Date): Remind
         if (!isOpen(unit)) continue;
         const eff = effectiveReminderOn(unit, custom.get(unit.item.id), settings, categoryOf(unit.item));
         if (eff.source === "off") continue;
+        if (eff.days && !eff.days.includes(weekdayOf(date))) continue;
         const at = firstFire(unit.item, date, eff, t, settings);
         if (!at) continue;
         const context = e.plan ? `${e.plan.title} · ` : e.children ? `${e.item.title} · ` : "";
@@ -330,5 +335,17 @@ export function describeReminder(eff: EffectiveReminder, item: Pick<Item, "prior
   else when = `at the start of ${t.key}`;
   const repeat = eff.repeatEveryMin && eff.maxRepeats ? `, then every ${eff.repeatEveryMin} min until done (up to ${eff.maxRepeats} more)` : "";
   const head = eff.source === "auto" ? `Auto · ${PRIORITY_LABEL[item.priority]}` : "Custom";
-  return `${head}: ${when}${repeat}`;
+  const days = eff.days ? ` · ${describeDays(eff.days)}` : "";
+  return `${head}: ${when}${repeat}${days}`;
+}
+
+const DAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** "Weekdays", "Weekends", "Mon, Wed, Fri" (Monday first); null = every day. */
+export function describeDays(days: number[] | null | undefined): string {
+  if (!days || days.length === 0 || days.length === 7) return "Every day";
+  const key = [...days].sort((a, b) => a - b).join(",");
+  if (key === "1,2,3,4,5") return "Weekdays";
+  if (key === "0,6") return "Weekends";
+  return [...days].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_SHORT[d]).join(", ");
 }

@@ -75,6 +75,29 @@ describe("Reminder section in the item editor", () => {
     expect(reminders()[0]).toMatchObject({ itemId: walk.id, enabled: true, trigger: { type: "at", time: "06:45" }, repeatEveryMin: 15, maxRepeats: 2, snoozeMin: 5 });
   });
 
+  it("repeats on picked days like an alarm", async () => {
+    const steps = item({ title: "Steps" });
+    editor(steps);
+    const section = within(screen.getByRole("region", { name: "Reminder" }));
+    fireEvent.click(section.getByRole("tab", { name: "Custom" }));
+    fireEvent.click(section.getByRole("button", { name: "Pick days" }));
+    const days = within(section.getByRole("group", { name: "Days" }));
+    // Weekdays are pre-picked; keep Mon, Wed, Fri.
+    fireEvent.click(days.getByRole("button", { name: "Tue" }));
+    fireEvent.click(days.getByRole("button", { name: "Thu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: steps.id, days: [1, 3, 5] }));
+  });
+
+  it("needs at least one picked day", () => {
+    editor(item({ title: "Gym" }));
+    const section = within(screen.getByRole("region", { name: "Reminder" }));
+    fireEvent.click(section.getByRole("tab", { name: "Custom" }));
+    fireEvent.click(section.getByRole("button", { name: "Pick days" }));
+    for (const d of ["Mon", "Tue", "Wed", "Thu", "Fri"]) fireEvent.click(within(section.getByRole("group", { name: "Days" })).getByRole("button", { name: d }));
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("blocks saving an invalid custom reminder", () => {
     editor(item({ title: "Read" }));
     const section = within(screen.getByRole("region", { name: "Reminder" }));
@@ -160,7 +183,7 @@ describe("Remind me… from a row's menu", () => {
     fireEvent.click(await screen.findByRole("button", { name: "More actions for Steps" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
     const sheet = within(await screen.findByRole("dialog"));
-    expect(sheet.getByRole("tab", { name: "Today only" })).toHaveAttribute("aria-selected", "true");
+    expect(sheet.getByRole("tab", { name: "Once (today)" })).toHaveAttribute("aria-selected", "true");
     expect(sheet.getByText(/^Usual: Auto · High/)).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("tab", { name: "Custom" }));
     fireEvent.change(sheet.getByLabelText("Time"), { target: { value: "18:15" } });
@@ -173,13 +196,13 @@ describe("Remind me… from a row's menu", () => {
     expect(await screen.findByText(/6:15 PM \(this day\)/)).toBeInTheDocument();
   });
 
-  it("'Every day' saves the item's own reminder instead", async () => {
+  it("'Repeat' saves the item's own reminder instead", async () => {
     const read = item({ title: "Read" });
     todayScreen(read);
     fireEvent.click(await screen.findByRole("button", { name: "More actions for Read" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
     const sheet = within(await screen.findByRole("dialog"));
-    fireEvent.click(sheet.getByRole("tab", { name: "Every day" }));
+    fireEvent.click(sheet.getByRole("tab", { name: "Repeat" }));
     fireEvent.click(sheet.getByRole("tab", { name: "Off" }));
     fireEvent.click(sheet.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: read.id, enabled: false }));

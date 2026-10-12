@@ -17,6 +17,7 @@ import {
   toggleDone,
   type Category,
   dayReminderOf,
+  describeDays,
   type DayEntry,
   type EntryState,
   canLog,
@@ -247,7 +248,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
             : "Reminder";
     list.push(
       <Tag key="reminder" icon={custom.enabled ? <Bell /> : <BellOff />}>
-        {forDay ? `${label} (this day)` : label}
+        {forDay ? `${label} (this day)` : !forDay && everyday?.days ? `${label} · ${describeDays(everyday.days)}` : label}
       </Tag>,
     );
   }

@@ -258,6 +258,7 @@ export const reminders = pgTable(
     maxRepeats: integer("max_repeats").notNull().default(0),
     enabled: boolean("enabled").notNull().default(true),
     snoozeMin: integer("snooze_min"),
+    days: jsonb("days").$type<number[]>(),
     nextFireAt: ts("next_fire_at"),
     ...syncedColumns,
   },
