@@ -1,43 +1,38 @@
 "use client";
 
 import {
+  clearCustomReminder,
   dayReminderOf,
   describeReminder,
-  effectiveReminder,
+  effectiveReminderOn,
+  itemTime,
   normalisePrayerKey,
   prayerKeyOf,
+  saveCustomReminder,
   setDayReminder,
   type DayEntry,
-  type Reminder,
+  type DayReminder,
+  type Occurrence,
 } from "@life/shared";
+import { Bell, BellOff, RotateCcw, Zap } from "lucide-react";
 import { useState } from "react";
-import { Button, SegmentedTabs, Sheet } from "@/components/kit";
+import { Button, ChipChoice, Sheet, TimeWheel, label12 } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { useStore } from "@/components/providers/store-provider";
+import { formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
-import { useActions, useAllCategories, useItemReminders, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
-import { ReminderSection, customDraft, initialReminderState, reminderChanges, reminderErrors, type ReminderEditorState } from "./reminder-section";
+import { quickPicks, soonClock, type QuickPick } from "@/lib/v2/quick-picks";
+import { useActions, useAllCategories, useItemReminders, usePrayerSet, usePrayerTimes, useUserSettings } from "@/lib/v2/use-day";
+import { useNow } from "@/lib/v2/use-now";
+import { DaysPicker, draftDays, repeatSummary, type DaysMode } from "./reminder-section";
+import { RepeatFields, repeatDraft, repeatValues, type RepeatDraft } from "./repeat-fields";
 
-type Scope = "day" | "everyday";
-
-/** "HH:mm" about 30 min after `hhmm`, rounded up to 5 min (capped at 23:55). */
-function soon(hhmm: string): string {
-  const [h, m] = hhmm.split(":").map(Number);
-  const t = Math.min(23 * 60 + 55, Math.ceil((h * 60 + m + 30) / 5) * 5);
-  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
-}
-
-const FALLBACK_PRAYERS = [
-  { key: "fajr", title: "Fajr" },
-  { key: "dhuhr", title: "Zuhr" },
-  { key: "asr", title: "Asr" },
-  { key: "maghrib", title: "Maghrib" },
-  { key: "isha", title: "Isha" },
-];
+const NAMES: Record<string, string> = { fajr: "Fajr", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 
 /**
- * "Remind me…" from a row's menu (owner, 2026-10-12): the same reminder as in
- * the editor — Auto by priority, Custom (time, repeat, snooze) or Off — set
- * for this day only (default) or as the item's everyday reminder.
+ * "Remind me…" (owner, 2026-10-13: least effort). One tap on a quick pick sets
+ * a reminder for that day and closes, with Undo. Or flick the time wheels,
+ * choose Once or repeat days, and Save. No typing anywhere.
  */
 export function ReminderSheet({ entry, date, today, onClose }: { entry: DayEntry | null; date: string; today: string; onClose: () => void }) {
   return (
@@ -47,108 +42,194 @@ export function ReminderSheet({ entry, date, today, onClose }: { entry: DayEntry
   );
 }
 
+type RepeatChoice = "once" | DaysMode;
+
+const clockOf = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
 function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; date: string; today: string; onClose: () => void }) {
   const settings = useUserSettings();
   const run = useActions();
+  const { store } = useStore();
   const { notify } = useAddSheet();
+  const now = useNow();
+  const times = usePrayerTimes(date);
   const rows = useItemReminders(entry.item.id);
   const category = useAllCategories().find((c) => c.id === entry.item.categoryId) ?? null;
   const { prayers } = usePrayerSet();
-  const prayerOptions = prayers.length
-    ? prayers.flatMap((p) => {
-        const key = prayerKeyOf(p);
-        return key ? [{ key: normalisePrayerKey(key), title: p.title }] : [];
-      })
-    : FALLBACK_PRAYERS;
-
-  const day = dayReminderOf(entry.occurrence);
-  const [clockNow] = useState(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  });
-  const dayStart: ReminderEditorState = (() => {
-    const base = initialReminderState(day ? [{ ...day, deletedAt: null } as unknown as Reminder] : [], settings, entry.item.priority);
-    // A new reminder for today starts about half an hour from now (9 AM would already be past in the evening).
-    return day ? base : { ...base, mode: "auto", time: date === today ? soon(clockNow) : base.time };
-  })();
-  const everyStart = initialReminderState(rows, settings, entry.item.priority);
-  const [scope, setScope] = useState<Scope>("day");
-  const [dayState, setDayState] = useState(dayStart);
-  const [everyState, setEveryState] = useState(everyStart);
-  const state = scope === "day" ? dayState : everyState;
-  const pastToday = scope === "day" && date === today && dayState.mode === "custom" && dayState.when === "at" && dayState.time <= clockNow;
-  const error = reminderErrors(state) ?? (pastToday ? "That time has already passed today — pick a later one" : null);
-  const usual = describeReminder(effectiveReminder(entry.item, rows[0], settings, category), entry.item, settings.checkinTime);
+  const profile = settings.reminderProfiles[entry.item.priority];
+  const dayRem = dayReminderOf(entry.occurrence);
+  const custom = rows[0] && !rows[0].deletedAt ? rows[0] : null;
+  const oneOff = entry.item.schedule.kind === "once";
   const when = date === today ? "today" : shortDate(date);
 
+  const prayerName = (key: string) => {
+    const p = prayers.find((x) => normalisePrayerKey(prayerKeyOf(x) ?? "") === key);
+    return p?.title ?? NAMES[key] ?? key;
+  };
+  const picks = quickPicks({
+    now,
+    date,
+    timezone: settings.timezone,
+    checkinTime: settings.checkinTime ?? "20:00",
+    itemAt: times ? itemTime(entry.item, date, times, settings) : null,
+    times,
+    prayerName,
+    format: formatTime,
+  });
+
+  // Start from what's set: this day's reminder, then the item's own, else ~30 min from now.
+  const [time, setTime] = useState(
+    () =>
+      (dayRem?.enabled && dayRem.trigger.type === "at" && dayRem.trigger.time) ||
+      (custom?.enabled && custom.trigger.type === "at" && custom.trigger.time) ||
+      soonClock(new Date(), settings.timezone),
+  );
+  const [repeat, setRepeat] = useState<RepeatChoice>(() => {
+    if (dayRem || !custom?.enabled || oneOff) return "once";
+    if (!custom.days) return "every";
+    const key = custom.days.join();
+    return key === "1,2,3,4,5" ? "weekdays" : key === "0,6" ? "weekends" : "pick";
+  });
+  const [days, setDays] = useState<number[]>(custom?.days ?? [1, 2, 3, 4, 5]);
+  const [nag, setNag] = useState<RepeatDraft>(() => {
+    const src = dayRem?.enabled ? dayRem : custom?.enabled ? custom : null;
+    return src ? repeatDraft(src.repeatEveryMin, src.maxRepeats, src.snoozeMin ?? profile.snoozeMin) : repeatDraft(null, 0, profile.snoozeMin);
+  });
+
+  const current = describeReminder(effectiveReminderOn(entry, custom, settings, category), entry.item, settings.checkinTime);
+  const past = repeat === "once" && date === today && time <= clockOf(now);
+  const pickDaysEmpty = repeat === "pick" && days.length === 0;
+
+  /** The entry as stored right now (another tap may have changed it since the sheet opened). */
+  const fresh = (): DayEntry => {
+    const o = store?.query("occurrences", `WHERE "item_id" = ? AND "date" = ? AND "slot" = ? AND "deleted_at" IS NULL`, [entry.item.id, date, entry.slot])[0] as unknown as
+      | Occurrence
+      | undefined;
+    return { ...entry, occurrence: o ?? null };
+  };
+  const setDay = (r: DayReminder | null) => run((ctx) => setDayReminder(fresh(), date, r, ctx));
+
+  const quick = (p: QuickPick) => {
+    const before = dayReminderOf(fresh().occurrence);
+    void setDay({ enabled: true, trigger: p.trigger, repeatEveryMin: null, maxRepeats: 0, snoozeMin: null });
+    notify({ message: `Reminder set · ${p.sub}${date === today ? "" : `, ${when}`}`, action: { label: "Undo", onClick: () => void setDay(before) } });
+    onClose();
+  };
+
   const save = () => {
-    if (error) return;
-    if (scope === "day") {
-      const s = dayState;
-      const { days: _everyDay, ...once } = customDraft(s);
-      void run((ctx) => setDayReminder(entry, date, s.mode === "auto" ? null : { ...once, enabled: s.mode !== "off" }, ctx));
-      notify({ message: s.mode === "auto" ? `Usual reminder ${when}` : s.mode === "off" ? `No reminder ${when}` : `Reminder set for ${when}` });
+    if (past || pickDaysEmpty) return;
+    const v = repeatValues(nag);
+    if (repeat === "once") {
+      void setDay({ enabled: true, trigger: { type: "at", time }, ...v });
+      notify({ message: `Reminder set · ${label12(time)}${date === today ? "" : `, ${when}`}` });
     } else {
-      void run((ctx) => reminderChanges(entry.item.id, rows, everyState, everyStart, ctx));
-      notify({ message: everyState.mode === "auto" ? "Back to the priority's reminder" : "Repeating reminder saved" });
+      void run((ctx) => saveCustomReminder(entry.item.id, custom, { trigger: { type: "at", time }, ...v, days: draftDays({ daysMode: repeat, days }) }, ctx, () => crypto.randomUUID()));
+      // A one-day reminder would hide the new repeating one today.
+      if (dayReminderOf(fresh().occurrence)) void setDay(null);
+      notify({ message: `Repeating reminder · ${label12(time)}` });
     }
     onClose();
   };
 
+  const silenceDay = () => {
+    const before = dayReminderOf(fresh().occurrence);
+    void setDay({ enabled: false, trigger: { type: "at", time }, repeatEveryMin: null, maxRepeats: 0, snoozeMin: null });
+    notify({ message: `No reminder ${when}`, action: { label: "Undo", onClick: () => void setDay(before) } });
+    onClose();
+  };
+
+  const useDefault = () => {
+    void run((ctx) => clearCustomReminder(rows, ctx));
+    if (dayRem) void setDay(null);
+    notify({ message: "Back to the priority's reminder" });
+    onClose();
+  };
+
   return (
-    <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-    >
-      <SegmentedTabs<Scope>
-        label="Applies to"
-        value={scope}
-        onChange={setScope}
-        options={[
-          { value: "day", label: date === today ? "Once (today)" : `Once (${shortDate(date)})` },
-          { value: "everyday", label: entry.item.schedule.kind === "once" ? "This task" : "Repeat" },
-        ]}
-      />
-      {scope === "day" ? (
-        <ReminderSection
-          title={null}
-          value={dayState}
-          onChange={setDayState}
-          preview={entry.item}
-          settings={settings}
-          category={category}
-          prayerOptions={prayerOptions}
-          autoLabel="Usual"
-          autoSummary={`Usual: ${usual}`}
-        />
-      ) : (
-        <ReminderSection
-          title={null}
-          value={everyState}
-          onChange={setEveryState}
-          preview={entry.item}
-          settings={settings}
-          category={category}
-          prayerOptions={prayerOptions}
-          showDays={entry.item.schedule.kind !== "once"}
-        />
-      )}
-      {error ? (
-        <p role="alert" className="text-[12px] text-todo">
-          {error}
-        </p>
+    <div className="space-y-4">
+      <p className="flex items-start gap-2 rounded-xl bg-track px-3 py-2 text-[12.5px] text-ink">
+        <Bell className="mt-0.5 h-4 w-4 shrink-0 text-ink-2" aria-hidden />
+        <span>
+          {dayRem ? <b className="font-medium">{dayRem.enabled ? `Set for ${when}` : `Silenced ${when}`} · </b> : null}
+          {current}
+        </span>
+      </p>
+
+      {picks.length ? (
+        <section aria-label="Quick picks">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium text-ink">
+            <Zap className="h-3.5 w-3.5 text-ink-2" aria-hidden /> One tap
+          </h3>
+          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {picks.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => quick(p)}
+                  className="flex min-h-12 w-full flex-col items-start justify-center rounded-xl bg-track px-3 py-1.5 text-left hover:bg-border"
+                >
+                  <span className="text-[13px] font-medium text-ink">{p.label}</span>
+                  <span className="text-[11.5px] text-ink-2">{p.sub}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
-      <div className="flex gap-2">
-        <Button type="button" variant="secondary" className="flex-1" onClick={onClose}>
-          Cancel
+
+      <section aria-label="Pick a time" className="space-y-3">
+        <h3 className="text-[12px] font-medium text-ink">Or pick a time</h3>
+        <TimeWheel value={time} onChange={setTime} />
+        {!oneOff ? (
+          <>
+            <ChipChoice<RepeatChoice>
+              legend="Repeat"
+              options={[
+                { value: "once", label: date === today ? "Once (today)" : `Once (${shortDate(date)})` },
+                { value: "every", label: "Every day" },
+                { value: "weekdays", label: "Weekdays" },
+                { value: "weekends", label: "Weekends" },
+                { value: "pick", label: "Pick days" },
+              ]}
+              value={repeat}
+              onChange={setRepeat}
+            />
+            {repeat === "pick" ? <DaysPicker mode="pick" days={days} onChange={(_m, d) => setDays(d)} hidePresets /> : null}
+          </>
+        ) : null}
+        <details className="rounded-xl border border-border px-3 py-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[13px] text-ink">
+            <span className="font-medium">Repeat until done &amp; snooze</span>
+            <span className="truncate text-[12px] text-ink-2">{repeatSummary(nag)}</span>
+          </summary>
+          <div className="pt-3">
+            <RepeatFields value={nag} onChange={setNag} />
+          </div>
+        </details>
+        {past ? (
+          <p role="alert" className="text-[12px] text-todo">
+            That time has already passed today — pick a later one.
+          </p>
+        ) : pickDaysEmpty ? (
+          <p role="alert" className="text-[12px] text-todo">
+            Pick at least one day.
+          </p>
+        ) : null}
+        <Button className="w-full" disabled={past || pickDaysEmpty} onClick={save}>
+          Set reminder · {label12(time)}
         </Button>
-        <Button type="submit" className="flex-[2]" disabled={!!error}>
-          Save
-        </Button>
+      </section>
+
+      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 border-t border-border pt-3">
+        <button type="button" onClick={silenceDay} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
+          <BellOff className="h-3.5 w-3.5" aria-hidden /> No reminder {when}
+        </button>
+        {dayRem || custom ? (
+          <button type="button" onClick={useDefault} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Use priority default
+          </button>
+        ) : null}
       </div>
-    </form>
+    </div>
   );
 }

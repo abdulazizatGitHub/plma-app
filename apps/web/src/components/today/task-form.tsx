@@ -3,7 +3,7 @@
 import { todayLocalDate, type Category, type Item, type TaskDraft } from "@life/shared";
 import { useState, type FormEvent } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Pill, SegmentedTabs, TextField, addDays } from "@/components/kit";
+import { Button, Pill, SegmentedTabs, TextField, TimeField, addDays } from "@/components/kit";
 import { useForm } from "@/lib/forms/use-form";
 import { useToday } from "@/lib/v2/use-today";
 import { isoDate, taskTitle } from "@/lib/forms/validators";
@@ -94,7 +94,7 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
           {choice !== "none" ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
               {choice === "pick" ? <TextField label="Date" type="date" required {...form.field("picked")} /> : null}
-              <TextField label="Time (optional)" type="time" {...form.field("time")} />
+              <TimeField label="Time (optional)" optional placeholder="Add time" value={String(form.values.time)} onChange={(v) => form.set("time", v)} />
             </div>
           ) : (
             <p className="mt-1.5 text-[12px] text-ink-2">Goes to Pending until you give it a day.</p>

@@ -699,3 +699,26 @@ Use this template for each decision:
   - **Popup switch:** in the "Remind me…" popup the top switch is **Once (today) / Repeat**.
   - **Due days only:** a reminder still fires only on days its item is due. Monthly and every-N-days items therefore remind on their own days, with no separate monthly reminder.
   - **Row tag** reads e.g. "6:00 PM · Mon, Wed, Fri".
+
+### 2026-10-13 — Effortless reminders: one-tap picks, scroll-wheel time picker, chips instead of typing
+
+- **Context:** The owner wanted reminders easy to reach and set, with minimum effort and little manual entry.
+- **Decision:**
+  - **"Remind me…"** is the first item in a row's ⋯ menu. The quick-add toast offers **Remind me** when the task lands on the day you're looking at.
+  - **One-tap picks** set a reminder for that day, close the popup and offer **Undo**. They include:
+    - In 15 / 30 min and In 1 hour
+    - This evening (check-in time)
+    - At its time, and 15 min before it
+    - At the next prayer
+
+    Only picks that make sense now are shown: never past, never spilling into tomorrow.
+  - **Or pick a time** on **scroll wheels** (owner's choice over a clock dial): hour 12…11, minutes in 5s, AM/PM.
+    - Each column is a spinbutton for the keyboard; the mouse wheel and ▲/▼ also work.
+    - "Type it" is there for those who want it, but typing is never needed.
+  - **Repeat:** Once (today) / Every day / Weekdays / Weekends / Pick days.
+  - **Repeat until done and snooze are chips:** Once / every 10, 15, 30, 60 min; 1 / 3 / 6 more / until done; snooze 5 / 10 / 15 / 30.
+  - **Footer:** "No reminder today", and "Use priority default".
+  - **The same `TimeField`** (a button that opens the wheels) replaces every typed time in the app: task time, the item editor, plan steps, quiet hours, check-in, nudges, and fixed prayer times (1-minute steps).
+  - **The editor's Reminder section** reads Default / Custom / Off. Its choices are chips (before-minutes, prayer, before/after, offset) and a collapsible "Repeat & snooze". Priority cards in Settings use chips too.
+  - **No change** to schema or data shapes.
+- **Not done:** making the row's bell tag a button. Tags sit inside the row's own button, and nested buttons aren't valid; the menu and toast cover access.

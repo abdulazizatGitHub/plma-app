@@ -10,6 +10,7 @@ import { TodayScreen } from "@/components/today/today-screen";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 import type { PushState } from "@/lib/v2/push";
+import { pickTime } from "@/test/time-field";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
 let store: LocalStore;
@@ -26,7 +27,7 @@ vi.mock("@/lib/v2/push", () => ({
 let SQL: SqlJsStatic;
 let n = 0;
 const uid = () => `00000000-0000-4000-8000-${String(++n).padStart(12, "0")}`;
-const NOW = new Date().toISOString();
+const NOW = "2026-10-01T00:00:00.000Z";
 const base = () => ({ id: uid(), userId: USER, createdAt: NOW, updatedAt: NOW, deletedAt: null });
 
 function item(over: Partial<Item>): Item {
@@ -57,22 +58,36 @@ function editor(it: Item) {
   );
 }
 
+const openMore = (root: HTMLElement) => fireEvent.click(within(root).getByText(/^Repeat( until done)? & snooze$/));
+
 describe("Reminder section in the item editor", () => {
-  it("shows the priority's auto reminder, and a custom one replaces it with its own repeat and snooze", async () => {
+  it("shows the priority default; Custom sets a time on the wheels and repeat/snooze from chips (no typing)", async () => {
     const walk = item({ title: "Walk", schedule: { v: 1, kind: "daily", anchor: { type: "time", time: "07:30" } } });
     editor(walk);
-    const section = within(screen.getByRole("region", { name: "Reminder" }));
+    const region = screen.getByRole("region", { name: "Reminder" });
+    const section = within(region);
     expect(section.getByText(/Auto · High: at its time, then every 30 min until done \(up to 1 more\)/)).toBeInTheDocument();
-
     fireEvent.click(section.getByRole("tab", { name: "Custom" }));
-    fireEvent.change(section.getByLabelText("Time"), { target: { value: "06:45" } });
-    fireEvent.change(section.getByLabelText("Every (minutes)"), { target: { value: "15" } });
-    fireEvent.change(section.getByLabelText("Up to (more times)"), { target: { value: "2" } });
-    fireEvent.change(section.getByLabelText(/Snooze for/), { target: { value: "5x" } });
-    expect((section.getByLabelText(/Snooze for/) as HTMLInputElement).value).toBe("5");
+    pickTime("Time", "06:45", region);
+    openMore(region);
+    fireEvent.click(section.getByRole("button", { name: "Every 15 min" }));
+    fireEvent.click(section.getByRole("button", { name: "3 more" }));
+    fireEvent.click(within(section.getByRole("group", { name: "Snooze for" })).getByRole("button", { name: "5 min" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(reminders()).toHaveLength(1));
-    expect(reminders()[0]).toMatchObject({ itemId: walk.id, enabled: true, trigger: { type: "at", time: "06:45" }, repeatEveryMin: 15, maxRepeats: 2, snoozeMin: 5 });
+    expect(reminders()[0]).toMatchObject({ itemId: walk.id, enabled: true, trigger: { type: "at", time: "06:45" }, repeatEveryMin: 15, maxRepeats: 3, snoozeMin: 5 });
+  });
+
+  it("around a prayer: prayer, before/after and minutes are chips", async () => {
+    editor(item({ title: "Tasbih" }));
+    const section = within(screen.getByRole("region", { name: "Reminder" }));
+    fireEvent.click(section.getByRole("tab", { name: "Custom" }));
+    fireEvent.click(section.getByRole("button", { name: "Around a prayer" }));
+    fireEvent.click(within(section.getByRole("group", { name: "Prayer" })).getByRole("button", { name: "Asr" }));
+    fireEvent.click(within(section.getByRole("group", { name: "Before or after" })).getByRole("button", { name: "After" }));
+    fireEvent.click(within(section.getByRole("group", { name: "By" })).getByRole("button", { name: "15 min" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(reminders()[0]).toMatchObject({ trigger: { type: "prayer", prayer: "asr", relation: "after", offsetMin: 15 } }));
   });
 
   it("repeats on picked days like an alarm", async () => {
@@ -82,7 +97,6 @@ describe("Reminder section in the item editor", () => {
     fireEvent.click(section.getByRole("tab", { name: "Custom" }));
     fireEvent.click(section.getByRole("button", { name: "Pick days" }));
     const days = within(section.getByRole("group", { name: "Days" }));
-    // Weekdays are pre-picked; keep Mon, Wed, Fri.
     fireEvent.click(days.getByRole("button", { name: "Tue" }));
     fireEvent.click(days.getByRole("button", { name: "Thu" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -98,17 +112,11 @@ describe("Reminder section in the item editor", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("blocks saving an invalid custom reminder", () => {
-    editor(item({ title: "Read" }));
-    const section = within(screen.getByRole("region", { name: "Reminder" }));
-    fireEvent.click(section.getByRole("tab", { name: "Custom" }));
-    fireEvent.change(section.getByLabelText("Every (minutes)"), { target: { value: "2" } });
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-  });
-
-  it("Back to auto removes the custom reminder; Off keeps a silent one", async () => {
+  it("Default removes the custom reminder; Off keeps a silent one", async () => {
     const it1 = item({ title: "Pay rent", priority: "critical" });
-    store.save("reminders", { ...base(), itemId: it1.id, trigger: { type: "at", time: "09:00" }, repeatEveryMin: null, repeatUntilDone: false, maxRepeats: 0, enabled: true, snoozeMin: null, nextFireAt: null } as unknown as StoredRow);
+    store.save("reminders", {
+      ...base(), itemId: it1.id, trigger: { type: "at", time: "09:00" }, repeatEveryMin: null, repeatUntilDone: false, maxRepeats: 0, enabled: true, snoozeMin: null, days: null, nextFireAt: null,
+    } as unknown as StoredRow);
     const { unmount } = editor(it1);
     fireEvent.click(within(screen.getByRole("region", { name: "Reminder" })).getByRole("tab", { name: "Off" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -116,7 +124,7 @@ describe("Reminder section in the item editor", () => {
     unmount();
 
     editor(it1);
-    fireEvent.click(within(screen.getByRole("region", { name: "Reminder" })).getByRole("tab", { name: "Auto" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Reminder" })).getByRole("tab", { name: "Default" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(reminders().every((r) => r.deletedAt)).toBe(true));
   });
@@ -137,31 +145,33 @@ describe("Reminder settings", () => {
     expect(screen.queryByRole("button", { name: /Turn on notifications/ })).not.toBeInTheDocument();
   });
 
-  it("edits a priority's window with validated numbers", async () => {
+  it("edits a priority's window with chips", async () => {
     page();
     expect(screen.getByText("At its time, every 30 min up to 6 more · snooze 10 min")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Edit Critical reminders" }));
-    const every = screen.getByLabelText("Every (minutes)");
-    fireEvent.change(every, { target: { value: "1" } });
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    fireEvent.change(every, { target: { value: "20" } });
-    fireEvent.change(screen.getByLabelText(/Snooze for/), { target: { value: "15" } });
+    fireEvent.click(screen.getByRole("button", { name: "5 min before" }));
+    fireEvent.click(screen.getByRole("button", { name: "Every 15 min" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Snooze for" })).getByRole("button", { name: "15 min" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(settings()?.reminderProfiles.critical).toEqual({ ...DEFAULT_REMINDER_PROFILES.critical, repeatEveryMin: 20, snoozeMin: 15 }));
+    await waitFor(() => expect(settings()?.reminderProfiles.critical).toEqual({ ...DEFAULT_REMINDER_PROFILES.critical, leadMin: 5, repeatEveryMin: 15, snoozeMin: 15 }));
   });
 
-  it("mutes a category and sets quiet hours", async () => {
-    store.save("categories", { ...base(), name: "Work", icon: "briefcase", color: "sky", sortOrder: 0, archivedAt: null, remindersMuted: false, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null } as unknown as StoredRow);
+  it("mutes a category and sets quiet hours on the wheels", async () => {
+    store.save("categories", {
+      ...base(), name: "Work", icon: "briefcase", color: "sky", sortOrder: 0, archivedAt: null, remindersMuted: false, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null,
+    } as unknown as StoredRow);
     page();
     fireEvent.click(screen.getByLabelText("Mute Work"));
     await waitFor(() => expect((store.query("categories")[0] as unknown as Category).remindersMuted).toBe(true));
     fireEvent.click(screen.getByLabelText(/Quiet hours/));
     await waitFor(() => expect(settings()).toMatchObject({ quietFrom: "22:00", quietTo: "07:00" }));
+    pickTime("Quiet from", "23:00");
+    await waitFor(() => expect(settings()).toMatchObject({ quietFrom: "23:00" }));
   });
 });
 
 describe("Remind me… from a row's menu", () => {
-  // 9 AM in Karachi, so 6:15 PM is later today.
+  // 9 AM in Karachi: the whole day is still ahead.
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-12T04:00:00Z"));
@@ -176,51 +186,47 @@ describe("Remind me… from a row's menu", () => {
       </AddSheetProvider>,
     );
   };
-
-  it("sets a reminder for today only, using the same custom reminder (time, repeat, snooze)", async () => {
-    const steps = item({ title: "Steps", priority: "high" });
-    todayScreen(steps);
-    fireEvent.click(await screen.findByRole("button", { name: "More actions for Steps" }));
+  const open = async (title: string) => {
+    fireEvent.click(await screen.findByRole("button", { name: `More actions for ${title}` }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
-    const sheet = within(await screen.findByRole("dialog"));
-    expect(sheet.getByRole("tab", { name: "Once (today)" })).toHaveAttribute("aria-selected", "true");
-    expect(sheet.getByText(/^Usual: Auto · High/)).toBeInTheDocument();
-    fireEvent.click(sheet.getByRole("tab", { name: "Custom" }));
-    fireEvent.change(sheet.getByLabelText("Time"), { target: { value: "18:15" } });
-    fireEvent.change(sheet.getByLabelText("Every (minutes)"), { target: { value: "10" } });
-    fireEvent.click(sheet.getByRole("button", { name: "Save" }));
-    await waitFor(() =>
-      expect(occurrences().find((o) => o.itemId === steps.id)?.detail?.reminder).toMatchObject({ enabled: true, trigger: { type: "at", time: "18:15" }, repeatEveryMin: 10 }),
-    );
-    expect(reminders()).toHaveLength(0); // the item's everyday reminder is untouched
-    expect(await screen.findByText(/6:15 PM \(this day\)/)).toBeInTheDocument();
+    return within(await screen.findByRole("dialog"));
+  };
+  const dayReminder = (itemId: string) => occurrences().find((o) => o.itemId === itemId)?.detail?.reminder as Record<string, unknown> | undefined;
+
+  it("one tap on a quick pick sets today's reminder and closes; Undo takes it back", async () => {
+    const steps = item({ title: "Steps" });
+    todayScreen(steps);
+    const sheet = await open("Steps");
+    fireEvent.click(sheet.getByRole("button", { name: /^In 30 min/ }));
+    await waitFor(() => expect(dayReminder(steps.id)).toMatchObject({ enabled: true, trigger: { type: "at" } }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(dayReminder(steps.id)).toBeUndefined());
   });
 
-  it("'Repeat' saves the item's own reminder instead", async () => {
+  it("wheels + Weekdays saves the item's repeating reminder", async () => {
     const read = item({ title: "Read" });
     todayScreen(read);
-    fireEvent.click(await screen.findByRole("button", { name: "More actions for Read" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
-    const sheet = within(await screen.findByRole("dialog"));
-    fireEvent.click(sheet.getByRole("tab", { name: "Repeat" }));
-    fireEvent.click(sheet.getByRole("tab", { name: "Off" }));
-    fireEvent.click(sheet.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: read.id, enabled: false }));
+    const sheet = await open("Read");
+    expect(sheet.getByRole("spinbutton", { name: "Hour" })).toBeInTheDocument();
+    fireEvent.click(sheet.getByRole("button", { name: "Weekdays" }));
+    fireEvent.click(sheet.getByRole("button", { name: /^Set reminder/ }));
+    await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: read.id, enabled: true, days: [1, 2, 3, 4, 5], trigger: { type: "at" } }));
   });
 
-  it("won't set a time that has already passed today", async () => {
+  it("won't set a time that has already passed today (keyboard on the wheel)", async () => {
     todayScreen(item({ title: "Walk" }));
-    fireEvent.click(await screen.findByRole("button", { name: "More actions for Walk" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
-    const sheet = within(await screen.findByRole("dialog"));
-    fireEvent.click(sheet.getByRole("tab", { name: "Custom" }));
-    // Half an hour from now in the device's own clock (09:30 in Karachi, 04:30 on a UTC machine).
-    const local = new Date(Date.now() + 30 * 60_000);
-    const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    expect((sheet.getByLabelText("Time") as HTMLInputElement).value).toBe(hhmm(local));
-    fireEvent.change(sheet.getByLabelText("Time"), { target: { value: hhmm(new Date(Date.now() - 60 * 60_000)) } });
+    const sheet = await open("Walk");
+    fireEvent.keyDown(sheet.getByRole("spinbutton", { name: "Hour" }), { key: "Home" });
     expect(sheet.getByRole("alert")).toHaveTextContent("already passed today");
-    expect(sheet.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(sheet.getByRole("button", { name: /^Set reminder/ })).toBeDisabled();
+  });
+
+  it("No reminder today silences just this day", async () => {
+    const gym = item({ title: "Gym" });
+    todayScreen(gym);
+    const sheet = await open("Gym");
+    fireEvent.click(sheet.getByRole("button", { name: /No reminder today/ }));
+    await waitFor(() => expect(dayReminder(gym.id)).toMatchObject({ enabled: false }));
   });
 });
-

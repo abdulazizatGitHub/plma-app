@@ -3,7 +3,7 @@
 import { createItem, normalisePrayerKey, prayerKeyOf, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField } from "@/components/kit";
+import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField, TimeField } from "@/components/kit";
 import { sanitizeDigits } from "@/lib/forms/validators";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useLocation } from "@/components/location/location-provider";
@@ -249,7 +249,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
                 {s.when === "pick" ? (
                   <TextField label="Date" type="date" required value={s.picked} onChange={(e) => set("picked", e.target.value)} onBlur={touch("picked")} error={shown("picked")} />
                 ) : null}
-                <TextField label="Time (optional)" type="time" value={s.time} onChange={(e) => set("time", e.target.value)} onBlur={touch("time")} error={shown("time")} />
+                <TimeField label="Time (optional)" optional placeholder="Add time" value={s.time} onChange={(v) => set("time", v)} error={shown("time")} />
               </div>
             ) : (
               <p className="text-[12px] text-ink-2">Goes to Pending until you give it a day.</p>
@@ -287,7 +287,15 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
             {s.repeat === "monthly" ? <TextField label="Day of the month" required hint="Short months use their last day." {...digits("monthDay", 2)} /> : null}
             <PillGroup legend="Time of day" options={TIME_OF_DAY} value={s.timeOfDay} onChange={(v) => set("timeOfDay", v)} />
             {s.timeOfDay === "time" ? (
-              <TextField label="Time" type="time" required value={s.anchorTime} onChange={(e) => set("anchorTime", e.target.value)} onBlur={touch("anchorTime")} error={shown("anchorTime")} />
+              <TimeField
+                label="Time"
+                value={s.anchorTime}
+                onChange={(v) => {
+                  set("anchorTime", v);
+                  touch("anchorTime")();
+                }}
+                error={shown("anchorTime")}
+              />
             ) : null}
             {s.timeOfDay === "prayer" ? (
               <div className="space-y-2">
