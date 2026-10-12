@@ -1,7 +1,7 @@
 "use client";
 
 import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, removeStep, skip, start, toggleDone, type DayEntry, type ItemDependency } from "@life/shared";
-import { ArrowRight, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
@@ -33,7 +33,7 @@ type RowActionsMenuProps = {
  */
 export function RowActionsMenu({ target, date: screenDate, today, onClose }: RowActionsMenuProps) {
   const run = useActions();
-  const { openEdit } = useAddSheet();
+  const { openEdit, openReminder } = useAddSheet();
   const { store } = useStore();
   const router = useRouter();
   const [picking, setPicking] = useState(false);
@@ -112,6 +112,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
       ) : null}
       {oneOff && date !== null ? (
         <PopoverMenuItem icon={<CalendarClock />} label="Mark pending (no date)" onClick={() => moveAction(null)} />
+      ) : null}
+      {date !== null && access !== "history" && !prayers && state !== "done" ? (
+        <PopoverMenuItem
+          icon={<Bell />}
+          label="Remind me…"
+          onClick={() => {
+            onClose();
+            openReminder(entry, date);
+          }}
+        />
       ) : null}
       <PopoverMenuDivider />
       <PopoverMenuItem

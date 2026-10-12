@@ -16,6 +16,7 @@ import {
   toggleChecklistStep,
   toggleDone,
   type Category,
+  dayReminderOf,
   type DayEntry,
   type EntryState,
   canLog,
@@ -230,7 +231,9 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
   const list = entryTags(entry, category, dueLabel, when, lockedBy);
   // Only an item's own reminder gets a tag; the priority's default would put a bell on every row.
-  const custom = useItemReminders(entry.item.id)[0];
+  const everyday = useItemReminders(entry.item.id)[0];
+  const forDay = dayReminderOf(entry.occurrence);
+  const custom = forDay ?? everyday;
   if (custom && access !== "history" && entryState(entry) !== "done") {
     const t = custom.trigger;
     const label = !custom.enabled
@@ -244,7 +247,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
             : "Reminder";
     list.push(
       <Tag key="reminder" icon={custom.enabled ? <Bell /> : <BellOff />}>
-        {label}
+        {forDay ? `${label} (this day)` : label}
       </Tag>,
     );
   }

@@ -3,9 +3,10 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { DEFAULT_REMINDER_PROFILES, type Category, type Item, type Reminder, type UserSettings } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import NotificationSettingsPage from "@/app/(main)/settings/notifications/page";
 import { ItemEditor } from "@/components/items/item-editor";
+import { TodayScreen } from "@/components/today/today-screen";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 import type { PushState } from "@/lib/v2/push";
@@ -36,6 +37,7 @@ function item(over: Partial<Item>): Item {
   };
 }
 const reminders = () => store.query("reminders") as unknown as Reminder[];
+const occurrences = () => store.query("occurrences") as unknown as { itemId: string; detail: Record<string, unknown> | null }[];
 const settings = () => store.query("userSettings")[0] as unknown as UserSettings | undefined;
 
 beforeAll(async () => {
@@ -134,3 +136,68 @@ describe("Reminder settings", () => {
     await waitFor(() => expect(settings()).toMatchObject({ quietFrom: "22:00", quietTo: "07:00" }));
   });
 });
+
+describe("Remind me… from a row's menu", () => {
+  // 9 AM in Karachi, so 6:15 PM is later today.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-12T04:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const todayScreen = (it: Item) => {
+    store.save("items", it as unknown as StoredRow);
+    return render(
+      <AddSheetProvider>
+        <TodayScreen />
+      </AddSheetProvider>,
+    );
+  };
+
+  it("sets a reminder for today only, using the same custom reminder (time, repeat, snooze)", async () => {
+    const steps = item({ title: "Steps", priority: "high" });
+    todayScreen(steps);
+    fireEvent.click(await screen.findByRole("button", { name: "More actions for Steps" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
+    const sheet = within(await screen.findByRole("dialog"));
+    expect(sheet.getByRole("tab", { name: "Today only" })).toHaveAttribute("aria-selected", "true");
+    expect(sheet.getByText(/^Usual: Auto · High/)).toBeInTheDocument();
+    fireEvent.click(sheet.getByRole("tab", { name: "Custom" }));
+    fireEvent.change(sheet.getByLabelText("Time"), { target: { value: "18:15" } });
+    fireEvent.change(sheet.getByLabelText("Every (minutes)"), { target: { value: "10" } });
+    fireEvent.click(sheet.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(occurrences().find((o) => o.itemId === steps.id)?.detail?.reminder).toMatchObject({ enabled: true, trigger: { type: "at", time: "18:15" }, repeatEveryMin: 10 }),
+    );
+    expect(reminders()).toHaveLength(0); // the item's everyday reminder is untouched
+    expect(await screen.findByText(/6:15 PM \(this day\)/)).toBeInTheDocument();
+  });
+
+  it("'Every day' saves the item's own reminder instead", async () => {
+    const read = item({ title: "Read" });
+    todayScreen(read);
+    fireEvent.click(await screen.findByRole("button", { name: "More actions for Read" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
+    const sheet = within(await screen.findByRole("dialog"));
+    fireEvent.click(sheet.getByRole("tab", { name: "Every day" }));
+    fireEvent.click(sheet.getByRole("tab", { name: "Off" }));
+    fireEvent.click(sheet.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: read.id, enabled: false }));
+  });
+
+  it("won't set a time that has already passed today", async () => {
+    todayScreen(item({ title: "Walk" }));
+    fireEvent.click(await screen.findByRole("button", { name: "More actions for Walk" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
+    const sheet = within(await screen.findByRole("dialog"));
+    fireEvent.click(sheet.getByRole("tab", { name: "Custom" }));
+    // Half an hour from now in the device's own clock (09:30 in Karachi, 04:30 on a UTC machine).
+    const local = new Date(Date.now() + 30 * 60_000);
+    const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    expect((sheet.getByLabelText("Time") as HTMLInputElement).value).toBe(hhmm(local));
+    fireEvent.change(sheet.getByLabelText("Time"), { target: { value: hhmm(new Date(Date.now() - 60 * 60_000)) } });
+    expect(sheet.getByRole("alert")).toHaveTextContent("already passed today");
+    expect(sheet.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+});
+

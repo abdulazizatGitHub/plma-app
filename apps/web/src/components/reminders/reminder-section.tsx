@@ -80,6 +80,12 @@ export function reminderErrors(s: ReminderEditorState): string | null {
   return first ? `Reminder: ${first}` : null;
 }
 
+/** The custom reminder the editor describes (time, repeat, snooze). */
+export function customDraft(s: ReminderEditorState) {
+  const v = repeatValues(s.repeat);
+  return { trigger: trigger(s), repeatEveryMin: v.repeatEveryMin, maxRepeats: v.maxRepeats, snoozeMin: v.snoozeMin };
+}
+
 function trigger(s: ReminderEditorState): Trigger {
   if (s.when === "before") return { type: "beforeDue", min: Number(s.before) };
   if (s.when === "prayer") return { type: "prayer", prayer: s.prayer, relation: s.relation, offsetMin: Number(s.offset) };
@@ -104,26 +110,40 @@ type Props = {
   settings: UserSettings;
   category: Category | null;
   prayerOptions: { key: string; title: string }[];
+  /** For one day ("Remind me…"): Auto reads "Usual" and describes the item's everyday reminder. */
+  autoLabel?: string;
+  autoSummary?: string;
+  /** Heading; null hides it (inside a sheet that has its own title). */
+  title?: string | null;
 };
 
-export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions }: Props) {
+export function ReminderSection({ value: s, onChange, preview, settings, category, prayerOptions, autoLabel, autoSummary, title = "Reminder" }: Props) {
   const set = <K extends keyof ReminderEditorState>(k: K, v: ReminderEditorState[K]) => onChange({ ...s, [k]: v });
   const auto = effectiveReminder(preview, null, settings, category);
   const summary =
     s.mode === "auto"
-      ? describeReminder(auto, preview, settings.checkinTime)
+      ? (autoSummary ?? describeReminder(auto, preview, settings.checkinTime))
       : s.mode === "off"
         ? "Off for this item — no reminder whatever its priority."
-        : "Custom — replaces the priority's reminder for this item.";
+        : autoLabel
+          ? "Custom — replaces the usual reminder for this day only."
+          : "Custom — replaces the priority's reminder for this item.";
   return (
-    <section aria-label="Reminder" className="card space-y-3 p-3.5">
-      <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
-        <Bell className="h-3.5 w-3.5" aria-hidden /> Reminder
-      </h2>
-      <SegmentedTabs label="Reminder" options={[...MODES]} value={s.mode} onChange={(v) => set("mode", v)} />
+    <section aria-label="Reminder" className={title === null ? "space-y-3" : "card space-y-3 p-3.5"}>
+      {title !== null ? (
+        <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+          <Bell className="h-3.5 w-3.5" aria-hidden /> {title}
+        </h2>
+      ) : null}
+      <SegmentedTabs
+        label="Reminder"
+        options={MODES.map((m) => (m.value === "auto" && autoLabel ? { value: m.value, label: autoLabel } : { ...m }))}
+        value={s.mode}
+        onChange={(v) => set("mode", v)}
+      />
       <p className="text-[12px] text-ink-2" aria-live="polite">
         {summary}
-        {s.mode === "auto" ? (
+        {s.mode === "auto" && !autoLabel ? (
           <>
             {" "}
             <Link href="/settings/notifications" className="font-medium text-primary-strong underline-offset-2 hover:underline">

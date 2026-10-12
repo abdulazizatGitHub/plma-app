@@ -5,7 +5,7 @@ import { prayerKeyOf } from "../prayer/prayer-set.js";
 import { clockIn, prayerTimes, zonedInstant, type DayPrayerTimes, type PrayerTimeKey } from "../prayer/times.js";
 import { anchorWindow, normalisePrayerKey } from "../prayer/windows.js";
 import type { Anchor, Trigger } from "../tracking.js";
-import { DEFAULT_REMINDER_PROFILES, type ReminderProfiles } from "./model.js";
+import { DEFAULT_REMINDER_PROFILES, dayReminderOf, type ReminderProfiles } from "./model.js";
 
 /*
  * Reminders (REM-01…06, SYSTEM_DESIGN §5.5). Shared so the device can show
@@ -89,6 +89,28 @@ export function effectiveReminder(
   if (!profile.enabled) return { source: "off", reason: "priority-off" };
   const repeats = profile.repeatEveryMin ? profile.maxRepeats : 0;
   return { source: "auto", trigger: null, leadMin: profile.leadMin, repeatEveryMin: repeats ? profile.repeatEveryMin : null, maxRepeats: repeats, snoozeMin: profile.snoozeMin };
+}
+
+/** The reminder for one day: that day's own reminder ("Remind me…", today only) wins over the item's usual one. */
+export function effectiveReminderOn(
+  entry: Pick<DayEntry, "item" | "occurrence">,
+  custom: Reminder | null | undefined,
+  settings: Pick<ReminderSettings, "reminderProfiles" | "notificationsEnabled">,
+  category?: Pick<Category, "remindersMuted"> | null,
+): EffectiveReminder {
+  const usual = effectiveReminder(entry.item, custom, settings, category);
+  const day = dayReminderOf(entry.occurrence);
+  if (!day || (usual.source === "off" && (usual.reason === "disabled" || usual.reason === "muted"))) return usual;
+  if (!day.enabled) return { source: "off", reason: "custom-off" };
+  const repeats = day.repeatEveryMin ? day.maxRepeats : 0;
+  return {
+    source: "custom",
+    trigger: day.trigger,
+    leadMin: 0,
+    repeatEveryMin: repeats ? day.repeatEveryMin : null,
+    maxRepeats: repeats,
+    snoozeMin: day.snoozeMin ?? profilesOf(settings)[entry.item.priority].snoozeMin,
+  };
 }
 
 /** When the item itself happens on `date`: its time, its prayer, or its anchor's start. Null = untimed. */
@@ -210,7 +232,7 @@ export function plannedFires(input: ReminderInput, from: Date, to: Date): Remind
     for (const e of day) {
       for (const unit of e.children ?? [e]) {
         if (!isOpen(unit)) continue;
-        const eff = effectiveReminder(unit.item, custom.get(unit.item.id), settings, categoryOf(unit.item));
+        const eff = effectiveReminderOn(unit, custom.get(unit.item.id), settings, categoryOf(unit.item));
         if (eff.source === "off") continue;
         const at = firstFire(unit.item, date, eff, t, settings);
         if (!at) continue;
