@@ -3,6 +3,7 @@
 import {
   clearCustomReminder,
   dayReminderOf,
+  describeDays,
   describeReminder,
   effectiveReminderOn,
   itemTime,
@@ -43,6 +44,13 @@ export function ReminderSheet({ entry, date, today, onClose }: { entry: DayEntry
 }
 
 type RepeatChoice = "once" | DaysMode;
+
+/** "every day", "weekdays", "Mon, Wed, Fri". */
+function repeatLabel(r: RepeatChoice, days: number[]): string {
+  if (r === "every") return "every day";
+  if (r === "weekdays" || r === "weekends") return r;
+  return describeDays([...days].sort((a, b) => a - b)) || "picked days";
+}
 
 const clockOf = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 
@@ -160,13 +168,13 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
           <h3 className="mb-1.5 flex items-center gap-1.5 text-[12px] font-medium text-ink">
             <Zap className="h-3.5 w-3.5 text-ink-2" aria-hidden /> One tap
           </h3>
-          <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+          <ul className="no-scrollbar -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
             {picks.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} className="shrink-0">
                 <button
                   type="button"
                   onClick={() => quick(p)}
-                  className="flex min-h-12 w-full flex-col items-start justify-center rounded-xl bg-track px-3 py-1.5 text-left hover:bg-border"
+                  className="flex min-h-12 flex-col items-start justify-center rounded-xl bg-track px-3 py-1.5 text-left whitespace-nowrap hover:bg-border"
                 >
                   <span className="text-[13px] font-medium text-ink">{p.label}</span>
                   <span className="text-[11.5px] text-ink-2">{p.sub}</span>
@@ -179,24 +187,29 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
 
       <section aria-label="Pick a time" className="space-y-3">
         <h3 className="text-[12px] font-medium text-ink">Or pick a time</h3>
-        <TimeWheel value={time} onChange={setTime} />
         {!oneOff ? (
           <>
-            <ChipChoice<RepeatChoice>
-              legend="Repeat"
-              options={[
-                { value: "once", label: date === today ? "Once (today)" : `Once (${shortDate(date)})` },
-                { value: "every", label: "Every day" },
-                { value: "weekdays", label: "Weekdays" },
-                { value: "weekends", label: "Weekends" },
-                { value: "pick", label: "Pick days" },
-              ]}
-              value={repeat}
-              onChange={setRepeat}
-            />
+            <div className="no-scrollbar -mx-4 overflow-x-auto px-4">
+              <div className="w-max">
+                <ChipChoice<RepeatChoice>
+                  legend="Repeat"
+                  hideLegend
+                  options={[
+                    { value: "once", label: date === today ? "Once (today)" : `Once (${shortDate(date)})` },
+                    { value: "every", label: "Every day" },
+                    { value: "weekdays", label: "Weekdays" },
+                    { value: "weekends", label: "Weekends" },
+                    { value: "pick", label: "Pick days" },
+                  ]}
+                  value={repeat}
+                  onChange={setRepeat}
+                />
+              </div>
+            </div>
             {repeat === "pick" ? <DaysPicker mode="pick" days={days} onChange={(_m, d) => setDays(d)} hidePresets /> : null}
           </>
         ) : null}
+        <TimeWheel value={time} onChange={setTime} rows={3} />
         <details className="rounded-xl border border-border px-3 py-2">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-[13px] text-ink">
             <span className="font-medium">Repeat until done &amp; snooze</span>
@@ -206,6 +219,10 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
             <RepeatFields value={nag} onChange={setNag} />
           </div>
         </details>
+      </section>
+
+      {/* Always in reach: the sheet scrolls, this stays at the bottom. */}
+      <div className="sticky -bottom-4 -mx-4 space-y-1.5 border-t border-border bg-surface px-4 pt-3 pb-1">
         {past ? (
           <p role="alert" className="text-[12px] text-todo">
             That time has already passed today — pick a later one.
@@ -216,19 +233,18 @@ function ReminderSheetBody({ entry, date, today, onClose }: { entry: DayEntry; d
           </p>
         ) : null}
         <Button className="w-full" disabled={past || pickDaysEmpty} onClick={save}>
-          Set reminder · {label12(time)}
+          {repeat === "once" ? `Remind me ${when} · ${label12(time)}` : `Repeat ${repeatLabel(repeat, days)} · ${label12(time)}`}
         </Button>
-      </section>
-
-      <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 border-t border-border pt-3">
-        <button type="button" onClick={silenceDay} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
-          <BellOff className="h-3.5 w-3.5" aria-hidden /> No reminder {when}
-        </button>
-        {dayRem || custom ? (
-          <button type="button" onClick={useDefault} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Use priority default
+        <div className="flex flex-wrap justify-center gap-x-4">
+          <button type="button" onClick={silenceDay} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
+            <BellOff className="h-3.5 w-3.5" aria-hidden /> No reminder {when}
           </button>
-        ) : null}
+          {dayRem || custom ? (
+            <button type="button" onClick={useDefault} className="inline-flex min-h-9 items-center gap-1.5 text-[12.5px] font-medium text-ink-2 hover:text-ink">
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Use priority default
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

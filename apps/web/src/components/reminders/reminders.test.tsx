@@ -210,7 +210,7 @@ describe("Remind me… from a row's menu", () => {
     const sheet = await open("Read");
     expect(sheet.getByRole("spinbutton", { name: "Hour" })).toBeInTheDocument();
     fireEvent.click(sheet.getByRole("button", { name: "Weekdays" }));
-    fireEvent.click(sheet.getByRole("button", { name: /^Set reminder/ }));
+    fireEvent.click(sheet.getByRole("button", { name: /^(Remind me today|Repeat .*) · \d/ }));
     await waitFor(() => expect(reminders()[0]).toMatchObject({ itemId: read.id, enabled: true, days: [1, 2, 3, 4, 5], trigger: { type: "at" } }));
   });
 
@@ -219,7 +219,7 @@ describe("Remind me… from a row's menu", () => {
     const sheet = await open("Walk");
     fireEvent.keyDown(sheet.getByRole("spinbutton", { name: "Hour" }), { key: "Home" });
     expect(sheet.getByRole("alert")).toHaveTextContent("already passed today");
-    expect(sheet.getByRole("button", { name: /^Set reminder/ })).toBeDisabled();
+    expect(sheet.getByRole("button", { name: /^(Remind me today|Repeat .*) · \d/ })).toBeDisabled();
   });
 
   it("No reminder today silences just this day", async () => {
@@ -229,4 +229,22 @@ describe("Remind me… from a row's menu", () => {
     fireEvent.click(sheet.getByRole("button", { name: /No reminder today/ }));
     await waitFor(() => expect(dayReminder(gym.id)).toMatchObject({ enabled: false }));
   });
+
+  it("Move to a date… opens chips and a calendar; one tap moves it", async () => {
+    const run = item({ title: "Run" });
+    todayScreen(run);
+    fireEvent.click(await screen.findByRole("button", { name: "More actions for Run" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to a date…" }));
+    const sheet = within(await screen.findByRole("dialog"));
+    expect(sheet.getByRole("grid")).toBeInTheDocument();
+    fireEvent.click(sheet.getByRole("button", { name: /^Day after/ }));
+    await waitFor(() =>
+      expect((store.query("occurrences") as unknown as { itemId: string; status: string; movedTo: string | null }[]).find((o) => o.itemId === run.id)).toMatchObject({
+        status: "moved",
+        movedTo: "2026-10-14",
+      }),
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });
+

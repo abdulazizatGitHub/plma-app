@@ -11,7 +11,6 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
  */
 
 const ROW = 40;
-const VISIBLE = 5;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -39,9 +38,11 @@ type ColumnProps = {
   onSelect: (index: number) => void;
   /** Wraps around at the ends (hours, minutes); AM/PM doesn't. */
   loop?: boolean;
+  /** Rows visible at once (odd). */
+  visible: number;
 };
 
-function Column({ label, items, index, onSelect, loop = true }: ColumnProps) {
+function Column({ label, items, index, onSelect, loop = true, visible }: ColumnProps) {
   const box = useRef<HTMLDivElement>(null);
   const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ours = useRef(false);
@@ -105,7 +106,7 @@ function Column({ label, items, index, onSelect, loop = true }: ColumnProps) {
           }, 90);
         }}
         className="no-scrollbar relative w-16 snap-y snap-mandatory overflow-y-scroll overscroll-contain rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-primary-strong"
-        style={{ height: ROW * VISIBLE, paddingBlock: ROW * Math.floor(VISIBLE / 2) }}
+        style={{ height: ROW * visible, paddingBlock: ROW * Math.floor(visible / 2) }}
       >
         {items.map((it, i) => (
           <div
@@ -131,7 +132,7 @@ function Column({ label, items, index, onSelect, loop = true }: ColumnProps) {
 /** 12, 1, 2 … 11 — the order a clock face reads. */
 const HOURS = ["12", ...Array.from({ length: 11 }, (_, i) => String(i + 1))];
 
-export function TimeWheel({ value, onChange, minuteStep = 5 }: { value: string; onChange: (hhmm: string) => void; minuteStep?: number }) {
+export function TimeWheel({ value, onChange, minuteStep = 5, rows = 5 }: { value: string; onChange: (hhmm: string) => void; minuteStep?: number; rows?: 3 | 5 }) {
   const { hour, minute, pm } = to12(value);
   // Minutes on the step, plus the current one if it's between steps (e.g. a prayer at 5:13).
   const minutes = Array.from({ length: Math.ceil(60 / minuteStep) }, (_, i) => i * minuteStep);
@@ -142,16 +143,16 @@ export function TimeWheel({ value, onChange, minuteStep = 5 }: { value: string; 
       {/* The selection band behind the middle row. */}
       <div aria-hidden className="pointer-events-none absolute inset-x-2 top-1/2 h-10 -translate-y-1/2 rounded-xl bg-track" />
       <div className="relative">
-        <Column label="Hour" items={HOURS} index={hour % 12} onSelect={(i) => onChange(from12(i === 0 ? 12 : i, minute, pm))} />
+        <Column label="Hour" visible={rows} items={HOURS} index={hour % 12} onSelect={(i) => onChange(from12(i === 0 ? 12 : i, minute, pm))} />
       </div>
       <span aria-hidden className="relative text-[20px] font-semibold text-ink">
         :
       </span>
       <div className="relative">
-        <Column label="Minute" items={minutes.map(pad)} index={minutes.indexOf(minute)} onSelect={(i) => onChange(from12(hour, minutes[i], pm))} />
+        <Column label="Minute" visible={rows} items={minutes.map(pad)} index={minutes.indexOf(minute)} onSelect={(i) => onChange(from12(hour, minutes[i], pm))} />
       </div>
       <div className="relative">
-        <Column label="AM or PM" items={["AM", "PM"]} index={pm ? 1 : 0} loop={false} onSelect={(i) => onChange(from12(hour, minute, i === 1))} />
+        <Column label="AM or PM" visible={rows} items={["AM", "PM"]} index={pm ? 1 : 0} loop={false} onSelect={(i) => onChange(from12(hour, minute, i === 1))} />
       </div>
     </div>
   );

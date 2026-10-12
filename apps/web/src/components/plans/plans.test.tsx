@@ -4,6 +4,7 @@ import { createPlan, todayLocalDate, updateStep, type CadenceRule, type Item, ty
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { pickDate } from "@/test/date-field";
 import PlansPage from "@/app/(main)/plans/page";
 import PlanViewPage from "@/app/(main)/plans/view/page";
 import CategoryViewPage from "@/app/(main)/categories/view/page";
@@ -120,7 +121,7 @@ describe("Plan page", () => {
       expect(rules.map((r) => r.rule)).toEqual(expect.arrayContaining([{ type: "weekdays", days: [2, 5] }, { type: "gapDays", n: 1 }]));
       expect(rules).toHaveLength(2);
     });
-    fireEvent.change(within(stepRow("Post")).getByLabelText("Post date"), { target: { value: "2026-10-15" } }); // a Thursday
+    pickDate("Post date", "2026-10-15", stepRow("Post")); // a Thursday
     // The dated step moves from "No date yet" to the timeline, so look it up again.
     const status = await waitFor(() => within(stepRow("Post")).getByRole("status"));
     expect(status).toHaveTextContent(/Tue \/ Fri — Thursday isn't one of them/);

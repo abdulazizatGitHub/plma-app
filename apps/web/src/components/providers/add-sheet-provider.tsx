@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Sheet, Toast, type ToastData } from "@/components/kit";
 import { ReminderSheet } from "@/components/reminders/reminder-sheet";
+import { MoveSheet } from "@/components/today/move-sheet";
 import { TaskForm } from "@/components/today/task-form";
 import { whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
@@ -16,6 +17,8 @@ type AddSheetState = {
   openEdit: (item: Item) => void;
   /** "Remind me…" for one row on one day (today only, or its everyday reminder). */
   openReminder: (entry: DayEntry, date: string) => void;
+  /** "Move to a date…": chips and a calendar; one tap moves it. */
+  openMove: (entry: DayEntry, from: string) => void;
   /** Today tells us which day is on screen, so + plans *that* day. */
   setDefaultDate: (date: string | null) => void;
   /** Today registers how to jump to a day (for the toast's "View"). */
@@ -35,6 +38,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   const [defaultDate, setDefaultDate] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [reminderFor, setReminderFor] = useState<{ entry: DayEntry; date: string } | null>(null);
+  const [moveFor, setMoveFor] = useState<{ entry: DayEntry; from: string } | null>(null);
   const showDay = useRef<((date: string) => void) | null>(null);
   const categories = useCategories();
   const run = useActions();
@@ -54,6 +58,7 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
       openAdd: () => setMode({ kind: "add" }),
       openEdit: (item) => setMode({ kind: "edit", item }),
       openReminder: (entry, date) => setReminderFor({ entry, date }),
+      openMove: (entry, from) => setMoveFor({ entry, from }),
       setDefaultDate,
       registerShowDay: (show) => {
         showDay.current = show;
@@ -152,6 +157,19 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
         ) : null}
       </Sheet>
       <ReminderSheet entry={reminderFor?.entry ?? null} date={reminderFor?.date ?? ""} today={appToday ?? todayLocalDate()} onClose={() => setReminderFor(null)} />
+      <MoveSheet
+        entry={moveFor?.entry ?? null}
+        from={moveFor?.from ?? ""}
+        today={appToday ?? todayLocalDate()}
+        onClose={() => setMoveFor(null)}
+        onMoved={(to) => {
+          const today = appToday ?? todayLocalDate();
+          setToast({
+            message: `Moved to ${whenLabel(to, today, ", ")}`,
+            action: showDay.current ? { label: "View", onClick: () => showDay.current?.(to) } : undefined,
+          });
+        }}
+      />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </AddSheetContext.Provider>
   );

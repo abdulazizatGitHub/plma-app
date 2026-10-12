@@ -3,11 +3,9 @@
 import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, removeStep, skip, start, toggleDone, type DayEntry, type ItemDependency } from "@life/shared";
 import { ArrowRight, Bell, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
+import { PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useStore } from "@/components/providers/store-provider";
-import { isoDate } from "@/lib/forms/validators";
 import { useActions } from "@/lib/v2/use-day";
 
 /** Which row's menu is open, and the element it is anchored to. */
@@ -33,11 +31,9 @@ type RowActionsMenuProps = {
  */
 export function RowActionsMenu({ target, date: screenDate, today, onClose }: RowActionsMenuProps) {
   const run = useActions();
-  const { openEdit, openReminder } = useAddSheet();
+  const { openEdit, openReminder, openMove } = useAddSheet();
   const { store } = useStore();
   const router = useRouter();
-  const [picking, setPicking] = useState(false);
-  const [picked, setPicked] = useState(addDays(today, 2));
 
   if (!target) return null;
   const { entry, anchor } = target;
@@ -105,20 +101,15 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
           ) : null}
         </>
       )}
-      {canMove ? <PopoverMenuItem icon={<CalendarDays />} label="Move to a date…" onClick={() => setPicking((p) => !p)} /> : null}
-      {picking ? (
-        <div role="group" aria-label="Pick a date" className="flex gap-2 px-2 pb-1.5">
-          <input
-            type="date"
-            aria-label="Move to date"
-            value={picked}
-            onChange={(e) => setPicked(e.target.value)}
-            className="h-10 min-w-0 flex-1 rounded-[10px] border border-border bg-surface px-2 text-[14px] text-ink"
-          />
-          <Button disabled={isoDate(picked) !== null} onClick={() => moveAction(picked)} className="min-h-10 px-3">
-            Move
-          </Button>
-        </div>
+      {canMove ? (
+        <PopoverMenuItem
+          icon={<CalendarDays />}
+          label="Move to a date…"
+          onClick={() => {
+            onClose();
+            openMove(entry, from);
+          }}
+        />
       ) : null}
       {oneOff && date !== null ? (
         <PopoverMenuItem icon={<CalendarClock />} label="Mark pending (no date)" onClick={() => moveAction(null)} />

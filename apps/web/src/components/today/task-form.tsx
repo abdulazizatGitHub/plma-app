@@ -3,7 +3,7 @@
 import { todayLocalDate, type Category, type Item, type TaskDraft } from "@life/shared";
 import { useState, type FormEvent } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Pill, SegmentedTabs, TextField, TimeField, addDays } from "@/components/kit";
+import { Button, DateField, Pill, SegmentedTabs, TextField, TimeField, addDays } from "@/components/kit";
 import { useForm } from "@/lib/forms/use-form";
 import { useToday } from "@/lib/v2/use-today";
 import { isoDate, taskTitle } from "@/lib/forms/validators";
@@ -93,7 +93,7 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
           </div>
           {choice !== "none" ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {choice === "pick" ? <TextField label="Date" type="date" required {...form.field("picked")} /> : null}
+              {choice === "pick" ? <DateField label="Date" today={today} value={String(form.values.picked)} onChange={(v) => form.set("picked", v)} /> : null}
               <TimeField label="Time (optional)" optional placeholder="Add time" value={String(form.values.time)} onChange={(v) => form.set("time", v)} />
             </div>
           ) : (

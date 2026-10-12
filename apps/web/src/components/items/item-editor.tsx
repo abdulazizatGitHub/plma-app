@@ -3,7 +3,7 @@
 import { createItem, normalisePrayerKey, prayerKeyOf, saveChildren, todayLocalDate, updateItem, type Change, type Item } from "@life/shared";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Checkbox, Pill, PillGroup, SegmentedTabs, TextField, TimeField } from "@/components/kit";
+import { Button, Checkbox, DateField, Pill, PillGroup, SegmentedTabs, TextField, TimeField } from "@/components/kit";
 import { sanitizeDigits } from "@/lib/forms/validators";
 import { categoryTone } from "@/lib/v2/category-style";
 import { useLocation } from "@/components/location/location-provider";
@@ -247,7 +247,16 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
             {s.when !== "none" ? (
               <div className="grid grid-cols-2 gap-2">
                 {s.when === "pick" ? (
-                  <TextField label="Date" type="date" required value={s.picked} onChange={(e) => set("picked", e.target.value)} onBlur={touch("picked")} error={shown("picked")} />
+                  <DateField
+                    label="Date"
+                    today={today}
+                    value={s.picked}
+                    onChange={(v) => {
+                      set("picked", v);
+                      touch("picked")();
+                    }}
+                    error={shown("picked")}
+                  />
                 ) : null}
                 <TimeField label="Time (optional)" optional placeholder="Add time" value={s.time} onChange={(v) => set("time", v)} error={shown("time")} />
               </div>
@@ -341,8 +350,8 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
               </div>
             ) : null}
             <div className="grid grid-cols-2 gap-2">
-              <TextField label="Starts (optional)" type="date" value={s.activeFrom} onChange={(e) => set("activeFrom", e.target.value)} onBlur={touch("range")} />
-              <TextField label="Ends (optional)" type="date" value={s.activeUntil} onChange={(e) => set("activeUntil", e.target.value)} onBlur={touch("range")} error={shown("range")} />
+              <DateField label="Starts (optional)" optional placeholder="Any time" today={today} value={s.activeFrom} onChange={(v) => (set("activeFrom", v), touch("range")())} />
+              <DateField label="Ends (optional)" optional placeholder="No end" today={today} value={s.activeUntil} onChange={(v) => (set("activeUntil", v), touch("range")())} error={shown("range")} />
             </div>
           </>
         )}
