@@ -9,10 +9,9 @@ import {
   entryState,
   entryWindow,
   isPrayerGroup,
-  nextPrayer,
-  normalisePrayerKey,
+  carryOverIsha,
+  prayerHeadline,
   prayerKeyOf,
-  prayerMark,
   moveTo,
   partAt,
   partOf,
@@ -35,7 +34,7 @@ import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
 import { DaySummaryCard } from "./day-summary";
-import { PrayerGroup } from "./prayer-group";
+import { IshaCarryOver, PrayerGroup, headlineText } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
 
 const SECTIONS: { state: ItemState; title: string }[] = [
@@ -143,6 +142,10 @@ export function TodayScreen() {
   const streak = useDayStreak(today);
   const now = useNow();
   const upcoming = useUpcoming(isToday ? today : null);
+  // After midnight, yesterday's Isha is still on time until Fajr (owner, 2026-10-12).
+  const yesterday = today ? addDays(today, -1) : null;
+  const yesterdayDay = useDay(yesterday ?? "1970-01-01");
+  const yesterdayTimes = usePrayerTimes(yesterday);
   const overdue = useOverdue(isToday ? today : null);
 
   if (!today || !date) {
@@ -184,11 +187,13 @@ export function TodayScreen() {
     if (!isToday || !times) return null;
     const options: { at: number; label: string }[] = [];
     const prayerBlock = groups[0];
-    if (prayerBlock) {
-      const np = nextPrayer(now, times);
-      const child = prayerBlock.children?.find((c) => normalisePrayerKey(prayerKeyOf(c.item) ?? "") === np.key);
-      const open = child ? prayerMark(child, date, today) === "open" : true;
-      if (open) options.push({ at: np.at.getTime(), label: `${child?.item.title ?? np.key} · ${formatTime(clockIn(np.at, times.timezone))}` });
+    if (prayerBlock?.children) {
+      const nameOf = (key: string) => prayerBlock.children!.find((c) => prayerKeyOf(c.item) === key || (key === "dhuhr" && prayerKeyOf(c.item) === "zuhr"))?.item.title ?? key;
+      const h = prayerHeadline(prayerBlock.children, date, today, now, times);
+      const text = headlineText(h, now, times, nameOf);
+      // The prayer whose time it is comes first: it is the obligation of the moment.
+      if (text.current) options.push({ at: Number.NEGATIVE_INFINITY, label: text.current });
+      else if (text.next && h.next) options.push({ at: h.next.at.getTime(), label: `next: ${text.next}` });
     }
     for (const e of rows) {
       const state = entryState(e);
@@ -196,7 +201,7 @@ export function TodayScreen() {
       const w = entryWindow(e, times);
       if (!w || w.end.getTime() <= now.getTime()) continue;
       const startsLater = w.start.getTime() > now.getTime();
-      options.push({ at: w.start.getTime(), label: `${e.item.title}${startsLater ? ` · ${formatTime(clockIn(w.start, times.timezone))}` : " (now)"}` });
+      options.push({ at: w.start.getTime(), label: startsLater ? `next: ${e.item.title} · ${formatTime(clockIn(w.start, times.timezone))}` : `${e.item.title} now` });
     }
     return options.sort((a, b) => a.at - b.at)[0]?.label ?? null;
   })();
@@ -262,6 +267,8 @@ export function TodayScreen() {
           today={today}
           streak={streak}
           nextUp={nextUp}
+          now={now}
+          times={times}
         />
       </div>
 
@@ -307,6 +314,12 @@ export function TodayScreen() {
         </Section>
       ) : null}
 
+      {(() => {
+        if (!isToday || !yesterday || !yesterdayTimes) return null;
+        const block = yesterdayDay.entries.find((e) => e.children && isPrayerGroup(e.item));
+        const isha = block?.children ? carryOverIsha(block.children, yesterday, today, now, yesterdayTimes) : null;
+        return isha ? <IshaCarryOver entry={isha} date={yesterday} times={yesterdayTimes} /> : null;
+      })()}
       {groups.map((g) => (
         <PrayerGroup key={g.key} entry={g} date={date} />
       ))}

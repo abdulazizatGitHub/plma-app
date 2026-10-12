@@ -14,6 +14,11 @@ export type PrayerChip = {
   time?: string;
   /** It's this prayer's time now. */
   now?: boolean;
+  /**
+   * For an unmarked prayer today: "upcoming" (not started) or "unmarked" (its
+   * time passed, not marked yet — neutral, never assumed qada).
+   */
+  pending?: "upcoming" | "unmarked";
 };
 
 const CHIP_STYLE: Record<PrayerChipStatus, string> = {
@@ -29,6 +34,11 @@ const STATUS_WORD: Record<PrayerChipStatus, string> = {
   missed: "missed",
   open: "not marked",
 };
+
+const PENDING_STYLE = {
+  upcoming: "bg-track text-ink-2 border-transparent opacity-70",
+  unmarked: "bg-surface text-ink border-dashed border-ink-2",
+} as const;
 
 const LONG_PRESS_MS = 500;
 
@@ -87,7 +97,7 @@ export function PrayerRow({ title = "Daily prayers", subtitle, prayers, onToggle
                 <button
                   type="button"
                   aria-pressed={p.status === "done" || p.status === "qada"}
-                  aria-label={`${p.label}, ${STATUS_WORD[p.status]}${p.time ? `, ${p.time}` : ""}${p.now ? ", now" : ""}`}
+                  aria-label={`${p.label}, ${p.pending === "upcoming" ? "upcoming" : p.pending === "unmarked" ? "time passed, not marked" : STATUS_WORD[p.status]}${p.time ? `, ${p.time}` : ""}${p.now ? ", now" : ""}`}
                   onPointerDown={(e) => {
                     if (!onChipMore) return;
                     const el = e.currentTarget;
@@ -114,7 +124,7 @@ export function PrayerRow({ title = "Daily prayers", subtitle, prayers, onToggle
                     }
                     onToggle?.(p.key);
                   }}
-                  className={`transition-token press-pop flex min-h-9 min-w-12 flex-col items-center justify-center rounded-full border-2 px-2.5 text-[12px] leading-tight font-medium select-none ${CHIP_STYLE[p.status]} ${
+                  className={`transition-token press-pop flex min-h-9 min-w-12 flex-col items-center justify-center rounded-full border-2 px-2.5 text-[12px] leading-tight font-medium select-none ${p.status === "open" && p.pending ? PENDING_STYLE[p.pending] : CHIP_STYLE[p.status]} ${
                     p.now ? "ring-2 ring-primary-strong ring-offset-1 ring-offset-surface" : ""
                   }`}
                 >

@@ -1,6 +1,6 @@
 "use client";
 
-import { entryState, prayerMark, type DayAccess, type DayEntry, type DayProgress, type DayStreak } from "@life/shared";
+import { entryState, prayerDisplay, prayerMark, type DayAccess, type DayEntry, type DayProgress, type DayStreak, type DayPrayerTimes } from "@life/shared";
 import { Flame, Lock, Sparkles, Trophy } from "lucide-react";
 import { Ring, type RingSegment } from "@/components/kit";
 
@@ -14,7 +14,10 @@ type DaySummaryProps = {
   date: string;
   today: string;
   streak: DayStreak;
-  /** "Asr · 3:59 PM" — what's next today. */
+  /** For the prayers bar's now / not-marked-yet states (Today only). */
+  now?: Date;
+  times?: DayPrayerTimes | null;
+  /** "Isha now · until 4:48 AM tomorrow" or "next: Asr at 3:59 PM" — what's now or next. */
   nextUp: string | null;
 };
 
@@ -25,7 +28,7 @@ const ORDER: Record<RingSegment, number> = { done: 0, qada: 1, open: 2, missed: 
  * in progress / left, or missed once the day is closed), the count and a
  * one-line summary, the prayers bar, and the perfect-day streak.
  */
-export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp }: DaySummaryProps) {
+export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp, now, times }: DaySummaryProps) {
   const closed = access === "history";
   // One arc per counted item, sorted so the ring fills: done, in progress, then the rest.
   const units = [...rows.flatMap((e) => (e.children ?? [e]).filter((u) => !u.item.isOptional)), ...(prayers?.children ?? [])];
@@ -56,7 +59,7 @@ export function DaySummaryCard({ access, rows, progress, prayers, date, today, s
   else if (access === "planned") summary = required ? `${required} planned for this day.` : "Nothing planned yet.";
   else if (!required) summary = "Nothing due today — a free day still counts as 100%.";
   else if (pct === 100) summary = "Everything done — enjoy the rest of your day.";
-  else summary = `${left} left${nextUp ? ` · next: ${nextUp}` : ""}`;
+  else summary = `${left} left${nextUp ? ` · ${nextUp}` : ""}`;
 
   return (
     <section aria-label="Day summary" className="card space-y-3 p-4">
@@ -106,9 +109,11 @@ export function DaySummaryCard({ access, rows, progress, prayers, date, today, s
           </div>
           <div className="flex h-2 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`Prayers: ${prayed} of ${prayerUnits.length} prayed`}>
             {prayerUnits.map((c) => {
-              const m = prayerMark(c, date, today);
-              const fill = m === "prayed" ? "bg-done" : m === "qada" ? "bg-progress" : m === "missed" ? "bg-todo" : "bg-track";
-              return <span key={c.key} className={`flex-1 ${fill}`} />;
+              const d = now ? prayerDisplay(c, date, today, now, times ?? null) : prayerMark(c, date, today);
+              // Not marked yet (time passed) is neutral, never qada or missed; "now" is outlined.
+              const fill =
+                d === "prayed" ? "bg-done" : d === "qada" ? "bg-progress" : d === "missed" ? "bg-todo" : d === "unmarked" ? "bg-track opacity-60" : "bg-track";
+              return <span key={c.key} title={c.item.title} className={`flex-1 ${fill} ${d === "now" ? "outline-2 -outline-offset-2 outline-primary-strong" : ""}`} />;
             })}
           </div>
         </div>
