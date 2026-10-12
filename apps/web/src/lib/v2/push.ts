@@ -36,6 +36,23 @@ function urlBase64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+/** The browser's push service can hang (offline, blocked); give up with a clear message instead of spinning. */
+function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(message)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e: unknown) => {
+        clearTimeout(t);
+        reject(e instanceof Error ? e : new Error(String(e)));
+      },
+    );
+  });
+}
+
 async function registration(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return null;
   const existing = await navigator.serviceWorker.getRegistration();
@@ -92,7 +109,13 @@ export function usePush() {
         return;
       }
       const { publicKey } = (await api("/v1/push/key")) as { publicKey: string };
-      const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(publicKey) }));
+      const sub =
+        (await reg.pushManager.getSubscription()) ??
+        (await withTimeout(
+          reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToBytes(publicKey) }),
+          20_000,
+          "Your browser's notification service didn't answer. Check your connection and try again.",
+        ));
       await api("/v1/push/subscriptions", { method: "POST", body: JSON.stringify(sub.toJSON()) });
       setState("on");
     } catch (err) {

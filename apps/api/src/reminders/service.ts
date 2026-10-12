@@ -79,11 +79,13 @@ export async function upcomingFires(sql: Sql, userId: string, now: Date): Promis
 /** A queue key changes with the fire time, so a rescheduled reminder fires again. */
 const queueKey = (f: ReminderFire) => `${f.key}@${f.at.toISOString().slice(0, 16)}`;
 
-/** Rewrites a user's pending fires (sent ones and snoozes stay). */
+/** Rewrites a user's upcoming fires (sent and due ones, and snoozes, stay). */
 export async function planUser(sql: Sql, userId: string, now = new Date()) {
   const fires = await upcomingFires(sql, userId, now);
   await sql.begin(async (tx) => {
-    await tx`DELETE FROM reminder_queue WHERE user_id = ${userId} AND status = 'pending' AND kind <> 'snooze'`;
+    // Only future fires are rewritten: one that is due but not yet sent stays for the tick
+    // (which re-checks the item), so a replan landing just after its time can't lose it.
+    await tx`DELETE FROM reminder_queue WHERE user_id = ${userId} AND status = 'pending' AND kind <> 'snooze' AND fire_at > ${now.toISOString()}`;
     for (const f of fires) {
       await tx`
         INSERT INTO reminder_queue (user_id, key, kind, item_id, date, slot, attempt, fire_at, title, body, snooze_min)

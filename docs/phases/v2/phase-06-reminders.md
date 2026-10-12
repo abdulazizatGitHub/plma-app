@@ -27,7 +27,7 @@ Reminders that match importance: critical items keep nudging until done.
 
 ## Acceptance
 
-- [ ] A medium reminder fires once at the set time, on Android Chrome and on an installed iPhone PWA.
-- [ ] A critical reminder repeats every 30 min. It stops as soon as the item is done, including when Done is tapped on the notification.
-- [ ] Nothing fires during quiet hours. Muting a category silences its items.
-- [ ] A prayer-relative reminder (10 min after Asr) fires at the right local time across a DST change (unit test).
+- [~] A medium reminder fires once at the set time — **verified on desktop Chrome**; Android Chrome and an installed iPhone PWA wait for the preprod deploy (push needs HTTPS).
+- [x] A critical reminder repeats every 30 min (user-editable). It stops as soon as the item is done, including when Done is tapped on the notification (unit + E2E).
+- [x] Nothing fires during quiet hours (it waits for their end; repeats resume after). Muting a category silences its items (unit + E2E).
+- [x] A prayer-relative reminder (10 min after Asr) fires at the right local time across a DST change (unit test, Europe/London 25 Oct 2026).
