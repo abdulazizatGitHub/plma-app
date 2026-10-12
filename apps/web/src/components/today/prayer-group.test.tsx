@@ -54,7 +54,7 @@ describe("Prayer block on Today", () => {
     // Time passed but not marked: neutral, never assumed qada or missed.
     expect(within(block).getByRole("button", { name: /^Fajr, time passed, not marked, \d{1,2}:\d{2} (AM|PM)/ })).toBeInTheDocument();
     expect(within(block).getByRole("button", { name: /^Isha, not marked, .*, now$/ })).toBeInTheDocument();
-    expect(within(block).getByText(/^Isha now · until \d{1,2}:\d{2} AM tomorrow · best before/)).toBeInTheDocument();
+    expect(within(block).getByText(/^Isha now · until \d{1,2}:\d{2} AM tomorrow$/)).toBeInTheDocument();
     expect(within(block).getByText("Times are approximate (Karachi).")).toBeInTheDocument();
   });
 

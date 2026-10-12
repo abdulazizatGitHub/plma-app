@@ -138,7 +138,8 @@ describe("Prayer settings page", () => {
   it("shows approximate times, saves method, Asr, offsets and fixed times", async () => {
     page();
     expect(await screen.findByText(/Approximate — Karachi/)).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox", { name: "Method" }), { target: { value: "mwl" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Method:/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Muslim World League" }));
     fireEvent.click(screen.getByRole("tab", { name: "Shafi'i / others" }));
     fireEvent.click(screen.getByRole("button", { name: "Maghrib one minute later" }));
     await waitFor(() => expect(settings()).toMatchObject({ calcMethod: "mwl", madhab: "shafi", prayerOffsets: { maghrib: 1 } }));

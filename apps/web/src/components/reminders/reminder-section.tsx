@@ -221,7 +221,7 @@ export function ReminderSection({ value: s, onChange, preview, settings, categor
         {s.mode === "auto" ? (
           <>
             {" "}
-            <Link href="/settings/notifications" className="font-medium text-primary-strong underline-offset-2 hover:underline">
+            <Link href="/settings/notifications" className="inline-flex min-h-8 items-center font-medium text-link underline-offset-2 hover:underline">
               Change defaults
             </Link>
           </>

@@ -2,7 +2,7 @@
 
 import { STEP_KINDS, deleteCadenceRule, saveCadenceRule, type CadenceRule, type Change, type Item, type StepKind } from "@life/shared";
 import { useState } from "react";
-import { SegmentedTabs } from "@/components/kit";
+import { ChipChoice, SegmentedTabs } from "@/components/kit";
 import { useStore } from "@/components/providers/store-provider";
 import { useActions } from "@/lib/v2/use-day";
 
@@ -15,7 +15,7 @@ const WEEK = [
   [6, "Sat"],
   [0, "Sun"],
 ] as const;
-const GAPS = [0, 1, 2, 3, 4, 5, 6, 7, 10, 14];
+const GAPS = [0, 1, 2, 3, 7];
 
 type Scope = "plan" | "category";
 
@@ -104,21 +104,15 @@ export function RulesEditor({ plan, kinds, rules, categoryName }: { plan: Item; 
                   })}
                   <span className="text-[11.5px] text-ink-2">{picked.length ? "" : "Any day"}</span>
                 </div>
-                <label className="flex items-center gap-2 text-[12px] text-ink-2">
-                  Keep {STEP_KINDS[kind].label.toLowerCase()} steps apart by
-                  <select
-                    aria-label={`${STEP_KINDS[kind].label} gap`}
-                    value={gap?.type === "gapDays" ? gap.n : 0}
-                    onChange={(e) => setGap(kind, Number(e.target.value))}
-                    className="h-8 rounded-[10px] border border-border bg-surface px-2 text-[13px] text-ink"
-                  >
-                    {GAPS.map((g) => (
-                      <option key={g} value={g}>
-                        {g ? `${g} day${g === 1 ? "" : "s"}+` : "any gap"}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <ChipChoice
+                  legend={`Keep ${STEP_KINDS[kind].label.toLowerCase()} steps apart by`}
+                  options={(gap?.type === "gapDays" && !GAPS.includes(gap.n) ? [...GAPS, gap.n].sort((a, b) => a - b) : GAPS).map((g) => ({
+                    value: g,
+                    label: g ? `${g} day${g === 1 ? "" : "s"}+` : "Any gap",
+                  }))}
+                  value={gap?.type === "gapDays" ? gap.n : 0}
+                  onChange={(g) => setGap(kind, g)}
+                />
               </li>
             );
           })}

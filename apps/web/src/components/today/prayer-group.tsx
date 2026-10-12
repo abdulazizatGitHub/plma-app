@@ -170,7 +170,7 @@ export function PrayerGroup({
   let subtitle: string | undefined;
   if (headline && times) {
     const text = headlineText(headline, now, times, nameOf);
-    subtitle = text.current ?? (text.next ? `Next: ${text.next}` : undefined);
+    subtitle = text.current?.split(" · best before")[0] ?? (text.next ? `Next: ${text.next}` : undefined);
   } else if (access === "late")
     subtitle = "Yesterday — tap a prayer you made up to mark it qada";
   else if (access === "history")

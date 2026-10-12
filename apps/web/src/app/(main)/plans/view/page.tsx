@@ -61,7 +61,7 @@ function DetailsForm({ plan, onSave }: { plan: Item; onSave: (patch: { title: st
         <div className="flex flex-wrap gap-1.5">
           {[{ id: null, name: "None", color: "" }, ...categories].map((c) => (
             <Pill key={c.id ?? "none"} selected={categoryId === c.id} onClick={() => setCategoryId(c.id)}>
-              {c.id ? <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: `var(--cat-${categoryTone(c)})` }} /> : null}
+              {c.id ? <span aria-hidden className="h-2.5 w-2.5 rounded-full ring-1 ring-ink/25" style={{ background: `var(--cat-${categoryTone(c)})` }} /> : null}
               {c.name}
             </Pill>
           ))}
