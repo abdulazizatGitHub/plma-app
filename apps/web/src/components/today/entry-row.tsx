@@ -114,6 +114,34 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   return tags;
 }
 
+/** Chips that are real signals, kept in compact rows; the rest becomes the quiet meta line. */
+const SIGNALS = new Set(["due", "moving", "missed", "lock", "reminder"]);
+
+/**
+ * The quiet meta line of a compact row: "Physical · after Isha · 7:23 PM–5:13 AM".
+ * Repeat days and "from …" stay on the item's page; progress for counts is
+ * added by the row itself.
+ */
+function entryMeta(entry: DayEntry, category: Category | undefined, when: string | undefined): string {
+  const item = entry.item;
+  const t = item.tracking;
+  const parts: (string | null | undefined)[] = [];
+  parts.push(category?.name);
+  if (entry.plan) {
+    const kind = stepKindOf(item);
+    parts.push(kind !== "custom" && STEP_KINDS[kind].label !== item.title ? `${entry.plan.title} · ${STEP_KINDS[kind].label}` : entry.plan.title);
+  }
+  if (item.schedule.kind === "once" && item.schedule.time) parts.push(formatTime(item.schedule.time));
+  if (when) parts.push(when);
+  if (t.kind === "checklist") parts.push(`${checklistSteps(entry).filter(Boolean).length}/${t.steps.length} steps`);
+  const o = entry.occurrence;
+  if (o?.status === "in_progress" && o.startedAt && t.kind !== "quantity" && t.kind !== "duration") {
+    const d = new Date(o.startedAt);
+    parts.push(`started ${formatTime(`${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`)}`);
+  }
+  return parts.filter(Boolean).join(" · ");
+}
+
 type EntryRowProps = {
   /** Overrides the day's own mode (tests and special lists). */
   access?: DayAccess;
@@ -128,6 +156,10 @@ type EntryRowProps = {
   onInteract?: () => void;
   /** Where the row will move once it settles (shown as "→ Done"). */
   movingTo?: EntryState;
+  /** Today's grouped list: flat row, quiet meta line, compact + for counts. */
+  compact?: boolean;
+  /** The group already names the category (no dot or name on the row). */
+  hideCategory?: boolean;
 };
 
 /**
@@ -176,7 +208,7 @@ function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry
  * expand to their steps, everything else is the one-tap check. Tapping the
  * title opens the item.
  */
-export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp }: EntryRowProps) {
+export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp, compact = false, hideCategory = false }: EntryRowProps) {
   // Daily items belong to their day: today is live, yesterday can still be logged,
   // older days are history, future days are for planning (see day-access.ts).
   const today = useToday() ?? date;
@@ -258,12 +290,20 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   // Heads-up while the row waits to move (it stays put while you're editing).
   if (movingTo) list.unshift(<Tag key="moving" tone="primary" icon={<ArrowRight />}>{MOVE_LABEL[movingTo]}</Tag>);
   const tags = list.length ? list : undefined;
+  // Compact rows: one quiet meta line; only real signals stay as chips.
+  const shownCategory = hideCategory ? undefined : category;
+  const meta = compact ? entryMeta(entry, shownCategory, when) : undefined;
+  const signals = compact ? list.filter((n) => SIGNALS.has(String((n as { key?: string | null }).key ?? ""))) : [];
+  const badges = signals.length ? signals : undefined;
+  const dotColor = compact && shownCategory ? `var(--cat-${categoryTone(shownCategory)})` : undefined;
+  const flatProps = compact ? { tags: undefined, meta, badges, categoryColor: dotColor } : { tags };
 
   if (t.kind === "quantity") {
     return (
       <QuantityRow
         title={entry.item.title}
-        tags={tags}
+        {...flatProps}
+        compact={compact}
         value={entry.occurrence?.value ?? 0}
         onChange={(v) => {
           onInteract?.();
@@ -285,7 +325,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
     return (
       <QuantityRow
         title={entry.item.title}
-        tags={tags}
+        {...flatProps}
+        compact={compact}
         value={entry.occurrence?.value ?? 0}
         onChange={(v) => {
           onInteract?.();
@@ -306,7 +347,8 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   return (
     <TaskRow
       title={entry.item.title}
-      tags={tags}
+      {...flatProps}
+      flat={compact}
       state={visible}
       priority={entry.item.priority}
       onToggle={tick}

@@ -764,3 +764,24 @@ Use this template for each decision:
   - **Dark mode:** the sky and yellow category fills are toned down like the rest (the "Content" tag was unreadable).
   - **Visibility:** category dots get an outline; "Change defaults" gets a readable link color and a proper tap height.
 - **Left as is (by design):** the OTP code boxes and the quantity value on rows are typeable text; the "UI kit (dev)" link exists only in development.
+
+### 2026-10-13 — Today: grouped, quiet, one tap
+
+- **Context:** The owner felt Today was cluttered: every item looked the same, with no separation, and it read as an immature app.
+- **What was wrong:**
+  - every row was its own card
+  - each row had 3–5 chips (category, progress, repeat days, "From …", priority)
+  - full − 0 + steppers doubled the height of half the rows
+  - everything sat in one flat list
+- **Research:** Apple Reminders' Today groups Morning / Afternoon / Evening; Things 3 has This Evening; Habitify uses time-of-day blocks to cut clutter; one-tap check-off is common advice.
+- **Decision:**
+  - **"My day" is the default view**; "By status" stays as the second tab. On "My day":
+    - **Timed items** are grouped by the prayer-based part of the day, with **Now** on the current part.
+    - **Untimed items** — most of them for this user — are grouped **by category**, so time-of-day alone would only make one big "Anytime" pile.
+    - **Finished items** fold into **Done** at the end.
+  - **Each group is one card with thin dividers.**
+  - **Rows have a quiet meta line:** the category dot and name (omitted when the group already is the category), time window, checklist steps and progress.
+    - High and Critical become a small flag.
+    - Repeat days and "From …" leave Today; they stay on the item's page.
+    - Only real signals remain as chips: overdue, missed, waiting, moving, and your own reminder.
+  - **Counts and minutes:** a thin progress bar and one round **+** that logs a step. Tapping the bar opens the full − / + (and typing).

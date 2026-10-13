@@ -77,6 +77,12 @@ beforeAll(async () => {
   SQL = await initSqlJs();
 });
 beforeEach(async () => {
+  // These tests read the To Do / In Progress / Done sections ("By status").
+  try {
+    localStorage.setItem("life_today_view", "status");
+  } catch {
+    /* ignore */
+  }
   store = await LocalStore.open(uid(), { sqlJs: SQL });
 });
 
@@ -195,3 +201,32 @@ describe("TodayScreen", () => {
   });
 });
 
+
+describe("My day (the default view)", () => {
+  it("groups untimed items by category in one card each, with a compact + and Done folded away", async () => {
+    try {
+      localStorage.removeItem("life_today_view");
+    } catch {
+      /* ignore */
+    }
+    const physical = { id: uid(), userId: USER, createdAt: NOW, updatedAt: NOW, deletedAt: null, name: "Physical", icon: "dumbbell", color: "mint", sortOrder: 0, archivedAt: null, remindersMuted: false, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null };
+    store.save("categories", physical as unknown as StoredRow);
+    store.save("items", item({ title: "Steps", categoryId: physical.id, priority: "high", tracking: { v: 1, kind: "quantity", unit: "steps", target: 1000, step: 500 } }));
+    store.save("items", item({ title: "Floss" }));
+    renderToday();
+    const group = await screen.findByRole("region", { name: "Physical" });
+    expect(screen.getByRole("tab", { name: "My day" })).toHaveAttribute("aria-selected", "true");
+    // The group names the category, so the row doesn't repeat it; high priority is a small flag.
+    expect(within(group).getByText("0 / 1,000 steps")).toBeInTheDocument();
+    expect(within(group).getByRole("img", { name: "high priority" })).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Other" })).getByText("Floss")).toBeInTheDocument();
+    // One tap on + logs a step; reaching the goal folds the row into Done.
+    fireEvent.click(within(group).getByRole("button", { name: "Increase Steps by 500" }));
+    expect(await within(group).findByText("500 / 1,000 steps")).toBeInTheDocument();
+    fireEvent.click(within(group).getByRole("button", { name: "Increase Steps by 500" }));
+    const done = await screen.findByRole("button", { name: /Done · 1/ }, SETTLED);
+    expect(screen.queryByText(/Goal reached · 1,000 steps/)).not.toBeInTheDocument();
+    fireEvent.click(done);
+    expect(screen.getByText(/Goal reached · 1,000 steps/)).toBeInTheDocument();
+  });
+});
