@@ -19,6 +19,7 @@ import {
 } from "@life/shared";
 import type { Sql } from "postgres";
 import { buildUpsert, toDto } from "../sync/sql.js";
+import { guardOccurrences } from "../history/guard.js";
 import { signAction, type ActionClaims } from "./tokens.js";
 
 /*
@@ -233,7 +234,10 @@ export async function markDone(sql: Sql, c: ActionClaims, now = new Date()): Pro
   if (entryState(unit) === "done") return "already";
   const changes = await toggleDone(unit, c.d, { userId: c.u, now: now.toISOString(), deviceId: "push" });
   const rows = changes.map((ch) => ch.row as unknown as Record<string, unknown> & { id: string; userId: string });
-  const { text, params } = buildUpsert("occurrences", rows, c.u);
+  // Same day rules as any device: stamped late in the window, refused once closed.
+  const { accepted, refused } = await guardOccurrences(sql, c.u, rows, now);
+  if (refused.length) return "locked";
+  const { text, params } = buildUpsert("occurrences", accepted, c.u);
   await sql.unsafe(text, params as never[]);
   await sql`UPDATE reminder_queue SET status = 'skipped' WHERE user_id = ${c.u} AND item_id = ${c.i} AND date = ${c.d} AND status = 'pending'`;
   await sql`INSERT INTO reminder_deliveries (user_id, key, item_id, action) VALUES (${c.u}, ${c.k}, ${c.i}, 'done')`;

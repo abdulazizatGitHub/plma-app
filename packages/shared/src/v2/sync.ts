@@ -111,6 +111,8 @@ export const syncPullQueryV2Schema = z.object({
 export type SyncPullResponseV2 = {
   serverTime: string;
   changes: Partial<Record<SyncEntity, Record<string, unknown>[]>>;
+  /** Days up to here are closed (final); history reads them from stored rows only. */
+  closedThrough?: string | null;
 };
 
 export type SyncPushResponseV2 = {

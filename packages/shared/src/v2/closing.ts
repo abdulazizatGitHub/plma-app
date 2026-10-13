@@ -1,3 +1,4 @@
+import { toLocalDateString } from "../date.js";
 import { buildDay, type DayEntry } from "./day.js";
 import type { Item, Occurrence } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
@@ -15,10 +16,17 @@ import { entryState } from "./progress.js";
 
 const repeating = (i: Item) => i.schedule.kind !== "once";
 
+/** Items as they were on `date`: one archived after that day was still active on it. */
+export function activeOn(items: Item[], date: string): Item[] {
+  return items
+    .filter((i) => !i.deletedAt && (!i.archivedAt || toLocalDateString(new Date(i.archivedAt)) > date))
+    .map((i) => (i.archivedAt ? { ...i, archivedAt: null } : i));
+}
+
 /** The `missed` rows to store for `date`: open, required, repeating units with no row yet. */
 export async function closeDay(items: Item[], occurrences: Occurrence[], date: string, userId: string, now: string): Promise<Occurrence[]> {
   const out: Occurrence[] = [];
-  for (const e of buildDay(items, occurrences, date)) {
+  for (const e of buildDay(activeOn(items, date), occurrences, date)) {
     for (const unit of e.children ?? [e]) {
       if (unit.occurrence || unit.item.isOptional || !repeating(unit.item)) continue;
       if (entryState(unit) !== "todo") continue;
@@ -26,7 +34,8 @@ export async function closeDay(items: Item[], occurrences: Occurrence[], date: s
         id: await occurrenceIdFor(unit.item.id, date, unit.slot),
         userId,
         createdAt: now,
-        updatedAt: now,
+        // Dated at the start of its day, so any real edit (made later, in the window) wins.
+        updatedAt: `${date}T00:00:00.000Z`,
         deletedAt: null,
         itemId: unit.item.id,
         date,
@@ -51,7 +60,7 @@ export async function closeDay(items: Item[], occurrences: Occurrence[], date: s
  * made afterwards can't add or remove them). Open days are built live.
  */
 export function historyDay(items: Item[], occurrences: Occurrence[], date: string, closed: boolean): DayEntry[] {
-  const day = buildDay(items, occurrences, date);
+  const day = buildDay(activeOn(items, date), occurrences, date);
   if (!closed) return day;
   const keep = (u: DayEntry) => !!u.occurrence || !repeating(u.item);
   return day.flatMap((e) => {

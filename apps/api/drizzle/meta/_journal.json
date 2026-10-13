@@ -43,6 +43,13 @@
       "when": 1791830961356,
       "tag": "0005_reminder_days",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791912331610,
+      "tag": "0006_closed_through",
+      "breakpoints": true
     }
   ]
 }
