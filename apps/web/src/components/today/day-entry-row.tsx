@@ -17,13 +17,16 @@ type RowProps = {
   dueLabel?: string;
   onInteract?: () => void;
   movingTo?: EntryState;
+  /** Inside a grouped list card (Today). */
+  compact?: boolean;
+  hideCategory?: boolean;
 };
 
 /**
  * A routine ("Gym — Push day"): a card with its progress that expands to its
  * sub-items. It completes when every sub-item is done (ITM-03).
  */
-export function GroupRow({ entry, date, category, onMore, onInteract, movingTo }: RowProps) {
+export function GroupRow({ entry, date, category, onMore, onInteract, movingTo, compact, hideCategory }: RowProps) {
   const children = entry.children ?? [];
   const counted = children.filter((c) => entryState(c) !== "not_today");
   const done = counted.filter((c) => entryState(c) === "done").length;
@@ -31,7 +34,7 @@ export function GroupRow({ entry, date, category, onMore, onInteract, movingTo }
   const [open, setOpen] = useState(!complete);
   const panelId = useId();
   return (
-    <section className="card overflow-hidden" aria-label={entry.item.title}>
+    <section className={compact ? "overflow-hidden" : "card overflow-hidden"} aria-label={entry.item.title}>
       <div className="flex items-center gap-1 pr-1.5">
         <button
           type="button"
@@ -52,7 +55,7 @@ export function GroupRow({ entry, date, category, onMore, onInteract, movingTo }
               <Tag icon={<ListChecks />} tone={complete ? "done" : "neutral"}>
                 {done}/{counted.length}
               </Tag>
-              {category ? (
+              {category && !hideCategory ? (
                 <Tag color={`var(--cat-${categoryTone(category)})`} icon={createElement(categoryIcon(category))}>
                   {category.name}
                 </Tag>
@@ -71,11 +74,11 @@ export function GroupRow({ entry, date, category, onMore, onInteract, movingTo }
         </button>
       </div>
       {open ? (
-        <div id={panelId} className="space-y-1.5 bg-bg/60 p-2 pt-0">
+        <div id={panelId} className={compact ? "divide-y divide-border border-t border-border bg-bg/40 pl-6" : "space-y-1.5 bg-bg/60 p-2 pt-0"}>
           {children.map((c) => (
-            <EntryRow key={c.key} entry={c} date={date} onMore={onMore} onInteract={onInteract} />
+            <EntryRow key={c.key} entry={c} date={date} onMore={onMore} onInteract={onInteract} compact={compact} hideCategory />
           ))}
-          <Link href={`/items/view?id=${entry.item.id}`} className="flex min-h-8 items-center px-1 text-[12px] font-medium text-link">
+          <Link href={`/items/view?id=${entry.item.id}`} className={`flex min-h-8 items-center text-[12px] font-medium text-link ${compact ? "px-3" : "px-1"}`}>
             Open routine
           </Link>
         </div>

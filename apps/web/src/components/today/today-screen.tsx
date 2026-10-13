@@ -20,14 +20,14 @@ import {
   type DayPrayerTimes,
   type EntryState,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, ChevronRight, History, Hourglass, Plus, Telescope, Undo2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, ChevronDown, ChevronRight, History, Hourglass, Plus, Telescope, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, DateStrip, SegmentedTabs, StatusTiles, Tag, addDays, weekStart, type ItemState } from "@/components/kit";
 import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
-import { formatTime } from "@/lib/v2/category-style";
+import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { useActions, useCategories, useDay, useDayStreak, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
@@ -75,6 +75,25 @@ function Section({ id, title, count, action, children }: { id?: string; title: s
   );
 }
 
+/**
+ * One group of Today's list (owner, 2026-10-13: "everything looks the same"):
+ * a small header and a single card with thin dividers, instead of a card per
+ * row. The header names what the rows share (a part of the day or a category).
+ */
+function Group({ title, count, icon, action, children }: { title: string; count: number; icon?: ReactNode; action?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="scroll-mt-16" aria-label={title}>
+      <h2 className="mb-1.5 flex items-center gap-1.5 px-1 text-[12px] font-semibold tracking-wide text-ink-2 uppercase">
+        {icon}
+        <span>{title}</span>
+        <span className="font-normal">· {count}</span>
+        {action ? <span className="ml-auto font-normal tracking-normal normal-case">{action}</span> : null}
+      </h2>
+      <div className="card divide-y divide-border overflow-hidden">{children}</div>
+    </section>
+  );
+}
+
 /** v2 Home: one day's To Do / In Progress / Done, plus Overdue and Upcoming (TOD-01…05, FLX-01…05). */
 export function TodayScreen() {
   // Computed on the client: a prerendered page would freeze the build date.
@@ -84,7 +103,7 @@ export function TodayScreen() {
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
   const [showAllDone, setShowAllDone] = useState(false);
   const [showNotToday, setShowNotToday] = useState(false);
-  const [view, setView] = useState<View>("status");
+  const [view, setView] = useState<View>("day");
   const { openAdd, setDefaultDate, registerShowDay } = useAddSheet();
   const run = useActions();
   const { held, hold } = useSettledPlacement();
@@ -100,7 +119,7 @@ export function TodayScreen() {
   useEffect(() => {
     // Per-device convenience; storage may be unavailable (private mode).
     try {
-      if (localStorage.getItem(VIEW_KEY) === "day") setView("day"); // eslint-disable-line react-hooks/set-state-in-effect -- restore a saved preference
+      if (localStorage.getItem(VIEW_KEY) === "status") setView("status"); // eslint-disable-line react-hooks/set-state-in-effect -- restore a saved preference
     } catch {
       /* keep the default */
     }
@@ -165,7 +184,7 @@ export function TodayScreen() {
   const notToday = bucket("not_today");
   const nothing = ready && rows.length === 0 && groups.length === 0;
   const categoryOf = (e: DayEntry) => (e.item.categoryId ? byId.get(e.item.categoryId) : undefined);
-  const row = (e: DayEntry, own?: string, dueLabel?: string) => {
+  const row = (e: DayEntry, own?: string, dueLabel?: string, opts: { compact?: boolean; hideCategory?: boolean } = {}) => {
     const real = entryState(e);
     const shown = placed(e);
     return (
@@ -174,6 +193,8 @@ export function TodayScreen() {
           entry={e}
           date={own ?? date}
           category={categoryOf(e)}
+          compact={opts.compact}
+          hideCategory={opts.hideCategory}
           dueLabel={dueLabel}
           onInteract={own ? undefined : () => hold(`${date}|${e.key}`, shown)}
           movingTo={shown !== real ? real : undefined}
@@ -286,8 +307,8 @@ export function TodayScreen() {
           value={view}
           onChange={chooseView}
           options={[
+            { value: "day", label: "My day" },
             { value: "status", label: "By status" },
-            { value: "day", label: "By time of day" },
           ]}
         />
       ) : null}
@@ -345,40 +366,74 @@ export function TodayScreen() {
             </>
           )}
         </div>
-      ) : view === "day" && times ? (
+      ) : view === "day" ? (
         (() => {
-          // Day view (TOD-06): the day's parts, set by the prayer times; "now" is marked.
-          const parts = dayParts(times);
-          const current = isToday ? partAt(now, parts) : null;
-          const shown = rows.filter((e) => entryState(e) !== "not_today" && (!filter || entryState(e) === filter));
-          const sections = [
-            ...parts.map((p) => ({
-              key: p.key,
-              title: p.label,
-              range: `${formatTime(clockIn(p.window.start, times.timezone))} – ${formatTime(clockIn(p.window.end, times.timezone))}`,
-            })),
-            { key: ANYTIME, title: "Anytime", range: "" },
-          ];
-          return sections.map((sec) => {
-            const list = shown.filter((e) => partOf(e, times, parts) === sec.key);
-            if (!list.length) return null;
-            const isNow = current === sec.key;
-            return (
-              <Section
-                key={sec.key}
-                title={sec.title}
-                count={list.length}
-                action={
-                  <span className="flex items-center gap-1.5 text-[11.5px] font-normal text-ink-2">
-                    {isNow ? <Tag tone="primary">Now</Tag> : null}
-                    {sec.range}
-                  </span>
-                }
-              >
-                {list.map((e) => row(e))}
-              </Section>
-            );
-          });
+          // My day (owner, 2026-10-13): timed items by part of the day ("now" marked),
+          // untimed ones by category, finished ones folded into Done at the end.
+          const parts = times ? dayParts(times) : [];
+          const current = isToday && times ? partAt(now, parts) : null;
+          const live = rows.filter((e) => placed(e) !== "not_today" && (!filter || placed(e) === filter));
+          const open = filter === "done" ? live : live.filter((e) => placed(e) !== "done");
+          const done = filter ? [] : live.filter((e) => placed(e) === "done");
+          const partKey = (e: DayEntry) => (times ? partOf(e, times, parts) : ANYTIME);
+          const timed = parts
+            .map((p) => ({ part: p, list: open.filter((e) => partKey(e) === p.key) }))
+            .filter((g) => g.list.length);
+          const anytime = open.filter((e) => partKey(e) === ANYTIME);
+          const cats = [...categories.map((c) => ({ id: c.id as string | null, cat: c as Category | undefined })), { id: null, cat: undefined }]
+            .map(({ id, cat }) => ({ cat, list: anytime.filter((e) => (e.item.categoryId ?? null) === id || (id === null && e.item.categoryId && !byId.has(e.item.categoryId))) }))
+            .filter((g) => g.list.length);
+          const doneShown = showAllDone ? done : done.slice(0, 0);
+          return (
+            <>
+              {timed.map(({ part, list }) => (
+                <Group
+                  key={part.key}
+                  title={part.label}
+                  count={list.length}
+                  action={
+                    <span className="flex items-center gap-1.5 text-[11.5px] text-ink-2">
+                      {current === part.key ? <Tag tone="primary">Now</Tag> : null}
+                      {times ? `${formatTime(clockIn(part.window.start, times.timezone))} – ${formatTime(clockIn(part.window.end, times.timezone))}` : null}
+                    </span>
+                  }
+                >
+                  {list.map((e) => row(e, undefined, undefined, { compact: true }))}
+                </Group>
+              ))}
+              {cats.map(({ cat, list }) => {
+                const Icon = categoryIcon(cat);
+                return (
+                  <Group
+                    key={cat?.id ?? "none"}
+                    title={cat?.name ?? "Other"}
+                    count={list.length}
+                    icon={
+                      <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: cat ? `var(--cat-${categoryTone(cat)})` : "var(--track)" }}>
+                        <Icon className="h-3 w-3 text-ink" />
+                      </span>
+                    }
+                  >
+                    {list.map((e) => row(e, undefined, undefined, { compact: true, hideCategory: true }))}
+                  </Group>
+                );
+              })}
+              {done.length ? (
+                <section aria-label="Done">
+                  <button
+                    type="button"
+                    aria-expanded={showAllDone}
+                    onClick={() => setShowAllDone((v) => !v)}
+                    className="flex min-h-9 items-center gap-1.5 px-1 text-[12px] font-semibold tracking-wide text-ink-2 uppercase hover:text-ink"
+                  >
+                    <Check className="h-3.5 w-3.5 text-done" aria-hidden /> Done · {done.length}
+                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAllDone ? "rotate-180" : ""}`} aria-hidden />
+                  </button>
+                  {doneShown.length ? <div className="card mt-1 divide-y divide-border overflow-hidden">{doneShown.map((e) => row(e, undefined, undefined, { compact: true }))}</div> : null}
+                </section>
+              ) : null}
+            </>
+          );
         })()
       ) : (
         SECTIONS.filter((s) => !filter || filter === s.state).map(({ state, title }) => {
@@ -386,14 +441,14 @@ export function TodayScreen() {
           if (!list.length) return null;
           const shown = state === "done" && !showAllDone && !filter ? list.slice(0, DONE_PREVIEW) : list;
           return (
-            <Section key={state} title={state === "todo" && access === "history" ? "Not done" : state === "todo" && access === "planned" ? "Planned" : title} count={list.length}>
-              {shown.map((e) => row(e))}
+            <Group key={state} title={state === "todo" && access === "history" ? "Not done" : state === "todo" && access === "planned" ? "Planned" : title} count={list.length}>
+              {shown.map((e) => row(e, undefined, undefined, { compact: true }))}
               {shown.length < list.length ? (
-                <button type="button" onClick={() => setShowAllDone(true)} className="min-h-9 w-full rounded-xl text-[12px] font-medium text-link">
+                <button type="button" onClick={() => setShowAllDone(true)} className="min-h-10 w-full text-[12px] font-medium text-link">
                   Show all {list.length}
                 </button>
               ) : null}
-            </Section>
+            </Group>
           );
         })
       )}

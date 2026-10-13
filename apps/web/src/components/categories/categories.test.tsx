@@ -62,6 +62,12 @@ beforeAll(async () => {
   SQL = await initSqlJs();
 });
 beforeEach(async () => {
+  // These tests read the To Do / In Progress / Done sections ("By status").
+  try {
+    localStorage.setItem("life_today_view", "status");
+  } catch {
+    /* ignore */
+  }
   store = await LocalStore.open(uid(), { sqlJs: SQL });
 });
 

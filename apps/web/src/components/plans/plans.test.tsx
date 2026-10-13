@@ -31,6 +31,12 @@ beforeAll(async () => {
   SQL = await initSqlJs();
 });
 beforeEach(async () => {
+  // These tests read the To Do / In Progress / Done sections ("By status").
+  try {
+    localStorage.setItem("life_today_view", "status");
+  } catch {
+    /* ignore */
+  }
   store = await LocalStore.open(uid(), { sqlJs: SQL });
   params = new URLSearchParams();
   push.mockReset();
@@ -158,7 +164,7 @@ describe("Plans on Today and in categories", () => {
       </AddSheetProvider>,
     );
     const lockBtn = await screen.findByRole("button", { name: "Post: locked — Payment cleared" });
-    expect(screen.getByText("Collab — Café X")).toBeInTheDocument();
+    expect(screen.getByText(/Collab — Café X/)).toBeInTheDocument();
     expect(screen.getByText("Waits for Payment cleared")).toBeInTheDocument();
     fireEvent.click(lockBtn);
     expect(await screen.findByRole("status")).toHaveTextContent("Post waits for Payment cleared — tick that first.");
