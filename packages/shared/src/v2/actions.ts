@@ -19,7 +19,13 @@ export type Change =
   | { entity: "cadenceRules"; row: CadenceRule }
   | { entity: "reminders"; row: Reminder };
 
-export type ActionContext = { userId: string; now: string; deviceId: string | null };
+export type ActionContext = {
+  userId: string;
+  now: string;
+  deviceId: string | null;
+  /** Logging on a day after it ended (the correction window): stamped `detail.late`. The server re-checks. */
+  late?: boolean;
+};
 
 /** The entry's stored occurrence with `patch` applied, or a new one for `date`. */
 async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext, patch: Partial<Occurrence>): Promise<Occurrence> {
@@ -41,7 +47,14 @@ async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext,
     completedAt: null,
     deviceId: ctx.deviceId,
   };
-  return { ...base, ...patch, updatedAt: ctx.now, deviceId: ctx.deviceId };
+  const next: Occurrence = { ...base, ...patch, updatedAt: ctx.now, deviceId: ctx.deviceId };
+  const extra: Record<string, unknown> = {};
+  // The goal it was logged against, so editing the target later never rewrites past days.
+  const t = entry.item.tracking;
+  const target = t.kind === "quantity" ? t.target : t.kind === "duration" ? t.targetMin : undefined;
+  if (target !== undefined && patch.value !== undefined) extra.target = target;
+  if (ctx.late) extra.late = true;
+  return Object.keys(extra).length ? { ...next, detail: { ...(next.detail ?? {}), ...extra } } : next;
 }
 
 const occ = (row: Occurrence): Change => ({ entity: "occurrences", row });

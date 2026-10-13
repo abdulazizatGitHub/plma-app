@@ -239,9 +239,11 @@ describe("day lock", () => {
     expect(nextDayEnd(3, new Date(2026, 9, 12, 9, 0))).toEqual(new Date(2026, 9, 13, 3, 0));
   });
 
-  it("locks every past day once it has ended", () => {
+  it("gives an ended day a 2-day correction window, then locks it", () => {
     expect(dayAccess("2026-10-12", "2026-10-12")).toBe("live");
-    expect(dayAccess("2026-10-11", "2026-10-12")).toBe("history");
+    expect(dayAccess("2026-10-11", "2026-10-12")).toBe("late");
+    expect(dayAccess("2026-10-10", "2026-10-12")).toBe("late");
+    expect(dayAccess("2026-10-09", "2026-10-12")).toBe("history");
     expect(dayAccess("2026-10-13", "2026-10-12")).toBe("planned");
   });
 });
