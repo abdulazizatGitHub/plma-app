@@ -26,6 +26,7 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useStore } from "@/components/providers/store-provider";
 import type { LocalStore } from "./local-store";
+import { useToday } from "./use-today";
 
 const noop = () => () => undefined;
 
@@ -50,10 +51,12 @@ function readOccurrences(store: LocalStore, date: string): Occurrence[] {
 export function useActions() {
   const { store, syncSoon } = useStore();
   const { user } = useAuth();
+  // Changes to earlier days are stamped late (Phase 7); the server confirms.
+  const today = useToday();
   return useCallback(
     async (build: (ctx: ActionContext) => Change[] | Promise<Change[]>) => {
       if (!store || !user) return;
-      const ctx: ActionContext = { userId: user.id, now: new Date().toISOString(), deviceId: store.deviceId() };
+      const ctx: ActionContext = { userId: user.id, now: new Date().toISOString(), deviceId: store.deviceId(), today: today ?? undefined };
       const changes = await build(ctx);
       for (const c of changes) store.save(c.entity, c.row as unknown as Parameters<LocalStore["save"]>[1]);
       syncSoon();
@@ -61,8 +64,16 @@ export function useActions() {
       // load (reload, or "Back" into another document) would otherwise lose it.
       await store.flush();
     },
-    [store, user, syncSoon],
+    [store, user, syncSoon, today],
   );
+}
+
+/** Days up to here are closed on the server (final; history reads stored rows only). */
+export function useClosedThrough(): string | null {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => (store ? store.getMeta("closed_through") || null : null), [store, version]);
 }
 
 export type DayView = { entries: DayEntry[]; progress: DayProgress; ready: boolean };
@@ -334,7 +345,7 @@ export function useDayStreak(today: string | null): DayStreak {
     const yearAgo = new Date(Date.UTC(y - 1, m - 1, d)).toISOString().slice(0, 10);
     const from = firstDay > yearAgo ? firstDay : yearAgo;
     const occs = store.query("occurrences", `WHERE "date" >= ? AND "date" <= ? AND "deleted_at" IS NULL`, [from, today]) as unknown as Occurrence[];
-    return dayStreak(items, occs, from, today);
+    return dayStreak(items, occs, from, today, store.getMeta("closed_through") || null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, version, today]);
 }

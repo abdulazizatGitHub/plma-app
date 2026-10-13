@@ -42,7 +42,9 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
   const isGroup = Boolean(entry.children);
   const prayers = isPrayerGroup(entry.item);
   // A repeating routine's moved copy wouldn't carry its sub-items, so routines skip instead.
-  const canMove = !isGroup || oneOff;
+  // A past day's habit can't be skipped or moved — that would hide a miss (the server refuses it too).
+  const pastDay = date !== null && date < today;
+  const canMove = (!isGroup || oneOff) && (!pastDay || oneOff);
   const quickEdit = oneOff && !isGroup && entry.item.tracking.kind === "check";
   const from = date ?? today;
   const state = date ? entryState(entry) : "todo";
@@ -57,7 +59,7 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
 
   return (
     <PopoverMenu anchor={anchor} onClose={onClose} label={entry.item.title}>
-      {date !== null && access !== "history" && !prayers && state !== "done" ? (
+      {date !== null && !pastDay && !prayers && state !== "done" ? (
         <PopoverMenuItem
           icon={<Bell />}
           label="Remind me…"
@@ -80,7 +82,7 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
           {logging && state === "done" && !isGroup ? (
             <PopoverMenuItem icon={<RotateCcw />} label="Mark not done" onClick={() => act((ctx) => toggleDone(entry, date, ctx))} />
           ) : null}
-          {access !== "history" ? (
+          {!pastDay ? (
           <PopoverMenuItem
             icon={<SkipForward />}
             label={access === "planned" ? "Skip that day" : "Skip today"}

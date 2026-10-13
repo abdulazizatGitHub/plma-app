@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import type { Sql } from "postgres";
 import { requireAuth, type TokenVerifier } from "../lib/auth.js";
 import { registerPushRoutes, type ReminderRouteDeps } from "../reminders/routes.js";
+import { guardOccurrences } from "../history/guard.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
 import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
@@ -37,6 +38,15 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier, reminders?: ReminderR
       const plan = await planPush(userId, request.body, lookup);
       if (!plan.ok) {
         return reply.status(plan.status).send({ error: { code: plan.code, message: plan.message } });
+      }
+      // Day rules (Phase 7): a refused row comes back with the server's copy so the app can revert it.
+      const occ = plan.rows.get("occurrences");
+      if (occ?.length) {
+        const { accepted, refused } = await guardOccurrences(sql, userId, occ);
+        if (refused.length) {
+          return reply.status(422).send({ error: { code: refused[0].code, message: refused[0].message, refused } });
+        }
+        plan.rows.set("occurrences", accepted);
       }
       try {
         let result;

@@ -173,6 +173,16 @@ export class LocalStore {
   }
 
   /** Moves entries the server refused (validation/ownership) aside, keeping them for inspection. */
+  /**
+   * The server refused a change (e.g. a closed day): put back what the server
+   * has — or remove the row if it has none — so device and server agree again.
+   */
+  restoreFromServer(entity: SyncEntity, id: string, current: StoredRow | null) {
+    if (current) this.write(entity, current);
+    else this.db.run(`DELETE FROM ${quote(ENTITY_SPECS[entity].table)} WHERE "id" = ?`, [id]);
+    this.schedulePersist();
+  }
+
   reject(entries: OutboxEntry[], error: string) {
     for (const e of entries) {
       this.db.run(`INSERT OR REPLACE INTO outbox_rejected (seq, entity, row, error) VALUES (?, ?, ?, ?)`, [e.seq, e.entity, JSON.stringify(e.row), error]);

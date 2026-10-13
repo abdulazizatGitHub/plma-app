@@ -2,6 +2,7 @@ import { ENTITY_SPECS, SYNC_ENTITIES, defaultUserSettings, type SyncEntity, type
 import type { Sql } from "postgres";
 import type { AuthUser } from "../lib/auth.js";
 import type { OwnershipLookup, Row } from "./plan.js";
+import { closeUserDays } from "../history/close.js";
 import { buildPull, buildUpsert, toDto } from "./sql.js";
 
 const table = (entity: SyncEntity) => `"${ENTITY_SPECS[entity].table}"`;
@@ -40,6 +41,8 @@ export async function applyPush(sql: Sql, userId: string, plan: Map<SyncEntity, 
 }
 
 export async function pullChanges(sql: Sql, userId: string, since?: string): Promise<SyncPullResponseV2> {
+  // Days that left their correction window are closed first, so this pull carries their missed rows.
+  await closeUserDays(sql, userId).catch(() => undefined);
   const [{ now }] = await sql`SELECT now() AS now`;
   const changes: SyncPullResponseV2["changes"] = {};
   for (const entity of SYNC_ENTITIES) {
@@ -47,7 +50,13 @@ export async function pullChanges(sql: Sql, userId: string, since?: string): Pro
     const rows = await sql.unsafe(text, params);
     if (rows.length) changes[entity] = rows.map((r) => toDto(r.r as Record<string, unknown>));
   }
-  return { serverTime: new Date(now as string | Date).toISOString(), changes };
+  const [u] = await sql<{ closed_through: string | Date | null }[]>`SELECT closed_through FROM users WHERE id = ${userId}`;
+  const closed = u?.closed_through ?? null;
+  return {
+    serverTime: new Date(now as string | Date).toISOString(),
+    changes,
+    closedThrough: closed ? (typeof closed === "string" ? closed.slice(0, 10) : closed.toISOString().slice(0, 10)) : null,
+  };
 }
 
 /**

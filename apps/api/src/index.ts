@@ -10,6 +10,7 @@ import { createTokenVerifier } from "./lib/auth.js";
 import { transientDbErrors } from "./lib/errors.js";
 import { webPushSender } from "./reminders/push.js";
 import { registerActionRoute } from "./reminders/routes.js";
+import { closeAllDays } from "./history/close.js";
 import { planDebouncer, planUser, replanAll, tick } from "./reminders/service.js";
 import { apiRoutes } from "./routes/v1.js";
 
@@ -94,6 +95,14 @@ if (send && env.reminderJobs !== "off") {
   const sweep = () => void replanAll(pg).catch(onJobError);
   setTimeout(sweep, 10_000);
   setInterval(sweep, 60 * 60_000);
+}
+
+// History (Phase 7): close days that left their correction window, hourly for every account
+// (each pull also closes the caller's days, so this only covers devices that stay away).
+if (env.reminderJobs !== "off") {
+  const closeSweep = () => void closeAllDays(pg).catch(onJobError);
+  setTimeout(closeSweep, 20_000);
+  setInterval(closeSweep, 60 * 60_000);
 }
 
 try {

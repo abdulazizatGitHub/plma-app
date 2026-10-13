@@ -10,6 +10,7 @@ import {
   entryWindow,
   isPrayerGroup,
   carryOverIsha,
+  windowEnd,
   prayerHeadline,
   prayerKeyOf,
   moveTo,
@@ -28,7 +29,7 @@ import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { dayLabel, longDate, shortDate, whenLabel } from "@/lib/v2/dates";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
-import { useActions, useCategories, useDay, useDayStreak, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
+import { useActions, useCategories, useDay, useUserSettings, useDayStreak, useDays, useOverdue, usePending, usePrayerTimes, useUpcoming } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
@@ -113,7 +114,15 @@ export function TodayScreen() {
   const shownToday = useRef<string | null>(null);
   useEffect(() => {
     if (!today) return;
-    setDate((d) => (d === null || d === shownToday.current ? today : d));
+    // "/?date=YYYY-MM-DD" (from Progress) opens that day once; otherwise follow today.
+    let asked: string | null = null;
+    try {
+      asked = new URLSearchParams(window.location.search).get("date");
+    } catch {
+      /* no URL */
+    }
+    const wanted = asked && /^\d{4}-\d{2}-\d{2}$/.test(asked) && shownToday.current === null ? asked : null;
+    setDate((d) => wanted ?? (d === null || d === shownToday.current ? today : d));
     shownToday.current = today;
   }, [today]);
   useEffect(() => {
@@ -156,6 +165,7 @@ export function TodayScreen() {
   const byId = useMemo(() => new Map<string, Category>(categories.map((c) => [c.id, c])), [categories]);
   const pending = usePending();
   const isToday = date !== null && date === today;
+  const settings = useUserSettings();
   const times = usePrayerTimes(date);
   const access = date && today ? dayAccess(date, today) : "live";
   const streak = useDayStreak(today);
@@ -171,6 +181,10 @@ export function TodayScreen() {
     return <div className="skeleton h-40" aria-busy="true" aria-label="Loading today" />;
   }
 
+  // A late day stays fixable until its window ends ("Thu, 12 AM").
+  const fixUntil = new Intl.DateTimeFormat("en-US", { weekday: "short", hour: "numeric", minute: "2-digit", timeZone: settings.timezone })
+    .format(windowEnd(date, settings.timezone, settings.dayEndHour))
+    .replace(":00", "");
   // Prayers keep their own row up top; routines sort into the buckets like any item.
   const groups = entries.filter((e) => e.children && isPrayerGroup(e.item));
   const rows = entries.filter((e) => !(e.children && isPrayerGroup(e.item))).sort(byWindow(times));
@@ -270,7 +284,7 @@ export function TodayScreen() {
           </span>
           <span>
             {access === "late"
-              ? "Yesterday is still open: log what you did but forgot to record. It closes at midnight."
+              ? `Still open — you can fix this day until ${fixUntil}. Changes you make now are marked late.`
               : access === "history"
                 ? "This day is closed and its progress is final. Unfinished tasks can still be moved to today, and missed prayers recovered as qada. (When your day ends: Profile → Your day.)"
                 : "Planning ahead: add, skip or move things here. You can tick them when the day comes."}
@@ -288,6 +302,7 @@ export function TodayScreen() {
           today={today}
           streak={streak}
           nextUp={nextUp}
+          fixUntil={access === "late" ? fixUntil : undefined}
           now={now}
           times={times}
         />

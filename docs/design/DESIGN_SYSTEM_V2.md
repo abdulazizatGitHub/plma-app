@@ -145,6 +145,19 @@ Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 - **Category dots** have a thin outline, so pale colors stay visible on chips.
 - **Dark mode:** every category fill is toned down, so light text stays readable on it.
 
+## 5c. History and Progress (owner, 2026-10-13)
+
+- **Progress:**
+  - Week / Month tabs with ‹ › paging.
+  - Summary ring: the average of **finished** days, the trend against the previous period, perfect days and the streak.
+  - Week: tappable bars (open the day). Month: the heatmap.
+  - Insights: Doing well / Needs attention.
+  - "By category" in one grouped card with a rate bar per category.
+- **Item log:** one row per day: a colored dot, the date, what happened (value / target, Missed, Skipped, Moved to …), and small "Qada" / "Late" chips.
+- **Late days:**
+  - an hourglass banner: "Still open — you can fix this day until Thu 12 AM. Changes you make now are marked late."
+  - a quiet "logged late" on rows
+
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 
 - **Phone first.**

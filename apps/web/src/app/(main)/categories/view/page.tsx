@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useMemo, useState } from "react";
 import { CategorySheet } from "@/components/categories/category-sheet";
+import { CategoryWeekCard } from "@/components/categories/category-week-card";
 import { ItemListRow } from "@/components/categories/item-list-row";
 import { PlanCard } from "@/components/plans/plan-card";
 import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, Ring } from "@/components/kit";
@@ -124,6 +125,8 @@ function CategoryView() {
           </>
         )}
       </div>
+
+      {today ? <CategoryWeekCard categoryId={category.id} today={today} /> : null}
 
       {plansHere || plansFriendly ? (
         <section aria-label="Plans" className="space-y-1.5">

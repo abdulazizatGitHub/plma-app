@@ -21,6 +21,8 @@ export const users = pgTable("users", {
   email: text("email"),
   avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  /** Days up to here are closed: open repeating items were written down as missed (Phase 7). */
+  closedThrough: date("closed_through"),
 });
 
 export const devices = pgTable("devices", {

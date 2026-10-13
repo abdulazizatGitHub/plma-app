@@ -785,3 +785,29 @@ Use this template for each decision:
     - Repeat days and "From …" leave Today; they stay on the item's page.
     - Only real signals remain as chips: overdue, missed, waiting, moving, and your own reminder.
   - **Counts and minutes:** a thin progress bar and one round **+** that logs a step. Tapping the bar opens the full − / + (and typing).
+
+### 2026-10-13 — Phase 7: history that can't be rewritten
+
+- **Context:** The owner wanted week and month history, and asked for every bug and loophole to be closed first. Tracing the code found that history could be rewritten:
+  - a changed target re-judged past days
+  - a changed schedule erased missed days
+  - Skip and Move on past days hid misses
+  - the server accepted edits to any date
+- **Decision:**
+  - **2-day correction window:** a day can be fixed for 2 days after it ends. Edits there are marked **late**, and the **server** sets the mark (whatever the client sends). After that a day is final; only recovering a prayer as qada is allowed.
+  - **The server judges an edit by when it was made** (`updatedAt`), so an on-time log synced days later stays on time. A device clock more than 5 min ahead is refused.
+  - **Day closing:** when the window ends, the server writes `missed` rows for open, required repeating items (`users.closed_through`, migration 0006; hourly, and on every pull).
+    - Closed days are read from stored rows only, so a schedule edit can't change them.
+    - One-off tasks aren't closed: they stay overdue and can still be moved to today.
+    - Missed rows are dated at the start of their day, so any real edit made in the window wins.
+  - **Target snapshot:** counts and minutes store the target they were logged against (`detail.target`).
+  - **Past days:** no Skip, no Remind me; Move only for one-off tasks. The server refuses skipping or moving a repeating item after its day (`late_skip`).
+  - **Refusals return the server's copy;** the app puts it back and says "That day is closed — your change wasn't saved."
+  - **Stats:**
+    - Averages use finished days with something due; free days and today don't count (today shows "so far").
+    - Optional items never count; skipped and moved are neutral; qada counts as done.
+    - Per-category numbers use the item's current category.
+  - **Accepted limits:**
+    - Deleting an item removes its history; Archive keeps it, and the delete prompt says so.
+    - A deliberately wound-back device clock can claim on-time. That only matters for Phase 8 points on days with no stored record.
+    - The legacy v1 health stats stay only for the v1 → v2 migration.

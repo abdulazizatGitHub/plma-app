@@ -207,12 +207,21 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
           ) : null}
           {s.track === "quantity" ? (
             <div className="flex flex-wrap gap-x-5 gap-y-3">
-              <NumberStepper label="Target" unit={s.unit || undefined} step={Number(s.step) || 1} min={1} value={s.target} onChange={(v) => (set("target", v), touch("target")())} error={shown("target")} />
+              <NumberStepper
+                label="Target"
+                unit={s.unit || undefined}
+                step={Number(s.step) || 1}
+                min={1}
+                value={s.target}
+                onChange={(v) => (set("target", v), touch("target")())}
+                error={shown("target")}
+                hint={item ? "Past days keep the target they were logged with." : undefined}
+              />
               <NumberStepper label="Each tap adds" required min={1} max={999_999} value={s.step} onChange={(v) => (set("step", v), touch("step")())} error={shown("step")} />
             </div>
           ) : null}
           {s.track === "duration" ? (
-            <NumberStepper label="Target" unit="min" step={5} min={1} max={1440} hint="Log time with +5 min taps." value={s.targetMin} onChange={(v) => (set("targetMin", v), touch("targetMin")())} error={shown("targetMin")} />
+            <NumberStepper label="Target" unit="min" step={5} min={1} max={1440} hint={item ? "Log time with +5 min taps. Past days keep the target they were logged with." : "Log time with +5 min taps."} value={s.targetMin} onChange={(v) => (set("targetMin", v), touch("targetMin")())} error={shown("targetMin")} />
           ) : null}
           {s.track === "checklist" ? (
             <ListEditor

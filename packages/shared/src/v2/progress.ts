@@ -21,7 +21,9 @@ export function entryState(entry: DayEntry): EntryState {
   const t = entry.item.tracking;
   if (t.kind === "quantity" || t.kind === "duration") {
     const value = o?.value ?? 0;
-    const target = t.kind === "quantity" ? t.target : t.targetMin;
+    // The target it was logged against (snapshot), else today's.
+    const snap = o?.detail?.target;
+    const target = typeof snap === "number" ? snap : t.kind === "quantity" ? t.target : t.targetMin;
     if (target !== undefined && value >= target) return "done";
     if (value > 0 && o?.status !== "done") return "in_progress";
   }
