@@ -23,8 +23,11 @@ export type ActionContext = {
   userId: string;
   now: string;
   deviceId: string | null;
-  /** Logging on a day after it ended (the correction window): stamped `detail.late`. The server re-checks. */
-  late?: boolean;
+  /**
+   * The user's today. A change to an earlier day (the correction window) is
+   * stamped `detail.late`; the server re-checks and decides.
+   */
+  today?: string;
 };
 
 /** The entry's stored occurrence with `patch` applied, or a new one for `date`. */
@@ -53,7 +56,7 @@ async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext,
   const t = entry.item.tracking;
   const target = t.kind === "quantity" ? t.target : t.kind === "duration" ? t.targetMin : undefined;
   if (target !== undefined && patch.value !== undefined) extra.target = target;
-  if (ctx.late) extra.late = true;
+  if (ctx.today && date < ctx.today) extra.late = true;
   return Object.keys(extra).length ? { ...next, detail: { ...(next.detail ?? {}), ...extra } } : next;
 }
 

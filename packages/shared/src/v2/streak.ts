@@ -1,4 +1,4 @@
-import { buildDay } from "./day.js";
+import { historyDay } from "./closing.js";
 import type { Item, Occurrence } from "./entities.js";
 import { dateRange } from "./history.js";
 import { dayProgress } from "./progress.js";
@@ -12,14 +12,14 @@ import { dayProgress } from "./progress.js";
 
 export type DayStreak = { current: number; best: number };
 
-export function dayStreak(items: Item[], occurrences: Occurrence[], from: string, today: string): DayStreak {
+export function dayStreak(items: Item[], occurrences: Occurrence[], from: string, today: string, closedThrough: string | null = null): DayStreak {
   const byDate = new Map<string, Occurrence[]>();
   for (const o of occurrences) if (o.date && !o.deletedAt) byDate.set(o.date, [...(byDate.get(o.date) ?? []), o]);
   let run = 0;
   let best = 0;
   let current = 0;
   for (const date of dateRange(from, today)) {
-    const p = dayProgress(buildDay(items, byDate.get(date) ?? [], date));
+    const p = dayProgress(historyDay(items, byDate.get(date) ?? [], date, !!closedThrough && date <= closedThrough));
     if (p.required === 0) continue; // nothing due: neutral
     if (p.pct === 100) {
       run += 1;

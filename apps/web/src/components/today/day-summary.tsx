@@ -14,6 +14,8 @@ type DaySummaryProps = {
   date: string;
   today: string;
   streak: DayStreak;
+  /** A late day (correction window): until when it can be fixed, e.g. "Thu, 12 AM". */
+  fixUntil?: string;
   /** For the prayers bar's now / not-marked-yet states (Today only). */
   now?: Date;
   times?: DayPrayerTimes | null;
@@ -28,7 +30,7 @@ const ORDER: Record<RingSegment, number> = { done: 0, qada: 1, open: 2, missed: 
  * in progress / left, or missed once the day is closed), the count and a
  * one-line summary, the prayers bar, and the perfect-day streak.
  */
-export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp, now, times }: DaySummaryProps) {
+export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp, now, times, fixUntil }: DaySummaryProps) {
   const closed = access === "history";
   // One arc per counted item, sorted so the ring fills: done, in progress, then the rest.
   const units = [...rows.flatMap((e) => (e.children ?? [e]).filter((u) => !u.item.isOptional)), ...(prayers?.children ?? [])];
@@ -56,6 +58,7 @@ export function DaySummaryCard({ access, rows, progress, prayers, date, today, s
 
   let summary: string;
   if (closed) summary = required ? `Day closed — ${done} of ${required} done.` : "Day closed — nothing was due.";
+  else if (access === "late") summary = required ? `${done} of ${required} done · you can fix this day until ${fixUntil ?? "it closes"}.` : "Nothing was due that day.";
   else if (access === "planned") summary = required ? `${required} planned for this day.` : "Nothing planned yet.";
   else if (!required) summary = "Nothing due today — a free day still counts as 100%.";
   else if (pct === 100) summary = "Everything done — enjoy the rest of your day.";

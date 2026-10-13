@@ -111,6 +111,7 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   }
   if (repeat) tags.push(<Tag key="repeat" icon={<Repeat2 />}>{repeat}</Tag>);
   if (o?.movedFrom) tags.push(<Tag key="moved" icon={<CalendarClock />}>From {shortDate(o.movedFrom)}</Tag>);
+  if (o?.detail?.late === true) tags.push(<Tag key="late">Logged late</Tag>);
   return tags;
 }
 
@@ -135,6 +136,7 @@ function entryMeta(entry: DayEntry, category: Category | undefined, when: string
   if (when) parts.push(when);
   if (t.kind === "checklist") parts.push(`${checklistSteps(entry).filter(Boolean).length}/${t.steps.length} steps`);
   const o = entry.occurrence;
+  if (o?.detail?.late === true) parts.push("logged late");
   if (o?.status === "in_progress" && o.startedAt && t.kind !== "quantity" && t.kind !== "duration") {
     const d = new Date(o.startedAt);
     parts.push(`started ${formatTime(`${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`)}`);

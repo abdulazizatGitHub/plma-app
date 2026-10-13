@@ -107,9 +107,9 @@ describe("Prayer block on Today", () => {
     await waitFor(() => expect(occOf("isha")?.status).toBe("missed"));
   });
 
-  it("yesterday (closed): unmarked prayers read as missed, and tapping one recovers it as qada", async () => {
+  it("a closed day (3 days ago): unmarked prayers read as missed, and tapping one recovers it as qada", async () => {
     today();
-    const yesterday = addDays(todayLocalDate(), -1);
+    const yesterday = addDays(todayLocalDate(), -3);
     const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${yesterday}T12:00:00`));
     await screen.findByRole("region", { name: "Daily prayers" });
     if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Previous week" }));

@@ -145,3 +145,40 @@ describe("syncOnce", () => {
     expect(s.pendingCount()).toBe(0);
   });
 });
+
+describe("server refusals (Phase 7)", () => {
+  const deps = (fetchImpl: typeof fetch) => ({ apiBase: "http://api", getToken: async () => "t", fetchImpl });
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const occ = (status: string, updatedAt: string): StoredRow => ({
+    id: "00000000-0000-4000-8000-0000000000aa", userId: A, createdAt: updatedAt, updatedAt, deletedAt: null, itemId: "00000000-0000-4000-8000-0000000000bb",
+    date: "2026-10-01", slot: "", status, value: null, detail: null, movedTo: null, movedFrom: null, startedAt: null, completedAt: null, deviceId: null,
+  });
+
+  it("a change to a closed day is put back to the server's copy, with a notice", async () => {
+    const s = await LocalStore.open(uuid(), { sqlJs: SQL });
+    const serverCopy = occ("missed", "2026-10-01T00:00:00.000Z");
+    s.save("occurrences", occ("done", "2026-10-12T10:00:00.000Z"));
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes("/push")
+        ? json(422, { error: { code: "day_closed", message: "That day is closed — your change wasn't saved.", refused: [{ id: serverCopy.id, code: "day_closed", message: "That day is closed — your change wasn't saved.", current: serverCopy }] } })
+        : json(200, { serverTime: "2026-10-12T10:00:01.000Z", changes: {}, closedThrough: "2026-10-09" }),
+    ) as unknown as typeof fetch;
+    const result = await syncOnce(s, deps(fetchImpl));
+    expect(result).toMatchObject({ ok: true, rejected: 1, notice: "That day is closed — your change wasn't saved." });
+    expect(s.get("occurrences", serverCopy.id)).toMatchObject({ status: "missed" });
+    expect(s.getMeta("closed_through")).toBe("2026-10-09");
+  });
+
+  it("a refused row the server never had is removed locally", async () => {
+    const s = await LocalStore.open(uuid(), { sqlJs: SQL });
+    const mine = occ("done", "2026-10-12T10:00:00.000Z");
+    s.save("occurrences", mine);
+    const fetchImpl = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes("/push")
+        ? json(422, { error: { code: "day_closed", message: "closed", refused: [{ id: mine.id, code: "day_closed", message: "closed", current: null }] } })
+        : json(200, { serverTime: "2026-10-12T10:00:01.000Z", changes: {} }),
+    ) as unknown as typeof fetch;
+    await syncOnce(s, deps(fetchImpl));
+    expect(s.get("occurrences", mine.id)).toBeNull();
+  });
+});

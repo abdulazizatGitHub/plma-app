@@ -9,6 +9,7 @@ import { MoveSheet } from "@/components/today/move-sheet";
 import { TaskForm } from "@/components/today/task-form";
 import { whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
+import { useStore } from "./store-provider";
 import { useToday } from "@/lib/v2/use-today";
 
 type AddSheetState = {
@@ -46,6 +47,13 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const appToday = useToday();
   const close = useCallback(() => setMode(null), []);
+
+  // The server turned a change down (e.g. a closed day): say so; the row was already put back.
+  const notice = (useStore() as { lastResult?: { ok: boolean; notice?: string } | null }).lastResult;
+  const noticeText = notice?.ok ? notice.notice : undefined;
+  useEffect(() => {
+    if (noticeText) setToast({ message: noticeText }); // eslint-disable-line react-hooks/set-state-in-effect -- reflect a sync result
+  }, [notice, noticeText]);
 
   useEffect(() => {
     if (!toast) return;

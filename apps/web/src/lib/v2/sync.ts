@@ -2,7 +2,7 @@ import { SYNC_ENTITIES, type SyncPullResponseV2 } from "@life/shared";
 import type { LocalStore, OutboxEntry, StoredRow } from "./local-store";
 
 export type SyncResult =
-  | { ok: true; pushed: number; pulled: number; rejected: number }
+  | { ok: true; pushed: number; pulled: number; rejected: number; /** Why the server turned changes down, for a toast. */ notice?: string }
   | { ok: false; reason: "offline" | "signed_out" | "server"; message: string; pushed: number; pulled: number; rejected: number };
 
 type SyncDeps = {
@@ -13,6 +13,8 @@ type SyncDeps = {
 };
 
 const CURSOR = "pull_cursor";
+/** Days up to here are closed on the server (history reads them from stored rows). */
+export const CLOSED = "closed_through";
 const REFUSED = new Set([400, 403, 409, 422]);
 
 class Stop extends Error {
@@ -37,6 +39,9 @@ export async function syncOnce(store: LocalStore, { apiBase, getToken, fetchImpl
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   /** Returns null on success, or the server's refusal message. Throws Stop for 401/5xx. */
+  let notice: string | undefined;
+  /** Refused rows the server sent back: put its copy in place of ours. */
+  type Refused = { id: string; code: string; message: string; current: Record<string, unknown> | null };
   const push = async (entries: OutboxEntry[]): Promise<string | null> => {
     const res = await fetchImpl(`${apiBase}/v1/sync/push`, {
       method: "POST",
@@ -45,7 +50,13 @@ export async function syncOnce(store: LocalStore, { apiBase, getToken, fetchImpl
     });
     if (res.status === 401) throw new Stop("signed_out", "Session expired");
     if (REFUSED.has(res.status)) {
-      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      const body = (await res.json().catch(() => ({}))) as { error?: { message?: string; refused?: Refused[] } };
+      // Only a single-row push is settled here; a batch is retried row by row first.
+      if (entries.length === 1 && body.error?.refused?.length) {
+        const r = body.error.refused[0];
+        store.restoreFromServer(entries[0].entity, r.id, r.current as StoredRow | null);
+        notice = r.message;
+      }
       return body.error?.message ?? `Refused (${res.status})`;
     }
     // Briefly unavailable or rate-limited: like being offline — keep the changes and retry.
@@ -87,9 +98,10 @@ export async function syncOnce(store: LocalStore, { apiBase, getToken, fetchImpl
       }
     }
     store.setMeta(CURSOR, data.serverTime);
+    if (data.closedThrough !== undefined) store.setMeta(CLOSED, data.closedThrough ?? "");
     store.setMeta("last_synced_at", new Date().toISOString());
     await store.flush();
-    return { ok: true, pushed, pulled, rejected };
+    return { ok: true, pushed, pulled, rejected, notice };
   } catch (err) {
     await store.flush().catch(() => undefined);
     if (err instanceof Stop) return { ok: false, reason: err.reason, message: err.message, pushed, pulled, rejected };

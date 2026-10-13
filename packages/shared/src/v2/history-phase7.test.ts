@@ -126,8 +126,10 @@ describe("history can't be rewritten", () => {
 
   it("edits in the correction window are stamped late", async () => {
     const entry = buildDay([read], [], "2026-10-11")[0];
-    const [c] = await toggleDone(entry, "2026-10-11", { ...ctx, late: true });
+    const [c] = await toggleDone(entry, "2026-10-11", { ...ctx, today: "2026-10-12" });
     expect((c.row as Occurrence).detail).toMatchObject({ late: true });
+    const [onTime] = await toggleDone(buildDay([read], [], "2026-10-12")[0], "2026-10-12", { ...ctx, today: "2026-10-12" });
+    expect((onTime.row as Occurrence).detail?.late).toBeUndefined();
   });
 
   it("item history: log newest first with late, skipped and moved counts", () => {

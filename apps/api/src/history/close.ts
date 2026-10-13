@@ -18,6 +18,18 @@ const addDays = (date: string, n: number) => {
 };
 const isoDay = (v: string | Date | null) => (v ? (typeof v === "string" ? v.slice(0, 10) : v.toISOString().slice(0, 10)) : null);
 
+/**
+ * The sync upsert turned into insert-only: a row the user wrote meanwhile always
+ * wins. The update branch goes, and so does the owner parameter only it used
+ * (an unused parameter has no type and Postgres refuses the query).
+ */
+export function insertOnly(rows: Parameters<typeof buildUpsert>[1], userId: string): { text: string; params: unknown[] } {
+  const { text, params } = buildUpsert("occurrences", rows, userId);
+  const out = text.replace(/ON CONFLICT \("id"\) DO UPDATE SET[\s\S]*RETURNING "id"$/, 'ON CONFLICT DO NOTHING RETURNING "id"');
+  if (out === text) throw new Error("insertOnly: unexpected upsert shape");
+  return { text: out, params: params.slice(0, -1) };
+}
+
 /** Closes every day of one user that has left its window. Returns how many days were closed. */
 export async function closeUserDays(sql: Sql, userId: string, now = new Date()): Promise<number> {
   const [u] = await sql<{ timezone: string | null; day_end_hour: number | null; closed_through: string | Date | null; created_at: Date }[]>`
@@ -48,9 +60,8 @@ export async function closeUserDays(sql: Sql, userId: string, now = new Date()):
     for (let date = from; date <= last; date = addDays(date, 1)) {
       const missed = await closeDay(items, occs.filter((o) => o.date === date), date, userId, nowIso);
       if (missed.length) {
-        const { text, params } = buildUpsert("occurrences", missed, userId);
-        // Insert only: a row the user wrote meanwhile always wins.
-        await tx.unsafe(text.replace(/ON CONFLICT \("id"\) DO UPDATE SET[\s\S]*RETURNING "id"$/, 'ON CONFLICT DO NOTHING RETURNING "id"'), params as never[]);
+        const { text, params } = insertOnly(missed, userId);
+        await tx.unsafe(text, params as never[]);
       }
       closed += 1;
     }
