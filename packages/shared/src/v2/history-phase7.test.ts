@@ -4,7 +4,9 @@ import {
   closeDay,
   editLag,
   entryState,
+  isLateLog,
   itemHistory,
+  onTimeUntil,
   periodMonth,
   periodSummary,
   periodWeek,
@@ -152,3 +154,26 @@ describe("correction window maths", () => {
     expect(editLag("2026-10-10", new Date("2026-10-13T00:30:00+05:00"), "Asia/Karachi")).toBe(3);
   });
 });
+
+describe("on-time point (late rule)", () => {
+  const S = { timezone: "Asia/Karachi", dayEndHour: 0, lat: 24.86, lng: 67.01, calcMethod: "karachi", madhab: "hanafi" as const, prayerOffsets: {} };
+  it("a plain item is on time until the day ends", () => {
+    expect(onTimeUntil(read, "2026-10-12", S)).toEqual(new Date("2026-10-13T00:00:00+05:00"));
+    expect(isLateLog(read, "2026-10-12", new Date("2026-10-13T00:30:00+05:00"), S)).toBe(true);
+  });
+  it("Isha and 'after Isha' stay on time until Fajr", () => {
+    const isha = item({ title: "Isha", meta: { prayerKey: "isha" } });
+    const mulk = item({ title: "Mulk", schedule: { v: 1, kind: "daily", anchor: { type: "prayer", prayer: "isha", relation: "after", offsetMin: 0 } } });
+    for (const it of [isha, mulk]) {
+      expect(isLateLog(it, "2026-10-12", new Date("2026-10-13T01:00:00+05:00"), S)).toBe(false);
+      expect(isLateLog(it, "2026-10-12", new Date("2026-10-13T06:00:00+05:00"), S)).toBe(true);
+    }
+  });
+  it("the client stamps late only past that point", async () => {
+    const isha = item({ title: "Isha", meta: { prayerKey: "isha" } });
+    const at1am = new Date("2026-10-13T01:00:00+05:00");
+    const [c] = await toggleDone(buildDay([isha], [], "2026-10-12")[0], "2026-10-12", { ...ctx, today: "2026-10-13", isLate: (i, d) => isLateLog(i, d, at1am, S) });
+    expect((c.row as Occurrence).detail?.late).toBeUndefined();
+  });
+});
+

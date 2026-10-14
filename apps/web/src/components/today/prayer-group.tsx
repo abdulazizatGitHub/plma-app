@@ -150,7 +150,9 @@ export function PrayerGroup({
     friday && prayerKeyOf(c.item) === "dhuhr" ? "Jumu'ah" : c.item.title;
   const mark = (child: DayEntry, m: Parameters<typeof markPrayer>[2]) =>
     void run((ctx) => markPrayer(child, date, m, ctx));
-  // Today: one tap = prayed. Past days: one tap = qada (made up later). Future: can't mark yet.
+  // Today: one tap = prayed. Yesterday (still fixable): a tap asks on time or qada —
+  // people often pray on time and mark later, so qada is never assumed.
+  // Closed days: one tap = qada (made up later). Future: can't mark yet.
   const access = dayAccess(date, today);
   const markable = access !== "planned";
   const tapMark = access === "live" ? "prayed" : "qada";
@@ -172,7 +174,7 @@ export function PrayerGroup({
     const text = headlineText(headline, now, times, nameOf);
     subtitle = text.current?.split(" · best before")[0] ?? (text.next ? `Next: ${text.next}` : undefined);
   } else if (access === "late")
-    subtitle = "Yesterday — tap a prayer you made up to mark it qada";
+    subtitle = "Yesterday — tap a prayer to mark it on time or qada";
   else if (access === "history")
     subtitle =
       "Unmarked prayers count as missed — tap one to recover it as qada";
@@ -192,9 +194,10 @@ export function PrayerGroup({
   const unmarked = headline?.unmarked ?? 0;
 
   /** Today: one tap = prayed on time, whenever it's marked (people often mark later). Qada is an explicit choice. */
-  const tap = (child: DayEntry) => {
+  const tap = (child: DayEntry, anchor: HTMLElement) => {
     const m = prayerMark(child, date, today);
     if (m === "prayed" || m === "qada") return mark(child, "clear");
+    if (access === "late") return setChipMenu({ child, anchor });
     if (access !== "live") return mark(child, tapMark);
     const d = display(child);
     const timing = times
@@ -233,10 +236,10 @@ export function PrayerGroup({
         title={entry.item.title}
         subtitle={subtitle}
         prayers={chips}
-        onToggle={(key) => {
+        onToggle={(key, anchor) => {
           const child = children.find((c) => c.key === key);
           if (!child || !markable) return;
-          tap(child);
+          tap(child, anchor);
         }}
         onChipMore={(key, anchor) => {
           const child = children.find((c) => c.key === key);

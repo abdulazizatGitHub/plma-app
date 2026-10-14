@@ -121,6 +121,25 @@ describe("Prayer block on Today", () => {
     await waitFor(() => expect(occOf("maghrib")).toMatchObject({ status: "done", detail: { qada: true }, date: yesterday }));
   });
 
+  it("yesterday (still fixable): tapping a prayer asks on time or qada — qada is never assumed", async () => {
+    const yesterday = addDays(todayLocalDate(), -1);
+    const entry = buildDay(store.query("items") as unknown as Item[], [], yesterday)[0];
+    render(
+      <AddSheetProvider>
+        <PrayerGroup entry={entry} date={yesterday} />
+      </AddSheetProvider>,
+    );
+    expect(screen.getByText("Yesterday — tap a prayer to mark it on time or qada")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^Asr,/ }));
+    expect(occs()).toHaveLength(0); // nothing recorded until they choose
+    fireEvent.click(screen.getByRole("menuitem", { name: "Prayed on time" }));
+    await waitFor(() => expect(occOf("asr")).toMatchObject({ status: "done", date: yesterday }));
+    expect(occOf("asr")?.detail?.qada).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: /^Fajr,/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Prayed late (qada)" }));
+    await waitFor(() => expect(occOf("fajr")).toMatchObject({ status: "done", detail: { qada: true } }));
+  });
+
   it("future prayers can't be marked yet", async () => {
     const t = todayLocalDate();
     const tomorrow = addDays(t, 1);

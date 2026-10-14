@@ -28,6 +28,12 @@ export type ActionContext = {
    * stamped `detail.late`; the server re-checks and decides.
    */
   today?: string;
+  /**
+   * Whether logging this item for this day now is late — past its on-time
+   * point, which for Isha (and "after Isha" items) is Fajr, not midnight.
+   * Falls back to comparing dates with `today`.
+   */
+  isLate?: (item: Item, date: string) => boolean;
 };
 
 /** The entry's stored occurrence with `patch` applied, or a new one for `date`. */
@@ -56,7 +62,7 @@ async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext,
   const t = entry.item.tracking;
   const target = t.kind === "quantity" ? t.target : t.kind === "duration" ? t.targetMin : undefined;
   if (target !== undefined && patch.value !== undefined) extra.target = target;
-  if (ctx.today && date < ctx.today) extra.late = true;
+  if (ctx.isLate ? ctx.isLate(entry.item, date) : !!ctx.today && date < ctx.today) extra.late = true;
   return Object.keys(extra).length ? { ...next, detail: { ...(next.detail ?? {}), ...extra } } : next;
 }
 

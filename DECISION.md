@@ -811,3 +811,16 @@ Use this template for each decision:
     - Deleting an item removes its history; Archive keeps it, and the delete prompt says so.
     - A deliberately wound-back device clock can claim on-time. That only matters for Phase 8 points on days with no stored record.
     - The legacy v1 health stats stay only for the v1 → v2 migration.
+
+### 2026-10-14 — Phase 7 hardening: entries keep their identity, "late" follows the prayer window, qada is asked on yesterday
+
+- **Context:** Before Phase 8 points are built on history, the owner asked for remaining loopholes to be found. An audit found three real ones and two smaller issues.
+- **Decision:**
+  - **Entries keep their identity.** The server refuses a push that changes a stored entry's item or slot, or moves a repeating item's entry to another day (`identity`). Before this, re-sending a closed day's `missed` row with today's date would have erased the miss. One-off tasks can still move (that is what Move does).
+  - **"Late" means past the item's own on-time point** (`onTimeUntil` in shared): the later of the day's end and the end of the item's time window. Isha, and anything "after Isha", stays on time until Fajr, so a 1 AM log isn't late. Server and app use the same rule.
+  - **Yesterday's prayers ask, never assume.** On a still-fixable day, tapping a prayer opens *Prayed on time / Prayed late (qada) / Missed*. Closed days stay one tap = qada (it can only be made up).
+  - **New device:** Progress, the item log and the category card show "Syncing your history…" until the first sync finishes, instead of empty numbers.
+  - **Heatmap** follows the user's week start, like the week view.
+- **Alternatives considered:** Treating any date change as a fresh entry (rejected — the deterministic id makes it the same row, so the old day would lose it). Keeping "late" date-only (rejected — it would mark normal Isha prayers late and cost them points).
+- **Consequences:** The app never sends an identity change itself; a refusal can only come from a stale or tampered client, and gets the server's copy back.
+- **Related:** `apps/api/src/history/guard.ts`, `packages/shared/src/v2/ontime.ts`, `apps/web/src/components/today/prayer-group.tsx`.

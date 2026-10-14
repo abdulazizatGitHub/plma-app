@@ -6,7 +6,8 @@ import Link from "next/link";
 import { createElement, useMemo, useState } from "react";
 import { Heatmap, Ring, SegmentedTabs, type HeatMark } from "@/components/kit";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
-import { useDayStreak, useItemOccurrences, usePrayerSet } from "@/lib/v2/use-day";
+import { SyncingNote } from "@/components/history/syncing-note";
+import { useDayStreak, useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
 import { usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
 import { useToday } from "@/lib/v2/use-today";
 
@@ -54,6 +55,8 @@ function Progress({ today }: { today: string }) {
   };
   const { current, previous } = usePeriodSummary(kind, anchor, today);
   const streak = useDayStreak(today);
+  const synced = useHasSynced();
+  const { weekStart } = useUserSettings();
   const isCurrent = current.from <= today && today <= current.to;
   const label = isCurrent
     ? kind === "week"
@@ -78,6 +81,7 @@ function Progress({ today }: { today: string }) {
         <h1 className="text-2xl font-semibold text-ink">Progress</h1>
         <p className="text-[13px] text-ink-2">Finished days only — skipped and moved items don&apos;t count against you.</p>
       </header>
+      {synced === false ? <SyncingNote /> : null}
 
       <SegmentedTabs<PeriodKind>
         label="Period"
@@ -160,6 +164,7 @@ function Progress({ today }: { today: string }) {
             marks={new Map(current.days.map((d) => [d.date, heatMark(d)]))}
             onMonth={(m) => setAnchor(`${m}-01`)}
             maxMonth={today.slice(0, 7)}
+            weekStart={weekStart}
           />
         )}
         <p className="mt-2 text-[11.5px] text-ink-2">{kind === "week" ? "Tap a day to open it. " : ""}Days with nothing due are free days and don&apos;t count.</p>
