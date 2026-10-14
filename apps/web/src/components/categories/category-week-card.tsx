@@ -1,13 +1,15 @@
 "use client";
 
 import { addDays } from "@/components/kit";
+import { useHasSynced } from "@/lib/v2/use-day";
 import { useRangeSummary } from "@/lib/v2/use-history";
 
 /** A category's last 7 finished days (HIS-02): rate, counts, best and weakest item. */
 export function CategoryWeekCard({ categoryId, today }: { categoryId: string; today: string }) {
   const summary = useRangeSummary(addDays(today, -7), addDays(today, -1), today);
+  const synced = useHasSynced();
   const c = summary.byCategory.find((x) => x.category?.id === categoryId);
-  if (!c || !c.due) return null;
+  if (!synced || !c || !c.due) return null;
   return (
     <section aria-label="Last 7 days" className="card space-y-1.5 p-3.5">
       <div className="flex items-baseline justify-between">

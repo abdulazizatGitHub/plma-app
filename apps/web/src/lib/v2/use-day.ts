@@ -3,6 +3,7 @@
 import {
   buildDay,
   customReminders,
+  isLateLog,
   dayProgress,
   defaultUserSettings,
   pendingItems,
@@ -51,12 +52,20 @@ function readOccurrences(store: LocalStore, date: string): Occurrence[] {
 export function useActions() {
   const { store, syncSoon } = useStore();
   const { user } = useAuth();
-  // Changes to earlier days are stamped late (Phase 7); the server confirms.
+  // Changes past an item's on-time point are stamped late (Phase 7); the server confirms.
   const today = useToday();
+  const settings = useUserSettings();
   return useCallback(
     async (build: (ctx: ActionContext) => Change[] | Promise<Change[]>) => {
       if (!store || !user) return;
-      const ctx: ActionContext = { userId: user.id, now: new Date().toISOString(), deviceId: store.deviceId(), today: today ?? undefined };
+      const now = new Date();
+      const ctx: ActionContext = {
+        userId: user.id,
+        now: now.toISOString(),
+        deviceId: store.deviceId(),
+        today: today ?? undefined,
+        isLate: (item, date) => isLateLog(item, date, now, settings),
+      };
       const changes = await build(ctx);
       for (const c of changes) store.save(c.entity, c.row as unknown as Parameters<LocalStore["save"]>[1]);
       syncSoon();
@@ -64,7 +73,7 @@ export function useActions() {
       // load (reload, or "Back" into another document) would otherwise lose it.
       await store.flush();
     },
-    [store, user, syncSoon, today],
+    [store, user, syncSoon, today, settings],
   );
 }
 
@@ -74,6 +83,14 @@ export function useClosedThrough(): string | null {
   const version = useStoreVersion(store);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(() => (store ? store.getMeta("closed_through") || null : null), [store, version]);
+}
+
+/** Has this device finished a sync yet? null while the store opens. */
+export function useHasSynced(): boolean | null {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => (store ? !!store.getMeta("last_synced_at") : null), [store, version]);
 }
 
 export type DayView = { entries: DayEntry[]; progress: DayProgress; ready: boolean };

@@ -16,12 +16,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bars, Button, ConfirmSheet, Heatmap, Tag, addDays, type HeatMark } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { SyncingNote } from "@/components/history/syncing-note";
 import { DayEntryRow } from "@/components/today/day-entry-row";
 import { PrayerInsightsPanel } from "@/components/prayer/insights-panel";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { KIND_LABEL, scheduleSummary, trackingSummary } from "@/lib/v2/item-text";
-import { useActions, useAllItems, useCategory, useClosedThrough, useDay, useItem, useItemOccurrences } from "@/lib/v2/use-day";
+import { useActions, useAllItems, useCategory, useClosedThrough, useDay, useHasSynced, useItem, useItemOccurrences, useUserSettings } from "@/lib/v2/use-day";
 import { useToday } from "@/lib/v2/use-today";
 
 /** Days of history behind the streak and completion figures. */
@@ -107,6 +108,8 @@ function ItemView() {
   const occs = useItemOccurrences(ids, from, day);
 
   const closedThrough = useClosedThrough();
+  const synced = useHasSynced();
+  const { weekStart } = useUserSettings();
   const history = useMemo(() => (item && today ? itemHistory(item, children, occs, from, today, today, closedThrough) : null), [item, children, occs, from, today, closedThrough]);
 
   if (!ready || !today || !month) return <div className="skeleton h-40" aria-busy="true" aria-label="Loading item" />;
@@ -197,7 +200,8 @@ function ItemView() {
       </section>
 
       <section aria-label="History" className="card p-3.5">
-        <Heatmap month={month} marks={marks} onMonth={setMonth} maxMonth={today.slice(0, 7)} minMonth={created} />
+        {synced === false ? <SyncingNote /> : null}
+        <Heatmap month={month} marks={marks} onMonth={setMonth} maxMonth={today.slice(0, 7)} minMonth={created} weekStart={weekStart} />
       </section>
 
       {monthLog.length && item.meta.prayerSet !== true ? (

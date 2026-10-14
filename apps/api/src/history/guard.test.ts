@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Row } from "../sync/plan.js";
 import { judgeOccurrence, type ItemInfo } from "./guard.js";
 
-const USER = { timezone: "Asia/Karachi", dayEndHour: 0 };
+const USER = { timezone: "Asia/Karachi", dayEndHour: 0, lat: 24.86, lng: 67.01, calcMethod: "karachi", madhab: "hanafi" as const, prayerOffsets: {} };
 // Now: Mon 12 Oct 2026, 10:00 in Karachi.
 const NOW = new Date("2026-10-12T10:00:00+05:00");
 const habit: ItemInfo = { id: "h", repeating: true, prayer: false };
@@ -51,7 +51,7 @@ describe("server day rules", () => {
   it("skipping or moving a habit after its day is refused (it would hide a miss); a one-off move is fine", () => {
     expect(judge(row({ date: "2026-10-11", status: "skipped" }))).toEqual({ ok: false, code: "late_skip" });
     expect(judge(row({ date: "2026-10-11", status: "moved" }))).toEqual({ ok: false, code: "late_skip" });
-    expect(judge(row({ date: "2026-10-11", status: "skipped" }), habit, { status: "skipped", date: "2026-10-11" })).toMatchObject({ ok: true }); // already skipped on time
+    expect(judge(row({ date: "2026-10-11", status: "skipped" }), habit, { itemId: "h", slot: "", status: "skipped", date: "2026-10-11" })).toMatchObject({ ok: true }); // already skipped on time
     expect(judge(row({ itemId: "t", date: "2026-10-12", status: "todo" }), task)).toMatchObject({ ok: true }); // moved to today
   });
 
@@ -64,7 +64,7 @@ describe("server day rules", () => {
   });
 
   it("a re-send of the stored row is a no-op, keeping the server's stamps", () => {
-    const stored = { status: "missed", value: null, date: "2026-10-01", slot: "", movedTo: null, deletedAt: null, detail: { closed: true } };
+    const stored = { itemId: "h", status: "missed", value: null, date: "2026-10-01", slot: "", movedTo: null, deletedAt: null, detail: { closed: true } };
     const v = judge(row({ date: "2026-10-01", status: "missed", movedTo: null, deletedAt: null }), habit, stored);
     expect(v).toEqual({ ok: true, row: expect.objectContaining({ detail: { closed: true } }) });
   });
@@ -76,9 +76,33 @@ describe("server day rules", () => {
   });
 
   it("respects the user's day-end: 1 AM still belongs to yesterday", () => {
-    const owl = { timezone: "Asia/Karachi", dayEndHour: 2 };
+    const owl = { ...USER, dayEndHour: 2 };
     const at1am = new Date("2026-10-13T01:00:00+05:00");
     const v = judgeOccurrence(row({ date: "2026-10-12", updatedAt: at1am.toISOString() }), null, habit, owl, at1am);
     expect(v).toEqual({ ok: true, row: expect.objectContaining({ detail: null }) }); // same day, not late
   });
+
+  it("an entry keeps its identity: a closed day's missed row can't be carried to today", () => {
+    const missed = { itemId: "h", slot: "", status: "missed", value: null, date: "2026-10-01", movedTo: null, deletedAt: null, detail: { closed: true } };
+    expect(judge(row({ date: "2026-10-12", status: "done" }), habit, missed)).toEqual({ ok: false, code: "identity" });
+    expect(judge(row({ itemId: "other", date: "2026-10-01", status: "missed" }), habit, missed)).toEqual({ ok: false, code: "identity" });
+    expect(judge(row({ date: "2026-10-01", slot: "x", status: "missed" }), habit, missed)).toEqual({ ok: false, code: "identity" });
+    // A one-off task really moves: its entry changes day with it.
+    const taskRow = { itemId: "t", slot: "", status: "todo", value: null, date: "2026-10-01", movedTo: null, deletedAt: null, detail: null };
+    expect(judge(row({ itemId: "t", date: "2026-10-12", status: "todo" }), task, taskRow)).toMatchObject({ ok: true });
+  });
+
+  it("Isha and 'after Isha' items logged after midnight but before Fajr are on time, not late", () => {
+    const isha: ItemInfo = { id: "i", repeating: true, prayer: true, schedule: { v: 1, kind: "daily" }, meta: { prayerKey: "isha" } };
+    const mulk: ItemInfo = { id: "m", repeating: true, prayer: false, schedule: { v: 1, kind: "daily", anchor: { type: "prayer", prayer: "isha", relation: "after", offsetMin: 0 } }, meta: {} };
+    const at1am = new Date("2026-10-13T01:00:00+05:00");
+    const at6am = new Date("2026-10-13T06:00:00+05:00");
+    for (const it of [isha, mulk]) {
+      const early = judgeOccurrence(row({ itemId: it.id, date: "2026-10-12", updatedAt: at1am.toISOString() }), null, it, USER, at1am);
+      expect(early).toEqual({ ok: true, row: expect.objectContaining({ detail: null }) });
+      const after = judgeOccurrence(row({ itemId: it.id, date: "2026-10-12", updatedAt: at6am.toISOString() }), null, it, USER, at6am);
+      expect(after).toEqual({ ok: true, row: expect.objectContaining({ detail: { late: true } }) });
+    }
+  });
 });
+

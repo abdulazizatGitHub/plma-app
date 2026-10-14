@@ -48,7 +48,7 @@ type PrayerRowProps = {
   subtitle?: ReactNode;
   prayers: PrayerChip[];
   /** One tap: open ↔ prayed. Any prayer, any order. */
-  onToggle?: (key: string) => void;
+  onToggle?: (key: string, anchor: HTMLElement) => void;
   /** Long-press (or right-click) a chip: Prayed late / Missed / Clear for that prayer. */
   onChipMore?: (key: string, anchor: HTMLElement) => void;
   /** The visible ⋯: all prayers' actions for the day. */
@@ -116,13 +116,13 @@ export function PrayerRow({ title = "Daily prayers", subtitle, prayers, onToggle
                     e.preventDefault();
                     onChipMore(p.key, e.currentTarget);
                   }}
-                  onClick={() => {
+                  onClick={(e) => {
                     // A long-press already opened the menu; don't also toggle.
                     if (longPressed.current) {
                       longPressed.current = false;
                       return;
                     }
-                    onToggle?.(p.key);
+                    onToggle?.(p.key, e.currentTarget);
                   }}
                   className={`transition-token press-pop flex min-h-9 min-w-12 flex-col items-center justify-center rounded-full border-2 px-2.5 text-[12px] leading-tight font-medium select-none ${p.status === "open" && p.pending ? PENDING_STYLE[p.pending] : CHIP_STYLE[p.status]} ${
                     p.now ? "ring-2 ring-primary-strong ring-offset-1 ring-offset-surface" : ""
