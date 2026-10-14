@@ -7,6 +7,8 @@ import { createElement, useMemo, useState } from "react";
 import { Heatmap, Ring, SegmentedTabs, type HeatMark } from "@/components/kit";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { SyncingNote } from "@/components/history/syncing-note";
+import { RewardsPanel } from "@/components/rewards/rewards-panel";
+import { useRewards } from "@/lib/v2/use-rewards";
 import { useDayStreak, useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
 import { usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
 import { useToday } from "@/lib/v2/use-today";
@@ -56,6 +58,7 @@ function Progress({ today }: { today: string }) {
   const { current, previous } = usePeriodSummary(kind, anchor, today);
   const streak = useDayStreak(today);
   const synced = useHasSynced();
+  const { rewards } = useRewards();
   const { weekStart } = useUserSettings();
   const isCurrent = current.from <= today && today <= current.to;
   const label = isCurrent
@@ -82,6 +85,7 @@ function Progress({ today }: { today: string }) {
         <p className="text-[13px] text-ink-2">Finished days only — skipped and moved items don&apos;t count against you.</p>
       </header>
       {synced === false ? <SyncingNote /> : null}
+      <RewardsPanel rewards={rewards} />
 
       <SegmentedTabs<PeriodKind>
         label="Period"
@@ -123,14 +127,17 @@ function Progress({ today }: { today: string }) {
             <b>{current.perfectDays}</b> perfect day{current.perfectDays === 1 ? "" : "s"} of {current.countedDays}
           </p>
           {current.todaySoFar !== null ? <p className="text-ink-2">Today so far: {current.todaySoFar}%</p> : null}
-          <p className="flex items-center gap-3 text-[12px] text-ink-2">
-            <span className="flex items-center gap-1">
-              <Flame className="h-3.5 w-3.5 text-progress" aria-hidden /> {streak.current} in a row
-            </span>
-            <span className="flex items-center gap-1">
-              <Trophy className="h-3.5 w-3.5" aria-hidden /> best {streak.best}
-            </span>
-          </p>
+          {/* One streak on screen: once rewards arrive, theirs (with freezes) is the streak. */}
+          {rewards ? null : (
+            <p className="flex items-center gap-3 text-[12px] text-ink-2">
+              <span className="flex items-center gap-1">
+                <Flame className="h-3.5 w-3.5 text-progress" aria-hidden /> {streak.current} in a row
+              </span>
+              <span className="flex items-center gap-1">
+                <Trophy className="h-3.5 w-3.5" aria-hidden /> best {streak.best}
+              </span>
+            </p>
+          )}
         </div>
       </section>
 

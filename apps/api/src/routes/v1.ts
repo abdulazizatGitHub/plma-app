@@ -4,6 +4,7 @@ import type { Sql } from "postgres";
 import { requireAuth, type TokenVerifier } from "../lib/auth.js";
 import { registerPushRoutes, type ReminderRouteDeps } from "../reminders/routes.js";
 import { guardOccurrences } from "../history/guard.js";
+import { getRewards, markBadgesSeen } from "../rewards/engine.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
 import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
@@ -71,6 +72,19 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier, reminders?: ReminderR
         }
         throw err;
       }
+    });
+
+    // Rewards (Phase 8): worked out here from stored entries; never accepted from devices.
+    app.get("/v1/rewards", async (request, reply) => {
+      const rewards = await getRewards(sql, request.auth!.id);
+      return rewards ?? reply.status(404).send({ error: { code: "not_found", message: "No such account." } });
+    });
+
+    app.post("/v1/rewards/seen", async (request, reply) => {
+      const body = request.body as { badgeIds?: unknown } | null;
+      const ids = Array.isArray(body?.badgeIds) ? body.badgeIds.filter((x): x is string => typeof x === "string" && x.length <= 40).slice(0, 20) : null;
+      if (!ids) return reply.status(400).send({ error: { code: "validation_error", message: "badgeIds must be a list." } });
+      return { updated: await markBadgesSeen(sql, request.auth!.id, ids) };
     });
 
     // Starter packs (Phase 3). The app applies them offline; this is the server path.

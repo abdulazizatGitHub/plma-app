@@ -1,5 +1,6 @@
 import { LOG_GRACE_DAYS, closeDay, itemSchema, logicalDateIn, occurrenceSchema } from "@life/shared";
 import type { Sql } from "postgres";
+import { scoreRange } from "../rewards/engine.js";
 import { buildUpsert, toDto } from "../sync/sql.js";
 
 /*
@@ -66,6 +67,8 @@ export async function closeUserDays(sql: Sql, userId: string, now = new Date()):
       closed += 1;
     }
     await tx`UPDATE users SET closed_through = ${last} WHERE id = ${userId}`;
+    // Rewards (Phase 8): a day is scored for good as it closes.
+    await scoreRange(tx, userId, from, last, { timezone: tz, dayEndHour: u.day_end_hour ?? 0, closedThrough: last });
   });
   return closed;
 }

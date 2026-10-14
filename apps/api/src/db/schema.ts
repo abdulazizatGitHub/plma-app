@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   /** Days up to here are closed: open repeating items were written down as missed (Phase 7). */
   closedThrough: date("closed_through"),
+  /** Rewards were scored for past days (Phase 8); set once, on the first rewards read or closing. */
+  rewardsBuiltAt: timestamp("rewards_built_at", { withTimezone: true }),
 });
 
 export const devices = pgTable("devices", {
@@ -333,6 +335,41 @@ export const reminderDeliveries = pgTable(
     action: text("action"),
   },
   (t) => [index("reminder_deliveries_user_idx").on(t.userId, t.sentAt)],
+);
+
+/**
+ * Rewards (Phase 8, server-only, never synced): one scored row per user and
+ * day, recomputed from that day's entries. Closed days are scored once at
+ * closing and stay as they are; open days are re-scored on every read.
+ */
+export const rewardDays = pgTable(
+  "reward_days",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    date: date("date").notNull(),
+    due: integer("due").notNull().default(0),
+    done: integer("done").notNull().default(0),
+    complete: boolean("complete").notNull().default(false),
+    perfect: boolean("perfect").notNull().default(false),
+    allPrayers: boolean("all_prayers"),
+    points: integer("points").notNull().default(0),
+    updatedAt: ts("updated_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("reward_days_user_date_idx").on(t.userId, t.date)],
+);
+
+/** Badges earned (awarded once, never taken back); `seenAt` = celebrated. */
+export const userBadges = pgTable(
+  "user_badges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    badgeId: text("badge_id").notNull(),
+    earnedAt: ts("earned_at").defaultNow().notNull(),
+    seenAt: ts("seen_at"),
+  },
+  (t) => [uniqueIndex("user_badges_user_badge_idx").on(t.userId, t.badgeId)],
 );
 
 /** Starter packs and (Phase 12) public templates. Server-managed, never synced from clients. */

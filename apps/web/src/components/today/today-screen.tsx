@@ -34,6 +34,7 @@ import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
+import { useRewards } from "@/lib/v2/use-rewards";
 import { DaySummaryCard } from "./day-summary";
 import { IshaCarryOver, PrayerGroup, headlineText } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
@@ -169,6 +170,7 @@ export function TodayScreen() {
   const times = usePrayerTimes(date);
   const access = date && today ? dayAccess(date, today) : "live";
   const streak = useDayStreak(today);
+  const { rewards } = useRewards();
   const now = useNow();
   const upcoming = useUpcoming(isToday ? today : null);
   // After midnight, yesterday's Isha is still on time until Fajr (owner, 2026-10-12).
@@ -305,6 +307,7 @@ export function TodayScreen() {
           fixUntil={access === "late" ? fixUntil : undefined}
           now={now}
           times={times}
+          rewards={access === "live" ? rewards : null}
         />
       </div>
 

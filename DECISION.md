@@ -824,3 +824,17 @@ Use this template for each decision:
 - **Alternatives considered:** Treating any date change as a fresh entry (rejected — the deterministic id makes it the same row, so the old day would lose it). Keeping "late" date-only (rejected — it would mark normal Isha prayers late and cost them points).
 - **Consequences:** The app never sends an identity change itself; a refusal can only come from a stale or tampered client, and gets the server's copy back.
 - **Related:** `apps/api/src/history/guard.ts`, `packages/shared/src/v2/ontime.ts`, `apps/web/src/components/today/prayer-group.tsx`.
+
+### 2026-10-14 — Phase 8: rewards scored per day, on the server
+
+- **Context:** Points, streaks and badges (REW-01…04) must encourage without being farmable. The owner chose: qada earns half points; rewards on Progress plus one line on Today; small celebrations for items, bigger for milestones, toasts with reduced motion.
+- **Decision:**
+  - **One scored row per user and day** (`reward_days`), computed on the server from that day's stored entries, not a per-event ledger. Scoring the same entries gives the same row, so re-syncs, replays and toggles can't add points.
+  - **Closed days are final:** scored once as they close (inside day closing). Open days are re-scored on every rewards read. A later priority edit doesn't re-price old days.
+  - **Points:** low 1 / medium 2 / high 3 / critical 5; qada half (rounded up); a late fix (server-stamped) 0; nothing extra past the goal; optional items earn as a bonus. Perfect day +10 only with no late fixes. Level n starts at 50·n·(n−1).
+  - **Streak = complete days** (late fixes in the window count, so honest forgetting doesn't cost the streak; they just earn no points). A prayer recovered after its day closed counts in history, not for the streak. Freezes: 1 per 7, max 2, used automatically.
+  - **Badges are awarded once and never taken back.** The planner badge is deferred: nothing yet records "planned tomorrow".
+  - Rewards tables are server-only (RLS on, not sync entities); a pushed rewards row is rejected.
+- **Alternatives considered:** A per-completion ledger keyed by occurrence (rejected — more rows and more ways to drift; per-day recompute is simpler and idempotent by construction). Counting the streak from the Today card's local calculation (rejected — it can't know freezes; the server's streak is shown wherever rewards are available).
+- **Consequences:** Rewards need a sync to update; the app keeps the last copy for offline and shows "+N" optimistically from the same shared rule. The known limit stands: a deliberately wound-back device clock can claim on time.
+- **Related:** `packages/shared/src/v2/rewards.ts`, `apps/api/src/rewards/engine.ts`, migration `0007_rewards`, [phase-08](./docs/phases/v2/phase-08-motivation.md).

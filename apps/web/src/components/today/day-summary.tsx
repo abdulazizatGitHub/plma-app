@@ -1,8 +1,9 @@
 "use client";
 
-import { entryState, prayerDisplay, prayerMark, type DayAccess, type DayEntry, type DayProgress, type DayStreak, type DayPrayerTimes } from "@life/shared";
+import { entryState, prayerDisplay, prayerMark, type RewardsPayload, type DayAccess, type DayEntry, type DayProgress, type DayStreak, type DayPrayerTimes } from "@life/shared";
 import { Flame, Lock, Sparkles, Trophy } from "lucide-react";
 import { Ring, type RingSegment } from "@/components/kit";
+import { RewardsLine } from "@/components/rewards/rewards-panel";
 
 type DaySummaryProps = {
   access: DayAccess;
@@ -21,6 +22,8 @@ type DaySummaryProps = {
   times?: DayPrayerTimes | null;
   /** "Isha now · until 4:48 AM tomorrow" or "next: Asr at 3:59 PM" — what's now or next. */
   nextUp: string | null;
+  /** Points, level and streak from the server (Today only); the local streak shows until they arrive. */
+  rewards?: RewardsPayload | null;
 };
 
 const ORDER: Record<RingSegment, number> = { done: 0, qada: 1, open: 2, missed: 3 };
@@ -30,7 +33,7 @@ const ORDER: Record<RingSegment, number> = { done: 0, qada: 1, open: 2, missed: 
  * in progress / left, or missed once the day is closed), the count and a
  * one-line summary, the prayers bar, and the perfect-day streak.
  */
-export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp, now, times, fixUntil }: DaySummaryProps) {
+export function DaySummaryCard({ access, rows, progress, prayers, date, today, streak, nextUp, now, times, fixUntil, rewards }: DaySummaryProps) {
   const closed = access === "history";
   // One arc per counted item, sorted so the ring fills: done, in progress, then the rest.
   const units = [...rows.flatMap((e) => (e.children ?? [e]).filter((u) => !u.item.isOptional)), ...(prayers?.children ?? [])];
@@ -122,6 +125,11 @@ export function DaySummaryCard({ access, rows, progress, prayers, date, today, s
         </div>
       ) : null}
 
+      {rewards ? (
+        <div className="border-t border-border pt-2.5">
+          <RewardsLine rewards={rewards} />
+        </div>
+      ) : (
       <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-2.5 text-[12px] text-ink-2">
         <span className="flex items-center gap-1.5">
           <Flame className="h-3.5 w-3.5 text-progress" aria-hidden />
@@ -134,6 +142,7 @@ export function DaySummaryCard({ access, rows, progress, prayers, date, today, s
           Best <b className="text-ink">{streak.best}</b>
         </span>
       </div>
+      )}
     </section>
   );
 }

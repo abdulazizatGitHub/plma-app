@@ -305,3 +305,60 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Celebrations (Phase 8): subtle for items, bigger for milestones; none with reduced motion. */
+@keyframes points-float {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -36px);
+  }
+}
+.points-pop {
+  animation: points-float 0.95s var(--ease-standard) forwards;
+}
+@keyframes confetti-fall {
+  from {
+    opacity: 1;
+    transform: translate(0, -12px) rotate(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--drift), 55vh) rotate(var(--spin));
+  }
+}
+.confetti-piece {
+  animation: confetti-fall 1.2s var(--ease-standard) forwards;
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.badge-pop {
+  animation: badge-pop 0.5s var(--ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .points-pop,
+  .confetti-piece {
+    display: none;
+  }
+  .badge-pop {
+    animation: none;
+  }
+}
