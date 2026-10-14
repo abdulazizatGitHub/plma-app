@@ -28,3 +28,4 @@ export * from "./reminders/actions.js";
 export * from "./closing.js";
 export * from "./ontime.js";
 export * from "./summary.js";
+export * from "./rewards.js";

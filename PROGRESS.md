@@ -1,6 +1,6 @@
 # Progress tracker
 
-Last updated: **2026-10-12**
+Last updated: **2026-10-14**
 
 ## Overall
 
@@ -17,6 +17,7 @@ Last updated: **2026-10-12**
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
 | **v2 Phase 5** | **Built and verified.** Plans: presets (content collab, university course, blank), dated steps on Today, "waits for" locks, cadence warnings and suggestions, rules per plan or category, /plans and the plan page, category Plans section. Browser 10/10. |
 | **v2 Phase 7** | **Built and verified.** History and analytics: Progress week/month (average of finished days, trend, perfect days, streaks, insights, categories), item log, category last-7-days card. History can't be rewritten: target snapshots, day closing (missed rows), a server guard on past days, and a 2-day correction window marked late. Tests: 371; API integration 11/11; browser checks. |
+| **v2 Phase 8** | **Built and verified.** Motivation: points by priority (qada half, late fixes 0), perfect-day bonus, levels, streak with freezes, 7 badges, Rewards card on Progress, a line on Today, celebrations (reduced motion: toasts). Phase 7 hardened first (entry identity, window-aware late, qada asked on yesterday). Tests 397; API integration 11/11; browser 8/8. |
 | **v2 Phase 6** | **Built; desktop-verified.** Reminders by priority (window, repeat and snooze editable in Settings), a custom reminder per item that replaces the auto one, Web Push with Done / Snooze on the notification, quiet hours, global switch, category mute, morning summary and plan-tomorrow nudges, iOS install guide. Desktop Chrome E2E 13/13. **Android and iPhone checks wait for a preprod deploy (HTTPS).** |
 | **Day lock & summary (2026-10-12)** | Done. Days lock at the user's day-end hour (midnight–4 AM); Today summary card with segmented ring, prayers bar and perfect-day streak. |
 | **Repo & gates (2026-10-11)** | Pushed to GitHub (`main` / `preprod` / `dev`, tags `v0.4.0`, `v1-final`). Pre-commit and pre-push hooks, CI, CodeQL, gitleaks, dependency review, Dependabot. Next 16.3.8 security update. |
@@ -37,7 +38,7 @@ Last updated: **2026-10-12**
 | 04 | [prayer-quran](./docs/phases/phase-04-prayer-quran.md) | Done | Yes |
 | 05 | [health](./docs/phases/phase-05-health.md) | Done | Yes |
 | 06–14 (v1 plan) | [archive](./docs/phases/archive/) | Superseded by v2 | — |
-| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–5 done · 6 next | see phase docs |
+| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–8 done (6 awaits phone checks) · 9 next | see phase docs |
 
 ---
 
@@ -49,7 +50,7 @@ Last updated: **2026-10-12**
   3. Run `npm run db:migrate:v1 -w @life/api -- --email <you>` (dry run), then again with `--apply`.
   4. Update or delete the stale `apps/api/.env`.
 - **Owner to-do (Phase 6):** set `VAPID_SUBJECT` in `.env.local` to a contact address of your choice (it is sent to browser push services); add the four push keys to the hosting env when preprod is deployed.
-- **Next:** deploy preprod (HTTPS) to check reminders on Android and an installed iPhone; then v2 Phase 8 (Motivation: points, badges, levels — built on locked days and the late marks).
+- **Next:** deploy preprod (HTTPS) to check reminders on Android and an installed iPhone; then v2 Phase 9 (Social).
 
 ---
 
