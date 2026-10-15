@@ -362,3 +362,20 @@ body {
     animation: none;
   }
 }
+@keyframes ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+}
+.ring-pulse {
+  animation: ring-pulse 0.6s var(--ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-pulse {
+    animation: none;
+  }
+}

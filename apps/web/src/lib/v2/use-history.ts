@@ -1,11 +1,15 @@
 "use client";
 
 import {
+  dateRange,
+  dayRings,
+  historyDay,
   itemHistory,
   periodMonth,
   periodSummary,
   periodWeek,
   previousPeriod,
+  type DayRings,
   type Item,
   type ItemHistory,
   type Occurrence,
@@ -60,6 +64,24 @@ export function useItemHistory(item: Item | null, children: Item[], from: string
     const mine = all.filter((o) => ids.includes(o.itemId));
     return itemHistory(item, children, mine, from, to, today, closedThrough);
   }, [item, children, all, ids, from, to, today, closedThrough]);
+}
+
+/** Each day's three rings in [from, to] (days after today are left out). */
+export function usePeriodRings(from: string, to: string, today: string): Map<string, DayRings> {
+  const settings = useUserSettings();
+  const { items } = useAllItems();
+  const occurrences = useRangeOccurrences(from, to);
+  const closedThrough = useClosedThrough();
+  return useMemo(() => {
+    const byDate = new Map<string, Occurrence[]>();
+    for (const o of occurrences) if (o.date) byDate.set(o.date, [...(byDate.get(o.date) ?? []), o]);
+    const out = new Map<string, DayRings>();
+    for (const date of dateRange(from, to < today ? to : today)) {
+      const closed = !!closedThrough && date <= closedThrough;
+      out.set(date, dayRings(historyDay(items, byDate.get(date) ?? [], date, closed), date, date < today && closed, settings));
+    }
+    return out;
+  }, [items, occurrences, from, to, today, closedThrough, settings]);
 }
 
 /** Any range (e.g. the last 7 finished days). */

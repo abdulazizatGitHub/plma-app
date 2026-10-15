@@ -78,7 +78,7 @@ describe("Progress", () => {
     const cats = within(screen.getByRole("region", { name: "By category" }));
     expect(cats.getByText("3 done · 4 missed · 1 late")).toBeInTheDocument();
     // Each finished day links to Today.
-    expect(screen.getByRole("link", { name: "5 Oct: 100%" })).toHaveAttribute("href", "/?date=2026-10-05");
+    expect(screen.getByRole("link", { name: /^5 Oct: 100% · Prayer free · Commitments/ })).toHaveAttribute("href", "/?date=2026-10-05");
   });
 
   it("month view uses the calendar", () => {

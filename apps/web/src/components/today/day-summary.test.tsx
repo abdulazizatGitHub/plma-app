@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { buildDay, dayProgress, type Item, type Occurrence } from "@life/shared";
+import { buildDay, dayProgress, dayRings, type Item, type Occurrence } from "@life/shared";
 import { describe, expect, it } from "vitest";
 import { DaySummaryCard } from "./day-summary";
 
@@ -23,20 +23,26 @@ function done(it: Item, date: string): Occurrence {
   } as Occurrence;
 }
 
+const MIND = uid();
+const BODY = uid();
+
 function card(date: string, today: string, streak = { current: 0, best: 0 }) {
-  const a = item({ title: "Read" });
-  const b = item({ title: "Walk" });
+  const a = item({ title: "Read", categoryId: MIND });
+  const b = item({ title: "Walk", categoryId: BODY });
   const rows = buildDay([a, b], [done(a, date)], date);
+  const access = date === today ? "live" : "history";
+  const rings = dayRings(rows, date, access === "history", { timezone: "Asia/Karachi", dayEndHour: 0 });
   return render(
-    <DaySummaryCard access={date === today ? "live" : "history"} rows={rows} progress={dayProgress(rows)} prayers={null} date={date} today={today} streak={streak} nextUp="next: Asr at 3:59 PM" />,
+    <DaySummaryCard access={access} rows={rows} progress={dayProgress(rows)} rings={rings} date={date} today={today} streak={streak} nextUp="next: Asr at 3:59 PM" />,
   );
 }
 
 describe("DaySummaryCard", () => {
-  it("shows the day's percentage, the count, what's next and the streak", () => {
+  it("shows the three rings with their counts, what's next and the streak", () => {
     card("2026-10-12", "2026-10-12", { current: 3, best: 7 });
-    expect(screen.getByRole("img", { name: "50% of the day done" })).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 done")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "50% of the day done · Prayer free · Commitments 1 of 2 · Balance 1 of 2" })).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(rows).toEqual(["PrayerFree", "Commitments1/2 done", "Balance1/2 areas"]);
     expect(screen.getByText(/1 left · next: Asr at 3:59 PM/)).toBeInTheDocument();
     expect(screen.getByText(/perfect days in a row/).textContent).toContain("3");
     expect(screen.getByText(/Best/).textContent).toContain("7");
@@ -46,6 +52,6 @@ describe("DaySummaryCard", () => {
     card("2026-10-11", "2026-10-12");
     expect(screen.getByText("final")).toBeInTheDocument();
     expect(screen.getByText(/Day closed — 1 of 2 done/)).toBeInTheDocument();
-    expect(screen.getByText(/1 missed/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /% of the day done/ }).querySelector('[data-ring="commit"]')).toHaveAttribute("data-pct", "50");
   });
 });

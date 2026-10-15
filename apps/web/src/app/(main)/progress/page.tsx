@@ -4,13 +4,14 @@ import { prayerInsights, type CategoryTally, type SummaryDay } from "@life/share
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Flame, Sparkles, Trophy, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { createElement, useMemo, useState } from "react";
-import { Heatmap, Ring, SegmentedTabs, type HeatMark } from "@/components/kit";
+import { Heatmap, Ring, RingStack, SegmentedTabs, type HeatMark } from "@/components/kit";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { SyncingNote } from "@/components/history/syncing-note";
 import { RewardsPanel } from "@/components/rewards/rewards-panel";
 import { useRewards } from "@/lib/v2/use-rewards";
 import { useDayStreak, useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
-import { usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
+import { usePeriodRings, usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
+import { ringsLabel, stackFromRings } from "@/lib/v2/rings";
 import { useToday } from "@/lib/v2/use-today";
 
 const KEY = "life_progress_period";
@@ -56,6 +57,7 @@ function Progress({ today }: { today: string }) {
     }
   };
   const { current, previous } = usePeriodSummary(kind, anchor, today);
+  const dayRings = usePeriodRings(current.from, current.to, today);
   const streak = useDayStreak(today);
   const synced = useHasSynced();
   const { rewards } = useRewards();
@@ -144,26 +146,31 @@ function Progress({ today }: { today: string }) {
       {/* Days */}
       <section aria-label="Days" className="card p-4">
         {kind === "week" ? (
-          <ul className="flex items-end justify-between gap-1.5">
-            {current.days.map((d) => (
-              <li key={d.date} className="flex-1">
-                <Link
-                  href={d.kind === "future" ? "#" : `/?date=${d.date}`}
-                  aria-label={`${DAY.format(utc(d.date))}: ${d.pct === null ? (d.kind === "future" ? "to come" : "free day") : `${d.pct}%`}`}
-                  aria-disabled={d.kind === "future" || undefined}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl py-1 ${d.kind === "future" ? "pointer-events-none" : "hover:bg-track"}`}
-                >
-                  <span className="text-[11px] text-ink-2 tabular-nums">{d.pct === null ? "·" : `${d.pct}`}</span>
-                  <span className="relative block w-2 overflow-hidden rounded-full bg-track" style={{ height: 72 }}>
-                    <span
-                      className={`absolute inset-x-0 bottom-0 rounded-full ${d.kind === "today" ? "bg-primary-strong" : d.pct === 100 ? "bg-done" : "bg-primary"}`}
-                      style={{ height: `${d.pct ?? 0}%` }}
-                    />
-                  </span>
-                  <span className={`text-[12px] ${d.kind === "today" ? "font-semibold text-ink" : "text-ink-2"}`}>{WEEKDAY.format(utc(d.date))}</span>
-                </Link>
-              </li>
-            ))}
+          <ul className="flex items-end justify-between gap-1">
+            {current.days.map((d) => {
+              const r = dayRings.get(d.date);
+              return (
+                <li key={d.date} className="flex-1">
+                  <Link
+                    href={d.kind === "future" ? "#" : `/?date=${d.date}`}
+                    aria-label={`${DAY.format(utc(d.date))}: ${d.kind === "future" ? "to come" : r ? `${d.pct === null ? "free day" : `${d.pct}%`} · ${ringsLabel(r)}` : "free day"}`}
+                    aria-disabled={d.kind === "future" || undefined}
+                    className={`flex flex-col items-center gap-1 rounded-xl py-1.5 ${d.kind === "future" ? "pointer-events-none opacity-50" : "hover:bg-track"}`}
+                  >
+                    <RingStack
+                      label=""
+                      rings={r ? stackFromRings(r) : stackFromRings({ prayer: null, commit: null, balance: null })}
+                      size={38}
+                      stroke={4}
+                      gap={1.5}
+                    >
+                      {r?.complete ? <span className="h-1.5 w-1.5 rounded-full bg-done" /> : null}
+                    </RingStack>
+                    <span className={`text-[12px] ${d.kind === "today" ? "font-semibold text-ink" : "text-ink-2"}`}>{WEEKDAY.format(utc(d.date))}</span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <Heatmap

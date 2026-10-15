@@ -12,7 +12,7 @@ let dayView: { entries: unknown[]; progress: { required: number; done: number; p
   progress: { required: 0, done: 0, pct: 100, counts: {} },
   ready: true,
 };
-vi.mock("@/lib/v2/use-day", () => ({ useDay: () => dayView }));
+vi.mock("@/lib/v2/use-day", () => ({ useDay: () => dayView, useUserSettings: () => ({ timezone: "Asia/Karachi", dayEndHour: 0 }) }));
 const notify = vi.fn();
 vi.mock("@/components/providers/add-sheet-provider", () => ({ useAddSheet: () => ({ notify }) }));
 
@@ -29,23 +29,28 @@ const base: RewardsPayload = {
     { id: "streak_3", earnedAt: "2026-09-20T10:00:00.000Z", seen: true },
     { id: "streak_7", earnedAt: "2026-10-01T10:00:00.000Z", seen: false },
   ],
-  progress: [
+  awards: [
     { id: "streak_30", earned: false, have: 9, need: 30 },
+    { id: "prayers_100", earned: false, have: 63, need: 100 },
     { id: "first_plan", earned: false },
+    { id: "challenge:2026-10", earned: false, have: 9, need: 22, live: true },
   ],
+  week: [],
+  challenge: { month: "2026-10", ring: "prayer", target: 22, closed: 9, daysLeft: 17 },
+  hijriOffset: 0,
 };
 
 describe("Rewards on Progress", () => {
-  it("shows level, points, streak with freezes and badges (locked ones with how far along)", () => {
+  it("leads with the monthly challenge, then streak, awards (in season first), and points last", () => {
     render(<RewardsPanel rewards={base} />);
     const panel = screen.getByRole("region", { name: "Rewards" });
-    expect(within(panel).getByText("1,240 points")).toBeInTheDocument();
-    expect(within(panel).getByText(/260 to level 6/)).toBeInTheDocument();
-    expect(within(panel).getByRole("img", { name: "Level 5: 240 of 500 points to level 6" })).toBeInTheDocument();
-    expect(within(panel).getByLabelText("7-day streak: earned 1 Oct")).toBeInTheDocument();
-    expect(within(panel).getByLabelText("30-day streak: locked, 21 more days")).toBeInTheDocument();
-    expect(within(panel).getByLabelText("First plan finished: locked, Finish a plan")).toBeInTheDocument();
+    expect(within(panel).getByText("Close your Prayer ring 22 days in October")).toBeInTheDocument();
+    expect(within(panel).getByText("13 more Prayer rings · 17 days left")).toBeInTheDocument();
     expect(within(panel).getByText(/A freeze covered 10 Oct — your 9-day streak keeps going/)).toBeInTheDocument();
+    const tiles = within(panel).getAllByRole("listitem").map((li) => li.getAttribute("aria-label"));
+    expect(tiles).toEqual(["October 2026 challenge: locked, 13 more days", "7-day streak: earned 1 Oct", "3-day streak: earned 20 Sept", "100 prayers: locked, 63 of 100"]);
+    expect(within(panel).getByRole("link", { name: /All awards/ })).toHaveAttribute("href", "/progress/awards");
+    expect(within(panel).getByText(/260 to level 6/)).toBeInTheDocument();
   });
 
   it("a restart is gentle: never 'lost', the best is kept", () => {
@@ -61,7 +66,7 @@ describe("Rewards on Progress", () => {
 
   it("Today's line is one quiet row", () => {
     render(<RewardsLine rewards={base} />);
-    expect(screen.getByLabelText("Rewards")).toHaveTextContent("Level 5 · 1,240 pts9-day streak1 freeze+12 today");
+    expect(screen.getByLabelText("Rewards")).toHaveTextContent("9-day streak1 freezeLevel 5 · 1,240 pts · +12 today");
   });
 });
 
@@ -76,7 +81,7 @@ describe("Celebrations", () => {
     expect(markSeen).toHaveBeenCalledWith(["streak_7"]);
   });
 
-  it("finishing the day with a tap: '+3', confetti and 'Perfect day — +10'", async () => {
+  it("closing every ring with a tap: '+3', confetti and 'perfect day, +10'", async () => {
     current = { ...base, badges: [] };
     const { Celebrations } = await import("./celebrations");
     const entry = (done: boolean) => ({
@@ -92,7 +97,7 @@ describe("Celebrations", () => {
     rerender(<Celebrations />);
     expect(container.querySelector(".points-pop")).toHaveTextContent("+3");
     expect(container.querySelectorAll(".confetti-piece").length).toBeGreaterThan(0);
-    expect(notify).toHaveBeenCalledWith({ message: "Perfect day — +10 bonus" });
+    expect(notify).toHaveBeenCalledWith({ message: "Every ring closed — perfect day, +10" });
   });
 });
 

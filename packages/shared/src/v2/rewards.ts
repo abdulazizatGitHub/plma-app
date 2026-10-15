@@ -1,26 +1,26 @@
 import { historyDay } from "./closing.js";
-import { LOG_GRACE_DAYS, editLag } from "./day-access.js";
-import type { DayEntry } from "./day.js";
 import type { Item, Occurrence, PRIORITIES } from "./entities.js";
-
-type Priority = (typeof PRIORITIES)[number];
 import { dateRange } from "./history.js";
 import { prayerKeyOf } from "./prayer/prayer-set.js";
-import { FARD_KEYS, normalisePrayerKey } from "./prayer/windows.js";
+import { normalisePrayerKey } from "./prayer/windows.js";
 import { entryState } from "./progress.js";
+import { afterClose, dayRings, type RingSettings } from "./rings.js";
 import { periodWeek } from "./summary.js";
+import type { AwardProgress, Challenge } from "./awards.js";
+
+type Priority = (typeof PRIORITIES)[number];
 
 /*
- * Motivation (Phase 8, REW-01…04, owner 2026-10-14). Rewards are never counted
- * from events: each day is scored from its stored entries, so re-syncing,
- * replaying or toggling can't change a total. Rules:
+ * Motivation (Phase 8, REW-01…04, owner 2026-10-14; rings 2026-10-15). Rewards
+ * are never counted from events: each day is scored from its stored entries,
+ * so re-syncing, replaying or toggling can't change a total. Rules:
  *  - a done item earns by priority (low 1, medium 2, high 3, critical 5);
  *    qada earns half (rounded up); a late fix earns nothing; going past the
  *    goal earns nothing extra; optional items earn too (a bonus)
- *  - a perfect day (every required item done, none of it a late fix) +10
+ *  - a complete day closes every ring that applies (see rings.ts); a perfect
+ *    day is complete with no late fixes, and earns +10
  *  - levels: level n starts at 50·n·(n−1) points
- *  - the day streak counts complete days (late fixes in the window count, a
- *    prayer recovered after the day closed doesn't); free days are neutral
+ *  - the day streak counts complete days; free days are neutral
  *  - freezes: 1 per 7 streak days, at most 2; a closed day that wasn't
  *    complete uses one and the streak carries on; with none, it restarts
  *  - today and the fixable days never break a streak, and add to it once complete
@@ -31,22 +31,34 @@ export const PERFECT_DAY_BONUS = 10;
 export const FREEZE_EVERY = 7;
 export const MAX_FREEZES = 2;
 
-export type RewardSettings = { timezone: string; dayEndHour: number };
+export type RewardSettings = RingSettings;
 
 /** A scored day, as stored server-side (one row per user and day). */
 export type RewardDay = {
   date: string;
-  /** Required units that day (0 = free day). */
+  /** Units the rings count that day (0 = free day). */
   due: number;
   done: number;
-  /** Every required unit done (late fixes in the window count): extends the streak. */
+  /** Every ring that applies closed: extends the streak. */
   complete: boolean;
   /** Complete with no late fixes: earns the bonus. */
   perfect: boolean;
-  /** Every fard prayer prayed (on time or qada); null when no prayers were due. */
-  allPrayers: boolean | null;
   /** Item points plus any bonus. */
   points: number;
+  prayerDue: number;
+  /** In halves: on time 2, qada 1. */
+  prayerFill: number;
+  prayerClosed: boolean;
+  commitDue: number;
+  commitDone: number;
+  commitClosed: boolean;
+  balanceDue: number;
+  balanceDone: number;
+  balanceClosed: boolean;
+  prayersOnTime: number;
+  itemsDone: number;
+  /** Zuhr (Jumu'ah on Fridays) prayed; null if not due. */
+  dhuhr: boolean | null;
 };
 
 const late = (o: Occurrence | null | undefined) => o?.detail?.late === true;
@@ -59,51 +71,41 @@ export function unitPoints(item: Pick<Item, "priority">, occurrence: Occurrence 
   return qada(occurrence) ? Math.ceil(base / 2) : base;
 }
 
-/** Marked after the day closed (only a prayer recovered as qada can be): counts in history, not for streaks. */
-function afterClose(o: Occurrence, date: string, s: RewardSettings) {
-  return late(o) && editLag(date, new Date(o.updatedAt), s.timezone, s.dayEndHour) > LOG_GRACE_DAYS;
-}
-
-const FARD = new Set<string>(FARD_KEYS);
-
 /** Scores one day from its entries. `closed` days are read from stored rows only (see closing.ts). */
 export function scoreDay(items: Item[], occurrences: Occurrence[], date: string, closed: boolean, s: RewardSettings): RewardDay {
-  const units = historyDay(items, occurrences, date, closed).flatMap((e: DayEntry) => e.children ?? [e]);
-  let due = 0;
-  let done = 0;
-  let counted = 0;
-  let anyLate = false;
+  const entries = historyDay(items, occurrences, date, closed);
+  const rings = dayRings(entries, date, closed, s);
   let points = 0;
-  let prayersDue = 0;
-  let prayersDone = 0;
-  for (const u of units) {
+  let dhuhr: boolean | null = null;
+  for (const u of entries.flatMap((e) => e.children ?? [e])) {
     const state = entryState(u);
     if (state === "not_today") continue;
-    const isDone = state === "done";
-    const o = u.occurrence;
-    points += unitPoints(u.item, o, isDone);
-    const counts = isDone && !!o && !afterClose(o, date, s);
-    const key = normalisePrayerKey(prayerKeyOf(u.item) ?? "");
-    if (FARD.has(key) && u.item.parentId) {
-      prayersDue += 1;
-      if (counts) prayersDone += 1;
-    }
-    if (u.item.isOptional) continue;
-    due += 1;
-    if (isDone) done += 1;
-    if (counts) counted += 1;
-    if (isDone && late(o)) anyLate = true;
+    const done = state === "done";
+    points += unitPoints(u.item, u.occurrence, done);
+    if (u.item.parentId && normalisePrayerKey(prayerKeyOf(u.item) ?? "") === "dhuhr") dhuhr = done && !!u.occurrence && !afterClose(u.occurrence, date, s);
   }
-  const complete = due > 0 && counted === due;
-  const perfect = complete && done === due && !anyLate;
+  const p = rings.prayer;
+  const c = rings.commit;
+  const b = rings.balance;
   return {
     date,
-    due,
-    done,
-    complete,
-    perfect,
-    allPrayers: prayersDue ? prayersDone === prayersDue : null,
-    points: points + (perfect ? PERFECT_DAY_BONUS : 0),
+    due: (p?.due ?? 0) + (c?.due ?? 0) + (b?.due ?? 0),
+    done: rings.itemsDone,
+    complete: rings.complete,
+    perfect: rings.perfect,
+    points: points + (rings.perfect ? PERFECT_DAY_BONUS : 0),
+    prayerDue: p?.due ?? 0,
+    prayerFill: Math.round((p?.fill ?? 0) * 2),
+    prayerClosed: !!p?.closed,
+    commitDue: c?.due ?? 0,
+    commitDone: c ? c.segments.filter((x) => x === "done").length : 0,
+    commitClosed: !!c?.closed,
+    balanceDue: b?.due ?? 0,
+    balanceDone: b?.fill ?? 0,
+    balanceClosed: !!b?.closed,
+    prayersOnTime: rings.prayersOnTime,
+    itemsDone: rings.itemsDone,
+    dhuhr,
   };
 }
 
@@ -171,67 +173,6 @@ export function streakOf(days: RewardDay[], closedThrough: string | null, today:
   return { current, best: Math.max(best, current), freezes, freezeUsedOn, restartedAfter, provisional };
 }
 
-/* ---------- badges ---------- */
-
-export type BadgeId = "streak_3" | "streak_7" | "streak_30" | "streak_100" | "prayers_week" | "perfect_week" | "first_plan";
-
-export type BadgeDef = { id: BadgeId; title: string; description: string; icon: "flame" | "moon" | "star" | "flag" };
-
-export const BADGES: BadgeDef[] = [
-  { id: "streak_3", title: "3-day streak", description: "Three complete days in a row.", icon: "flame" },
-  { id: "streak_7", title: "7-day streak", description: "You kept it going a whole week.", icon: "flame" },
-  { id: "streak_30", title: "30-day streak", description: "A month of complete days.", icon: "flame" },
-  { id: "streak_100", title: "100-day streak", description: "A hundred complete days.", icon: "flame" },
-  { id: "prayers_week", title: "A week of prayers", description: "Every prayer prayed, seven days running.", icon: "moon" },
-  { id: "perfect_week", title: "Perfect week", description: "Every day of a week perfect (at least 5 with something due).", icon: "star" },
-  { id: "first_plan", title: "First plan finished", description: "Every step of a plan done.", icon: "flag" },
-];
-
-const STREAK_BADGES: [BadgeId, number][] = [
-  ["streak_3", 3],
-  ["streak_7", 7],
-  ["streak_30", 30],
-  ["streak_100", 100],
-];
-
-export type BadgeProgress = { id: BadgeId; earned: boolean; have?: number; need?: number };
-
-/**
- * Which badges the closed history has earned (streaks count closed days only,
- * so an unfinished today can't award one), with progress for the locked ones.
- */
-export function badgeProgress(days: RewardDay[], closedThrough: string | null, opts: { weekStart: number; plansFinished: number }): BadgeProgress[] {
-  const closed = days.filter((d) => !!closedThrough && d.date <= closedThrough).sort((a, b) => a.date.localeCompare(b.date));
-  const s = streakOf(closed, closedThrough, closedThrough ?? "");
-  const out: BadgeProgress[] = STREAK_BADGES.map(([id, need]) => ({ id, earned: s.best >= need, have: Math.min(s.current, need), need }));
-
-  // Prayers: consecutive closed days with every fard prayer prayed (free days don't break it).
-  let run = 0;
-  let bestRun = 0;
-  for (const d of closed) {
-    if (d.allPrayers === null) continue;
-    run = d.allPrayers ? run + 1 : 0;
-    bestRun = Math.max(bestRun, run);
-  }
-  out.push({ id: "prayers_week", earned: bestRun >= 7, have: Math.min(run, 7), need: 7 });
-
-  // Perfect week: a whole calendar week closed, every day perfect or free, at least 5 due.
-  const weeks = new Map<string, RewardDay[]>();
-  for (const d of closed) {
-    const w = periodWeek(d.date, opts.weekStart);
-    weeks.set(w.from, [...(weeks.get(w.from) ?? []), d]);
-  }
-  const perfectWeek = [...weeks.entries()].some(([from, ds]) => {
-    const to = periodWeek(from, opts.weekStart).to;
-    if (!closedThrough || to > closedThrough) return false;
-    const dueDays = ds.filter((d) => d.due > 0);
-    return dueDays.length >= 5 && dueDays.every((d) => d.perfect);
-  });
-  out.push({ id: "perfect_week", earned: perfectWeek });
-  out.push({ id: "first_plan", earned: opts.plansFinished > 0 });
-  return out;
-}
-
 /* ---------- summary ---------- */
 
 export type RewardsSummary = {
@@ -247,8 +188,14 @@ export type RewardsSummary = {
 /** GET /v1/rewards. */
 export type RewardsPayload = RewardsSummary & {
   today: string;
+  /** Awards earned (stored), newest last; `seen` = celebrated. */
   badges: { id: string; earnedAt: string; seen: boolean }[];
-  progress: BadgeProgress[];
+  /** Every award that can show now: earned or not, with progress. */
+  awards: AwardProgress[];
+  /** The last 7 days, oldest first, for the rings strip. */
+  week: RewardDay[];
+  challenge: (Challenge & { closed: number; daysLeft: number }) | null;
+  hijriOffset: number;
 };
 
 export function rewardsSummary(days: RewardDay[], opts: { closedThrough: string | null; today: string; weekStart: number }): RewardsSummary {

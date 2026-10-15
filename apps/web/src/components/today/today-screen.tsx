@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  dayRings,
   ANYTIME,
   bringBack,
   dayAccess,
@@ -178,6 +179,22 @@ export function TodayScreen() {
   const yesterdayDay = useDay(yesterday ?? "1970-01-01");
   const yesterdayTimes = usePrayerTimes(yesterday);
   const overdue = useOverdue(isToday ? today : null);
+  const rings = useMemo(() => dayRings(entries, day, access === "history", settings), [entries, day, access, settings]);
+  // A ring that just closed on this day pulses once.
+  const [pulse, setPulse] = useState<string | null>(null);
+  const lastRings = useRef<{ day: string; closed: Record<string, boolean> } | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const closed = { prayer: !!rings.prayer?.closed, commit: !!rings.commit?.closed, balance: !!rings.balance?.closed };
+    const before = lastRings.current;
+    lastRings.current = { day, closed };
+    if (!before || before.day !== day) return;
+    const just = (Object.keys(closed) as (keyof typeof closed)[]).find((k) => closed[k] && !before.closed[k]);
+    if (!just) return;
+    setPulse(just); // a one-off pulse when a ring closes
+    const t = setTimeout(() => setPulse(null), 700);
+    return () => clearTimeout(t);
+  }, [rings, day, ready]);
 
   if (!today || !date) {
     return <div className="skeleton h-40" aria-busy="true" aria-label="Loading today" />;
@@ -299,14 +316,13 @@ export function TodayScreen() {
           access={access}
           rows={rows}
           progress={progress}
-          prayers={groups[0] ?? null}
+          rings={rings}
+          pulse={pulse}
           date={date}
           today={today}
           streak={streak}
           nextUp={nextUp}
           fixUntil={access === "late" ? fixUntil : undefined}
-          now={now}
-          times={times}
           rewards={access === "live" ? rewards : null}
         />
       </div>

@@ -1,13 +1,13 @@
 "use client";
 
-import { BADGES, PERFECT_DAY_BONUS, entryState, unitPoints, type DayEntry } from "@life/shared";
+import { PERFECT_DAY_BONUS, RING_LABEL, RING_ORDER, awardDef, dayRings, entryState, unitPoints, type DayEntry, type RingKind } from "@life/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, Sheet } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
-import { useDay } from "@/lib/v2/use-day";
+import { useDay, useUserSettings } from "@/lib/v2/use-day";
 import { useRewards } from "@/lib/v2/use-rewards";
 import { useToday } from "@/lib/v2/use-today";
-import { BADGE_ICON, BADGE_TONE } from "./rewards-panel";
+import { AWARD_ICON, AWARD_TONE } from "./rewards-panel";
 
 /** A completion counts as the user's own when it follows a tap this quickly (not a sync from another device). */
 const TAP_MS = 1500;
@@ -18,20 +18,22 @@ const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.
 type Pop = { id: number; x: number; y: number; points: number };
 
 /**
- * Celebrations (Phase 8, owner 2026-10-14): subtle for items, bigger for
- * milestones. A done item floats "+3" from where it was tapped; finishing the
- * day bursts a little confetti; a new badge gets its own card, once. With
- * reduced motion there's no movement, just a toast.
+ * Celebrations (Phase 8, owner 2026-10-14; rings 2026-10-15): subtle for
+ * items, bigger for milestones. A done item floats "+3" from where it was
+ * tapped; a ring closing gets a toast; closing every ring bursts a little
+ * confetti; a new award gets its own card, once. With reduced motion there's
+ * no movement, just toasts.
  */
 export function Celebrations() {
   const today = useToday();
   const day = useDay(today ?? "1970-01-01");
   const { notify } = useAddSheet();
   const { rewards, markSeen } = useRewards();
+  const settings = useUserSettings();
   const [pops, setPops] = useState<Pop[]>([]);
   const [confetti, setConfetti] = useState(0);
   const tap = useRef({ x: 0, y: 0, at: 0 });
-  const prev = useRef<{ date: string; done: Set<string>; pct: number } | null>(null);
+  const prev = useRef<{ date: string; done: Set<string>; closed: Set<RingKind>; complete: boolean } | null>(null);
   const seq = useRef(0);
 
   useEffect(() => {
@@ -41,27 +43,31 @@ export function Celebrations() {
   }, []);
 
   const units = useMemo(() => day.entries.flatMap((e: DayEntry) => e.children ?? [e]), [day.entries]);
+  const rings = useMemo(() => dayRings(day.entries, today ?? "1970-01-01", false, settings), [day.entries, today, settings]);
 
   useEffect(() => {
     if (!today || !day.ready) return;
     const done = new Set(units.filter((u) => entryState(u) === "done").map((u) => u.key));
+    const closed = new Set(RING_ORDER.filter((k) => rings[k]?.closed));
     const before = prev.current;
-    prev.current = { date: today, done, pct: day.progress.pct };
+    prev.current = { date: today, done, closed, complete: rings.complete };
     if (!before || before.date !== today) return; // first look at this day: nothing to celebrate
     if (Date.now() - tap.current.at > TAP_MS) return; // not the user's own tap (e.g. a sync)
     const points = units.filter((u) => done.has(u.key) && !before.done.has(u.key)).reduce((n, u) => n + unitPoints(u.item, u.occurrence, true), 0);
-    const perfect = day.progress.required > 0 && day.progress.pct === 100 && before.pct < 100;
+    const allClosed = rings.complete && !before.complete;
+    const ring = RING_ORDER.find((k) => closed.has(k) && !before.closed.has(k));
     const calm = reducedMotion();
     if (points > 0 && !calm) {
       const pop = { id: ++seq.current, x: tap.current.x, y: tap.current.y, points };
       setPops((p) => [...p, pop]);
       setTimeout(() => setPops((p) => p.filter((x) => x.id !== pop.id)), 1000);
     }
-    if (perfect) {
+    if (allClosed) {
       if (!calm) setConfetti(Date.now());
-      notify({ message: `Perfect day — +${PERFECT_DAY_BONUS} bonus` });
-    } else if (points > 0 && calm) notify({ message: `+${points} point${points === 1 ? "" : "s"}` });
-  }, [today, day.ready, day.progress, units, notify]);
+      notify({ message: rings.perfect ? `Every ring closed — perfect day, +${PERFECT_DAY_BONUS}` : "Every ring closed — day complete" });
+    } else if (ring) notify({ message: `${RING_LABEL[ring]} ring closed` });
+    else if (points > 0 && calm) notify({ message: `+${points} point${points === 1 ? "" : "s"}` });
+  }, [today, day.ready, units, rings, notify]);
 
   useEffect(() => {
     if (!confetti) return;
@@ -70,8 +76,8 @@ export function Celebrations() {
   }, [confetti]);
 
   // A new badge: its own card, once.
-  const unseen = rewards?.badges.filter((b) => !b.seen) ?? [];
-  const badge = unseen.length ? BADGES.find((b) => b.id === unseen[0].id) : undefined;
+  const unseen = rewards?.badges.filter((b) => !b.seen && awardDef(b.id)) ?? [];
+  const badge = unseen.length ? awardDef(unseen[0].id) : null;
   const closeBadge = () => void markSeen(unseen.map((b) => b.id));
   const more = unseen.length - 1;
 
@@ -105,11 +111,11 @@ export function Celebrations() {
         </div>
       ) : null}
       {badge ? (
-        <Sheet open onClose={closeBadge} title="New badge">
+        <Sheet open onClose={closeBadge} title="New award">
           <div className="flex flex-col items-center gap-2 py-2 text-center">
-            <span className="badge-pop inline-flex h-20 w-20 items-center justify-center rounded-full text-ink" style={{ background: BADGE_TONE[badge.icon] }} aria-hidden>
+            <span className="badge-pop inline-flex h-20 w-20 items-center justify-center rounded-full text-ink" style={{ background: AWARD_TONE[badge.icon] }} aria-hidden>
               {(() => {
-                const Icon = BADGE_ICON[badge.icon];
+                const Icon = AWARD_ICON[badge.icon];
                 return <Icon className="h-9 w-9" />;
               })()}
             </span>

@@ -158,9 +158,11 @@ Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
   - an hourglass banner: "Still open — you can fix this day until Thu 12 AM. Changes you make now are marked late."
   - a quiet "logged late" on rows
 
-## 5d. Rewards and celebrations (owner, 2026-10-14)
+## 5d. Rings, rewards and celebrations (owner, 2026-10-14; rings 2026-10-15)
 
-- **Where:** a Rewards card at the top of Progress, and one quiet line at the foot of Today's card ("Level 3 · 333 pts · 13-day streak · 1 freeze"). Nowhere else.
+- **Rings lead.** Three concentric rings, outer to inner: Prayer (`--done`), Commitments (`--primary`), Balance (`--progress`), each on a faint track of its own colour; a free ring is a faint dotted track. Today: 104 px with a row per ring ("Commitments 5/8 done"); Progress week: 38 px mini stacks. A ring closing pulses once and toasts; every ring closed = confetti.
+
+- **Where:** on Progress, the monthly challenge, streak, featured awards and All awards, with points last; one quiet line at the foot of Today's card ("13-day streak · 1 freeze · Level 3 · 333 pts"). Nowhere else.
 - **Badges:** round icon tiles in category pastels (streaks peach, prayers lilac, perfect week yellow, plans mint). Locked ones are grey with a small lock and how far along ("19 more days").
 - **Celebrate in proportion:** an item gets a small "+N" pill that floats up from the tap (about 1 s). A perfect day gets a short CSS confetti burst and a toast. A new badge gets its own card, once.
 - **Reduced motion:** no floating or confetti; a toast says the same thing.

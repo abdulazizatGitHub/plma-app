@@ -838,3 +838,15 @@ Use this template for each decision:
 - **Alternatives considered:** A per-completion ledger keyed by occurrence (rejected — more rows and more ways to drift; per-day recompute is simpler and idempotent by construction). Counting the streak from the Today card's local calculation (rejected — it can't know freezes; the server's streak is shown wherever rewards are available).
 - **Consequences:** Rewards need a sync to update; the app keeps the last copy for offline and shows "+N" optimistically from the same shared rule. The known limit stands: a deliberately wound-back device clock can claim on time.
 - **Related:** `packages/shared/src/v2/rewards.ts`, `apps/api/src/rewards/engine.ts`, migration `0007_rewards`, [phase-08](./docs/phases/v2/phase-08-motivation.md).
+
+### 2026-10-15 — Phase 8.1: three daily rings lead; awards like the Health app
+
+- **Context:** The owner asked what the main achievement should be, like the iPhone Health rings, and whether rewards should become premium.
+- **Decision:**
+  - **Three rings:** Prayer (qada fills half and still closes it), Commitments (required items, prayers excluded), Balance (every area with something due touched). Free when nothing applies. All applicable rings closed = complete day (streak, freezes); complete with no late fixes = perfect (+10). Rings lead on Today and Progress; points and level move to a small line.
+  - **Awards:** perfect month, lifetime milestones, a monthly personal challenge (set once from last month, never moved), and Hijri seasonal awards (Ramadan, first ten of Dhul Hijjah) plus four Jumu'ahs, with a user Hijri adjustment (−2…+2) because local months can start a day after Makkah.
+  - **All rewards stay free.** Premium (later) would be extras — themes, ring styles, deeper insights, exports, group challenges — never points, freezes or awards.
+- **Alternatives considered:** A "Growth" or "bonus" third ring (rejected by the owner for Balance — the app is about a whole life). Qada not closing the ring (rejected: it would punish making up a prayer). Dropping the old `all_prayers` column now (kept, unused, so the migration stays additive).
+- **Consequences:** Balance makes a day with an untouched optional-only area incomplete — intended. Past days are rescored once with the new rules (migration 0008 resets `rewards_built_at`); earned awards are never taken back.
+- **Related:** `packages/shared/src/v2/{rings,awards}.ts`, migration `0008_rings_awards`, [phase-08](./docs/phases/v2/phase-08-motivation.md#81-rings-and-awards-2026-10-15).
+

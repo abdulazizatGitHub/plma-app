@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  BADGES,
-  badgeProgress,
   buildDay,
   createPrayerSet,
   levelOf,
@@ -15,6 +13,7 @@ import {
   type Occurrence,
   type RewardDay,
 } from "../index.js";
+import { fakeDay } from "./test-days.js";
 
 const U = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
 const NOW = "2026-10-12T10:00:00.000Z";
@@ -52,8 +51,8 @@ describe("points (REW-01)", () => {
   it("a day: items + the perfect-day bonus; optional items add points but aren't required", () => {
     const day = "2026-10-12";
     const occs = [occ(read, day, "done"), occ(gym, day, "done"), occ(bill, day, "done"), occ(journal, day, "done"), occ(steps, day, "done", { target: 1000 }, undefined, 1000)];
-    expect(scoreDay([read, gym, bill, journal, steps], occs, day, false, S)).toEqual({
-      date: day, due: 4, done: 4, complete: true, perfect: true, allPrayers: null, points: 1 + 3 + 5 + 2 + 2 + 10,
+    expect(scoreDay([read, gym, bill, journal, steps], occs, day, false, S)).toMatchObject({
+      date: day, commitDue: 4, commitDone: 4, commitClosed: true, prayerDue: 0, balanceDue: 0, complete: true, perfect: true, itemsDone: 5, points: 1 + 3 + 5 + 2 + 2 + 10,
     });
   });
 
@@ -90,9 +89,9 @@ describe("points (REW-01)", () => {
     const prayers = set.filter((p) => p.parentId);
     const day = "2026-10-05";
     const on = prayers.map((p, i) => occ(p, day, "done", i === 0 ? { qada: true } : null));
-    expect(scoreDay(set, on, day, true, S)).toMatchObject({ allPrayers: true, complete: true, perfect: true });
+    expect(scoreDay(set, on, day, true, S)).toMatchObject({ prayerDue: 5, prayerFill: 9, prayerClosed: true, prayersOnTime: 4, dhuhr: true, complete: true, perfect: true });
     const recovered = prayers.map((p, i) => (i === 0 ? occ(p, day, "done", { qada: true, late: true }, "2026-10-12T09:00:00.000Z") : occ(p, day, "done")));
-    expect(scoreDay(set, recovered, day, true, S)).toMatchObject({ allPrayers: false, complete: false, perfect: false });
+    expect(scoreDay(set, recovered, day, true, S)).toMatchObject({ prayerFill: 9, prayerClosed: false, complete: false, perfect: false });
   });
 });
 
@@ -100,8 +99,7 @@ const days = (from: string, flags: string): RewardDay[] =>
   [...flags].map((f, i) => {
     const [y, m, d] = from.split("-").map(Number);
     const date = new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10);
-    const complete = f === "Y" || f === "P";
-    return { date, due: f === "-" ? 0 : 3, done: complete ? 3 : 1, complete, perfect: f === "P", allPrayers: f === "-" ? null : complete, points: complete ? 6 : 2 };
+    return fakeDay(date, f);
   });
 
 describe("streaks and freezes (REW-02)", () => {
@@ -126,22 +124,12 @@ describe("streaks and freezes (REW-02)", () => {
   });
 });
 
-describe("levels and badges (REW-03/04)", () => {
+describe("levels and summary (REW-03)", () => {
   it("level n starts at 50·n·(n−1)", () => {
     expect(levelOf(0)).toEqual({ level: 1, start: 0, next: 100 });
     expect(levelOf(99).level).toBe(1);
     expect(levelOf(100)).toEqual({ level: 2, start: 100, next: 300 });
     expect(levelOf(650)).toEqual({ level: 4, start: 600, next: 1000 });
-  });
-
-  it("badges come from closed days only; locked ones show how far along you are", () => {
-    const d = days("2026-09-07", "PPPPPPPYY"); // Mon 7 Sep: a perfect Mon–Sun week
-    const earned = (closedThrough: string, plansFinished = 0) =>
-      badgeProgress(d, closedThrough, { weekStart: 1, plansFinished }).filter((b) => b.earned).map((b) => b.id);
-    expect(earned("2026-09-15", 1)).toEqual(["streak_3", "streak_7", "prayers_week", "perfect_week", "first_plan"]);
-    expect(earned("2026-09-09")).toEqual(["streak_3"]); // the week isn't over yet
-    expect(badgeProgress(d, "2026-09-15", { weekStart: 1, plansFinished: 0 }).find((b) => b.id === "streak_30")).toMatchObject({ have: 9, need: 30 });
-    expect(BADGES.map((b) => b.id)).toHaveLength(7);
   });
 
   it("summary: total, level, today and this week", () => {
