@@ -8,6 +8,7 @@ export { DateStrip, addDays, weekStart } from "./date-strip";
 export { PrayerRow, type PrayerChip, type PrayerChipStatus } from "./prayer-row";
 export { QuantityRow, QuantityStepper, parseQuantity, quantityState } from "./quantity-stepper";
 export { Ring, type RingSegment } from "./ring";
+export { RingStack, type StackRing } from "./ring-stack";
 export { SegmentedTabs } from "./segmented-tabs";
 export { ConfirmSheet, Sheet, SheetAction } from "./sheet";
 export { StatusTile, StatusTiles, type ItemState } from "./status-tile";

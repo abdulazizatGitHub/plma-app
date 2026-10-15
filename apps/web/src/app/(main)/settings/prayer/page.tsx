@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  hijriDate,
+  hijriLabel,
   EXTRA_PRAYERS,
   PRAYER_METHODS,
   PRAYER_TIME_ORDER,
@@ -12,7 +14,7 @@ import {
 import { ArrowLeft, LocateFixed, MapPin, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Button, Checkbox, ChoiceSheet, Pill, SegmentedTabs, TimeField } from "@/components/kit";
+import { Button, Checkbox, ChipChoice, ChoiceSheet, Pill, SegmentedTabs, TimeField } from "@/components/kit";
 import { ListEditor, newRow, type ListRow } from "@/components/items/list-editor";
 import { useLocation } from "@/components/location/location-provider";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
@@ -115,6 +117,24 @@ export default function PrayerSettingsPage() {
         <Checkbox checked={settings.jumuahLabel} onChange={(jumuahLabel) => void save({ jumuahLabel })}>
           Show Zuhr as Jumu&apos;ah on Fridays
         </Checkbox>
+      </Card>
+
+      <Card title="Hijri date" hint="Used for seasonal awards like Ramadan. Move it if your month starts a day earlier or later than Makkah's.">
+        <p className="text-[13px] text-ink">
+          Today is <b>{hijriLabel(hijriDate(today ?? new Date().toISOString().slice(0, 10), settings.hijriOffset))}</b>
+        </p>
+        <ChipChoice
+          legend="Hijri date adjustment"
+          value={settings.hijriOffset}
+          onChange={(hijriOffset) => void save({ hijriOffset })}
+          options={[
+            { value: -2, label: "−2 days" },
+            { value: -1, label: "−1 day" },
+            { value: 0, label: "Makkah" },
+            { value: 1, label: "+1 day" },
+            { value: 2, label: "+2 days" },
+          ]}
+        />
       </Card>
 
       <Card title="Match your mosque" hint="Nudge a time by a few minutes, or set a fixed time. Empty = calculated.">

@@ -58,6 +58,8 @@ export const userSettingsSchema = syncedRowSchema.extend({
   /** Optional nudges (REM-06); null = off. */
   planTomorrowAt: clockSchema.nullable().default(null),
   morningSummaryAt: clockSchema.nullable().default(null),
+  /** Days added to the Umm al-Qura Hijri date for seasonal awards (−1 where months start a day later). */
+  hijriOffset: added(z.number().int().min(-2).max(2), 0),
   /** Who sees achievements & progress (owner A-3, SOC-06). */
   visibility: z.enum(VISIBILITIES),
 });
@@ -172,6 +174,7 @@ export function defaultUserSettings(userId: string, now: string, timezone = "Asi
     checkinTime: "20:00",
     planTomorrowAt: null,
     morningSummaryAt: null,
+    hijriOffset: 0,
     visibility: "friends",
   };
 }

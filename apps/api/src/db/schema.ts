@@ -139,6 +139,8 @@ export const userSettings = pgTable("user_settings", {
   checkinTime: text("checkin_time").notNull().default("20:00"),
   planTomorrowAt: text("plan_tomorrow_at"),
   morningSummaryAt: text("morning_summary_at"),
+  /** Hijri date adjustment for seasonal awards (Phase 8.1). */
+  hijriOffset: smallint("hijri_offset").notNull().default(0),
   visibility: text("visibility").notNull().default("friends"),
   ...syncedColumns,
 });
@@ -352,11 +354,40 @@ export const rewardDays = pgTable(
     done: integer("done").notNull().default(0),
     complete: boolean("complete").notNull().default(false),
     perfect: boolean("perfect").notNull().default(false),
+    /** Phase 8 only; superseded by prayer_closed (kept so the migration stays additive). */
     allPrayers: boolean("all_prayers"),
     points: integer("points").notNull().default(0),
+    prayerDue: integer("prayer_due").notNull().default(0),
+    /** In halves: on time 2, qada 1. */
+    prayerFill: integer("prayer_fill").notNull().default(0),
+    prayerClosed: boolean("prayer_closed").notNull().default(false),
+    commitDue: integer("commit_due").notNull().default(0),
+    commitDone: integer("commit_done").notNull().default(0),
+    commitClosed: boolean("commit_closed").notNull().default(false),
+    balanceDue: integer("balance_due").notNull().default(0),
+    balanceDone: integer("balance_done").notNull().default(0),
+    balanceClosed: boolean("balance_closed").notNull().default(false),
+    prayersOnTime: integer("prayers_on_time").notNull().default(0),
+    itemsDone: integer("items_done").notNull().default(0),
+    dhuhr: boolean("dhuhr"),
     updatedAt: ts("updated_at").defaultNow().notNull(),
   },
   (t) => [uniqueIndex("reward_days_user_date_idx").on(t.userId, t.date)],
+);
+
+/** A month's personal challenge (Phase 8.1): set once from the month before, never moved. */
+export const monthlyChallenges = pgTable(
+  "monthly_challenges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    /** "YYYY-MM" */
+    month: text("month").notNull(),
+    ring: text("ring").notNull(),
+    target: integer("target").notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("monthly_challenges_user_month_idx").on(t.userId, t.month)],
 );
 
 /** Badges earned (awarded once, never taken back); `seenAt` = celebrated. */
