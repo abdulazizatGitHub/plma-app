@@ -850,3 +850,19 @@ Use this template for each decision:
 - **Consequences:** Balance makes a day with an untouched optional-only area incomplete — intended. Past days are rescored once with the new rules (migration 0008 resets `rewards_built_at`); earned awards are never taken back.
 - **Related:** `packages/shared/src/v2/{rings,awards}.ts`, migration `0008_rings_awards`, [phase-08](./docs/phases/v2/phase-08-motivation.md#81-rings-and-awards-2026-10-15).
 
+### 2026-10-16 — Phase 9a: friends, privacy, leaderboards and sharing
+
+- **Context:** SOC-01…06 and SHR-01. Accountability with friends without giving up privacy (C12).
+- **Decision (owner):**
+  - Social ships in two steps: 9a (this) and 9b (groups and group goals).
+  - **Invites by link only**, sent through the share sheet, with no email service. Following someone's link makes you friends at once.
+  - **Identity:** display name, unique @username, initials on a pastel; no photos yet.
+  - **Leaderboards by server points:** Friends and Everyone. "Local friends board" means the friends board. The top 3 get an award only, with no bonus points.
+  - **Visibility:** Everyone / Friends / **Selected friends** (a new allow-list option) / Only me, default Friends. Only "Everyone" appears on the global board.
+  - **Sharing ignores visibility:** you choose who gets it. It covers a day's rings, the day streak, an award, or **any item's streak**; the last is the only way an item title reaches someone else.
+- **Alternatives considered:** Email invites (no sender yet; the link works everywhere). Bonus points for the podium (rejected: the board would snowball). Client-built share cards (rejected: they could be faked; the server builds them from stored facts).
+- **Consequences:**
+  - Social data is fetched, not synced; the last copy is kept on the device for offline viewing.
+  - Podium periods use Monday weeks and calendar months, so they're the same for everyone.
+  - The API's CORS now allows PUT and PATCH.
+- **Related:** `apps/api/src/social/*`, `packages/shared/src/v2/social.ts`, migration `0009_social`, [phase-09](./docs/phases/v2/phase-09-social.md).

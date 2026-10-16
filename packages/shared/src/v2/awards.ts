@@ -11,7 +11,7 @@ import { periodMonth, periodWeek } from "./summary.js";
  * once. All free — premium (later) is extras, never rewards.
  */
 
-export type AwardGroup = "streaks" | "rings" | "milestones" | "challenges" | "seasonal" | "plans";
+export type AwardGroup = "streaks" | "rings" | "milestones" | "challenges" | "seasonal" | "leaderboards" | "plans";
 export type AwardIcon = "flame" | "moon" | "star" | "flag" | "target" | "medal" | "calendar";
 
 export type AwardDef = { id: string; group: AwardGroup; title: string; description: string; icon: AwardIcon };
@@ -22,6 +22,7 @@ export const AWARD_GROUPS: { id: AwardGroup; title: string }[] = [
   { id: "challenges", title: "Monthly challenges" },
   { id: "seasonal", title: "Seasonal" },
   { id: "milestones", title: "Milestones" },
+  { id: "leaderboards", title: "Leaderboards" },
   { id: "plans", title: "Plans" },
 ];
 
@@ -51,6 +52,26 @@ export function awardDef(id: string): AwardDef | null {
   const [kind, arg] = id.split(":");
   if (kind === "challenge" && /^\d{4}-\d{2}$/.test(arg ?? "")) {
     return { id, group: "challenges", title: `${MONTH_NAME.format(new Date(`${arg}-15T12:00:00Z`))} challenge`, description: "Your personal goal for the month, met.", icon: "target" };
+  }
+  if (kind === "podium") {
+    // podium:<global|friends>:<week|month>:<period start>:<1|2|3> (Phase 9a)
+    const [, board, period, start, place] = id.split(":");
+    const n = Number(place);
+    if ((board === "global" || board === "friends") && (period === "week" || period === "month") && /^\d{4}-\d{2}(-\d{2})?$/.test(start ?? "") && n >= 1 && n <= 3) {
+      const medal = ["Gold", "Silver", "Bronze"][n - 1];
+      const when =
+        period === "week"
+          ? `week of ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${start}T12:00:00Z`))}`
+          : MONTH_NAME.format(new Date(`${start.slice(0, 7)}-15T12:00:00Z`));
+      return {
+        id,
+        group: "leaderboards",
+        title: `${medal} · ${board === "global" ? "everyone" : "friends"}`,
+        description: `${["1st", "2nd", "3rd"][n - 1]} place on the ${board === "global" ? "Everyone" : "Friends"} board, ${when}.`,
+        icon: "medal",
+      };
+    }
+    return null;
   }
   if (kind === "ramadan" && /^\d+$/.test(arg ?? "")) return { id, group: "seasonal", title: `Ramadan ${arg}`, description: "Prayer ring closed every day of Ramadan.", icon: "moon" };
   if (kind === "dhul_hijjah" && /^\d+$/.test(arg ?? "")) {

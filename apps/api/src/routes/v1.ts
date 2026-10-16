@@ -5,6 +5,7 @@ import { requireAuth, type TokenVerifier } from "../lib/auth.js";
 import { registerPushRoutes, type ReminderRouteDeps } from "../reminders/routes.js";
 import { guardOccurrences } from "../history/guard.js";
 import { getRewards, markBadgesSeen } from "../rewards/engine.js";
+import { registerSocialRoutes } from "../social/routes.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
 import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
@@ -20,11 +21,8 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier, reminders?: ReminderR
   return function (app: FastifyInstance, _opts: unknown, done: () => void) {
     app.addHook("preHandler", requireAuth(verify, ensureUser));
 
-    app.get("/v1/me", async (request) => {
-      const [user] = await sql<{ id: string; email: string | null; display_name: string | null }[]>`
-        SELECT id, email, display_name FROM users WHERE id = ${request.auth!.id}`;
-      return { id: user.id, email: user.email, displayName: user.display_name };
-    });
+    // Profile, friends, invites, leaderboards, shares (Phase 9a); includes GET /v1/me.
+    registerSocialRoutes(app, { sql, send: reminders?.send ?? null });
 
     app.get("/v1/sync/pull", async (request, reply) => {
       const query = syncPullQueryV2Schema.safeParse(request.query);

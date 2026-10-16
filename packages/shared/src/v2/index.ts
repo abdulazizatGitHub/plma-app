@@ -31,3 +31,4 @@ export * from "./summary.js";
 export * from "./rewards.js";
 export * from "./rings.js";
 export * from "./awards.js";
+export * from "./social.js";

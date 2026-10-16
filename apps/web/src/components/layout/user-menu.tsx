@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, LogOut, RefreshCw, UserRound } from "lucide-react";
+import { CalendarClock, LogOut, RefreshCw, UserRound, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -10,6 +10,7 @@ import { useStore } from "@/components/providers/store-provider";
 import { useTheme } from "@/components/providers/theme-provider";
 import type { ThemeMode } from "@/lib/theme/theme-utils";
 import { usePending } from "@/lib/v2/use-day";
+import { useSocial } from "@/lib/v2/use-social";
 
 /** "Abdul Aziz" → "AA"; falls back to the email's first letter. */
 export function initialsFor(name: string | null, email: string | null): string {
@@ -35,6 +36,7 @@ function MenuLink({ href, icon, children, onClick }: { href: string; icon: React
  */
 export function UserMenu() {
   const { user, signOut } = useAuth();
+  const { me } = useSocial();
   const { syncNow, syncing } = useStore();
   const { theme, setTheme, mode, setMode } = useTheme();
   const pending = usePending();
@@ -69,7 +71,10 @@ export function UserMenu() {
   }, [open, panelId]);
 
   if (!user) return null;
-  const initials = initialsFor(user.name, user.email);
+  // Once a profile is set (Phase 9a), the same initials and colour friends see.
+  const initials = me?.displayName || me?.username ? initialsFor(me.displayName ?? me.username, null) : initialsFor(user.name, user.email);
+  const avatar = me?.avatarColor ? { background: `var(--cat-${me.avatarColor})` } : undefined;
+  const avatarClass = me?.avatarColor ? "text-ink" : "bg-primary text-on-fill";
   const close = () => setOpen(false);
 
   return (
@@ -84,7 +89,9 @@ export function UserMenu() {
         onClick={() => setOpen((o) => !o)}
         className="inline-flex h-10 w-10 items-center justify-center rounded-full"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-fill">{initials}</span>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-semibold ${avatarClass}`} style={avatar}>
+          {initials}
+        </span>
       </button>
       {open ? (
         <div
@@ -94,7 +101,7 @@ export function UserMenu() {
           className="card absolute top-full right-0 z-50 mt-1 w-[min(16.5rem,calc(100vw-1.5rem))] space-y-0.5 p-1.5"
         >
           <div className="flex items-center gap-2.5 px-2.5 py-1.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-semibold text-on-fill" aria-hidden>
+            <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold ${avatarClass}`} style={avatar} aria-hidden>
               {initials}
             </span>
             <div className="min-w-0">
@@ -105,6 +112,9 @@ export function UserMenu() {
           <hr className="border-border" />
           <MenuLink href="/profile" icon={<UserRound className="h-4 w-4" />} onClick={close}>
             Profile &amp; settings
+          </MenuLink>
+          <MenuLink href="/friends" icon={<Users className="h-4 w-4" />} onClick={close}>
+            Friends
           </MenuLink>
           <MenuLink href="/pending" icon={<CalendarClock className="h-4 w-4" />} onClick={close}>
             <span className="flex-1">Pending</span>

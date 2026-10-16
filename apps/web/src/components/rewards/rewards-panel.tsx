@@ -1,7 +1,7 @@
 "use client";
 
 import { PERFECT_DAY_BONUS, RING_LABEL, awardDef, challengeText, type AwardDef, type AwardIcon, type AwardProgress, type RewardsPayload } from "@life/shared";
-import { CalendarCheck, ChevronRight, Flag, Flame, Lock, Medal, Moon, Snowflake, Star, Target, Trophy } from "lucide-react";
+import { CalendarCheck, ChevronRight, Flag, Flame, Lock, Medal, Moon, Share2, Snowflake, Star, Target, Trophy } from "lucide-react";
 import Link from "next/link";
 import { RING_BG } from "@/lib/v2/rings";
 
@@ -51,14 +51,12 @@ export function awardHint(p: AwardProgress | undefined, def: AwardDef): string {
   return def.id === "first_plan" ? "Finish a plan" : "Not yet";
 }
 
-export function AwardTile({ def, earnedAt, hint }: { def: AwardDef; earnedAt?: string; hint: string }) {
+export function AwardTile({ def, earnedAt, hint, onShare }: { def: AwardDef; earnedAt?: string; hint: string; onShare?: () => void }) {
   const Icon = AWARD_ICON[def.icon];
   const locked = !earnedAt;
-  return (
-    <li
-      className={`flex flex-col items-center gap-1 rounded-[14px] p-2 text-center ${locked ? "opacity-60" : ""}`}
-      aria-label={`${def.title}: ${locked ? `locked, ${hint}` : `earned ${DAY.format(new Date(earnedAt))}`}`}
-    >
+  const label = `${def.title}: ${locked ? `locked, ${hint}` : `earned ${DAY.format(new Date(earnedAt))}`}`;
+  const body = (
+    <>
       <span
         className={`relative inline-flex h-12 w-12 items-center justify-center rounded-full ${locked ? "bg-track text-ink-2" : "text-ink"}`}
         style={locked ? undefined : { background: AWARD_TONE[def.icon] }}
@@ -69,6 +67,21 @@ export function AwardTile({ def, earnedAt, hint }: { def: AwardDef; earnedAt?: s
       </span>
       <span className="text-[11.5px] leading-tight font-medium text-ink">{def.title}</span>
       <span className="text-[10.5px] leading-tight text-ink-2">{earnedAt ? DAY.format(new Date(earnedAt)) : hint}</span>
+    </>
+  );
+  // An earned award can be shared with friends (Phase 9a).
+  if (!locked && onShare) {
+    return (
+      <li aria-label={label}>
+        <button type="button" onClick={onShare} aria-label={`${label}. Share`} className="flex w-full flex-col items-center gap-1 rounded-[14px] p-2 text-center hover:bg-track">
+          {body}
+        </button>
+      </li>
+    );
+  }
+  return (
+    <li className={`flex flex-col items-center gap-1 rounded-[14px] p-2 text-center ${locked ? "opacity-60" : ""}`} aria-label={label}>
+      {body}
     </li>
   );
 }
@@ -90,7 +103,7 @@ export function featuredAwards(r: RewardsPayload, count = 4) {
 }
 
 /** Progress → rings and awards (REW-01…04, Phase 8.1): challenge, streak, awards, then points. */
-export function RewardsPanel({ rewards }: { rewards: RewardsPayload | null }) {
+export function RewardsPanel({ rewards, onShareStreak }: { rewards: RewardsPayload | null; onShareStreak?: () => void }) {
   if (!rewards) {
     return (
       <section aria-label="Rewards" className="card p-4 text-[13px] text-ink-2">
@@ -143,6 +156,11 @@ export function RewardsPanel({ rewards }: { rewards: RewardsPayload | null }) {
             Best <b className="text-ink">{r.streak.best}</b>
           </span>
         </span>
+        {onShareStreak && r.streak.current > 0 ? (
+          <button type="button" onClick={onShareStreak} className="ml-auto inline-flex min-h-7 items-center gap-1 rounded-full px-2 text-[12.5px] font-medium text-link hover:bg-track">
+            <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
+          </button>
+        ) : null}
       </div>
       {note ? <p className="text-[12.5px] text-ink">{note}</p> : null}
 

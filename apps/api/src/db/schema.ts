@@ -25,6 +25,10 @@ export const users = pgTable("users", {
   closedThrough: date("closed_through"),
   /** Rewards were scored for past days (Phase 8); set once, on the first rewards read or closing. */
   rewardsBuiltAt: timestamp("rewards_built_at", { withTimezone: true }),
+  /** Unique @username (lowercase), set by the user before using social features (Phase 9a). */
+  username: text("username").unique(),
+  /** Avatar background: one of the category pastels. */
+  avatarColor: text("avatar_color"),
 });
 
 export const devices = pgTable("devices", {
@@ -418,3 +422,123 @@ export const templates = pgTable("templates", {
 
 export type HabitDefinition = typeof habitDefinitions.$inferSelect;
 export type HabitLog = typeof habitLogs.$inferSelect;
+
+/* ---------- Social (Phase 9a): server-only, never synced ---------- */
+
+/** One row per pair, stored with user_a < user_b. Pending until the other side accepts. */
+export const friendships = pgTable(
+  "friendships",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userA: uuid("user_a")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userB: uuid("user_b")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    requestedBy: uuid("requested_by").notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    acceptedAt: ts("accepted_at"),
+    /** The other side has seen the request / acceptance (Activity). */
+    seenAt: ts("seen_at"),
+  },
+  (t) => [uniqueIndex("friendships_pair_idx").on(t.userA, t.userB), index("friendships_b_idx").on(t.userB)],
+);
+
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blocker: uuid("blocker")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blocked: uuid("blocked")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("blocks_pair_idx").on(t.blocker, t.blocked)],
+);
+
+/** A personal invite link; one active per user ("New link" revokes the old one). */
+export const inviteLinks = pgTable(
+  "invite_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    code: text("code").notNull().unique(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    revokedAt: ts("revoked_at"),
+  },
+  (t) => [index("invite_links_user_idx").on(t.userId)],
+);
+
+/** "Selected friends" visibility: who may see my progress. */
+export const visibilityAllow = pgTable(
+  "visibility_allow",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    friendId: uuid("friend_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex("visibility_allow_pair_idx").on(t.ownerId, t.friendId)],
+);
+
+/** Something a user chose to share; the payload is a snapshot the server built. */
+export const shares = pgTable(
+  "shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    senderId: uuid("sender_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("shares_sender_idx").on(t.senderId, t.createdAt)],
+);
+
+export const shareRecipients = pgTable(
+  "share_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shareId: uuid("share_id")
+      .notNull()
+      .references(() => shares.id, { onDelete: "cascade" }),
+    recipientId: uuid("recipient_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    seenAt: ts("seen_at"),
+  },
+  (t) => [uniqueIndex("share_recipients_pair_idx").on(t.shareId, t.recipientId), index("share_recipients_recipient_idx").on(t.recipientId)],
+);
+
+export const kudos = pgTable(
+  "kudos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    shareId: uuid("share_id")
+      .notNull()
+      .references(() => shares.id, { onDelete: "cascade" }),
+    fromUser: uuid("from_user")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    /** The sharer has seen it (Activity). */
+    seenAt: ts("seen_at"),
+  },
+  (t) => [uniqueIndex("kudos_pair_idx").on(t.shareId, t.fromUser)],
+);
+
+/** Leaderboard periods whose podium awards were given (once each). */
+export const podiumPeriods = pgTable("podium_periods", {
+  period: text("period").primaryKey(),
+  finalizedAt: ts("finalized_at").defaultNow().notNull(),
+});
+

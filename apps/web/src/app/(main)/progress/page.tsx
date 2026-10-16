@@ -8,6 +8,8 @@ import { Heatmap, Ring, RingStack, SegmentedTabs, type HeatMark } from "@/compon
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { SyncingNote } from "@/components/history/syncing-note";
 import { RewardsPanel } from "@/components/rewards/rewards-panel";
+import { Leaderboard } from "@/components/social/leaderboard";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { useRewards } from "@/lib/v2/use-rewards";
 import { useDayStreak, useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
 import { usePeriodRings, usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
@@ -61,6 +63,7 @@ function Progress({ today }: { today: string }) {
   const streak = useDayStreak(today);
   const synced = useHasSynced();
   const { rewards } = useRewards();
+  const [share, setShare] = useState<ShareWhat | null>(null);
   const { weekStart } = useUserSettings();
   const isCurrent = current.from <= today && today <= current.to;
   const label = isCurrent
@@ -87,7 +90,8 @@ function Progress({ today }: { today: string }) {
         <p className="text-[13px] text-ink-2">Finished days only — skipped and moved items don&apos;t count against you.</p>
       </header>
       {synced === false ? <SyncingNote /> : null}
-      <RewardsPanel rewards={rewards} />
+      <RewardsPanel rewards={rewards} onShareStreak={() => setShare({ kind: "streak", label: "your streak" })} />
+      <ShareSheet what={share} onClose={() => setShare(null)} />
 
       <SegmentedTabs<PeriodKind>
         label="Period"
@@ -183,6 +187,8 @@ function Progress({ today }: { today: string }) {
         )}
         <p className="mt-2 text-[11.5px] text-ink-2">{kind === "week" ? "Tap a day to open it. " : ""}Days with nothing due are free days and don&apos;t count.</p>
       </section>
+
+      <Leaderboard period={kind} />
 
       {/* Insights */}
       {current.doingWell.length || current.needsAttention.length ? (

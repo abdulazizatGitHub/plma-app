@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertCircle, Cloud, CloudOff, RefreshCw } from "lucide-react";
+import { AlertCircle, Bell, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/components/providers/store-provider";
+import { useSocial } from "@/lib/v2/use-social";
 import { UserMenu } from "./user-menu";
 
 /** Sync state as one icon + label; tapping it syncs now. */
@@ -32,7 +33,22 @@ function SyncIndicator() {
   );
 }
 
-/** Top bar: app mark, sync status, account menu. Pages keep their own H1. */
+/** Activity (shares, kudos, requests) with an unread dot (Phase 9a). */
+function ActivityBell() {
+  const { unread } = useSocial();
+  return (
+    <Link
+      href="/activity"
+      aria-label={unread ? `Activity, ${unread} new` : "Activity"}
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+    >
+      <Bell className="h-[18px] w-[18px]" aria-hidden />
+      {unread ? <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full border-2 border-bg bg-todo" aria-hidden /> : null}
+    </Link>
+  );
+}
+
+/** Top bar: app mark, sync status, activity, account menu. Pages keep their own H1. */
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur">
@@ -45,6 +61,7 @@ export function AppHeader() {
         </Link>
         <div className="flex items-center gap-1">
           <SyncIndicator />
+          <ActivityBell />
           <UserMenu />
         </div>
       </div>

@@ -11,6 +11,8 @@ import { transientDbErrors } from "./lib/errors.js";
 import { webPushSender } from "./reminders/push.js";
 import { registerActionRoute } from "./reminders/routes.js";
 import { closeAllDays } from "./history/close.js";
+import { registerPublicSocialRoutes } from "./social/routes.js";
+import { finalizePodiums } from "./social/service.js";
 import { planDebouncer, planUser, replanAll, tick } from "./reminders/service.js";
 import { apiRoutes } from "./routes/v1.js";
 
@@ -27,6 +29,8 @@ app.setErrorHandler(transientDbErrors);
 
 await app.register(cors, {
   origin: env.corsOrigins,
+  // PATCH /v1/me and PUT /v1/visibility/allow (Phase 9a) need more than the default GET/HEAD/POST.
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 });
 
@@ -72,6 +76,7 @@ const onJobError = (err: unknown) => app.log.error({ err }, "reminder job failed
 const replanSoon = planDebouncer((userId) => planUser(pg, userId), 3000, onJobError);
 const reminderDeps = { sql: pg, send, actionSecret: env.reminderActionSecret, vapidPublicKey: env.vapidPublicKey, replanSoon };
 registerActionRoute(app, reminderDeps);
+registerPublicSocialRoutes(app, pg);
 await app.register(apiRoutes(pg, verify, reminderDeps));
 
 if (send && env.reminderJobs !== "off") {
@@ -100,7 +105,8 @@ if (send && env.reminderJobs !== "off") {
 // History (Phase 7): close days that left their correction window, hourly for every account
 // (each pull also closes the caller's days, so this only covers devices that stay away).
 if (env.reminderJobs !== "off") {
-  const closeSweep = () => void closeAllDays(pg).catch(onJobError);
+  // …then gives podium awards for leaderboard periods that have fully closed (Phase 9a).
+  const closeSweep = () => void closeAllDays(pg).then(() => finalizePodiums(pg)).catch(onJobError);
   setTimeout(closeSweep, 20_000);
   setInterval(closeSweep, 60 * 60_000);
 }

@@ -3,7 +3,9 @@
 import { AWARD_GROUPS, STATIC_AWARDS, awardDef, type AwardDef } from "@life/shared";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { AwardTile, awardHint } from "@/components/rewards/rewards-panel";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { useRewards } from "@/lib/v2/use-rewards";
 
 /**
@@ -14,6 +16,7 @@ import { useRewards } from "@/lib/v2/use-rewards";
 export default function AwardsPage() {
   const router = useRouter();
   const { rewards } = useRewards();
+  const [share, setShare] = useState<ShareWhat | null>(null);
   const earned = new Map((rewards?.badges ?? []).map((b) => [b.id, b.earnedAt]));
   const dynamic = new Set([...(rewards?.awards ?? []).map((a) => a.id), ...earned.keys()]);
   const defs: AwardDef[] = [...STATIC_AWARDS];
@@ -34,7 +37,7 @@ export default function AwardsPage() {
       <header>
         <h1 className="text-2xl font-semibold text-ink">Awards</h1>
         <p className="text-[13px] text-ink-2">
-          {rewards ? `${count} earned so far.` : "Awards appear after your first sync."} Each is earned once and kept for good.
+          {rewards ? `${count} earned so far.` : "Awards appear after your first sync."} Each is earned once and kept for good.{count ? " Tap one you've earned to share it." : ""}
         </p>
       </header>
       {AWARD_GROUPS.map((g) => {
@@ -45,12 +48,19 @@ export default function AwardsPage() {
             <h2 className="mb-1 px-1 text-[12px] font-semibold tracking-wide text-ink-2 uppercase">{g.title}</h2>
             <ul className="grid grid-cols-3 gap-1 sm:grid-cols-5">
               {list.map((def) => (
-                <AwardTile key={def.id} def={def} earnedAt={earned.get(def.id)} hint={awardHint(rewards?.awards.find((a) => a.id === def.id), def)} />
+                <AwardTile
+                  key={def.id}
+                  def={def}
+                  earnedAt={earned.get(def.id)}
+                  hint={awardHint(rewards?.awards.find((a) => a.id === def.id), def)}
+                  onShare={() => setShare({ kind: "award", awardId: def.id, label: `"${def.title}"` })}
+                />
               ))}
             </ul>
           </section>
         );
       })}
+      <ShareSheet what={share} onClose={() => setShare(null)} />
     </div>
   );
 }
