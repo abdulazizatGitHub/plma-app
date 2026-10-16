@@ -7,6 +7,7 @@ import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useDay, useUserSettings } from "@/lib/v2/use-day";
 import { useRewards } from "@/lib/v2/use-rewards";
 import { useToday } from "@/lib/v2/use-today";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { AWARD_ICON, AWARD_TONE } from "./rewards-panel";
 
 /** A completion counts as the user's own when it follows a tap this quickly (not a sync from another device). */
@@ -32,6 +33,7 @@ export function Celebrations() {
   const settings = useUserSettings();
   const [pops, setPops] = useState<Pop[]>([]);
   const [confetti, setConfetti] = useState(0);
+  const [share, setShare] = useState<ShareWhat | null>(null);
   const tap = useRef({ x: 0, y: 0, at: 0 });
   const prev = useRef<{ date: string; done: Set<string>; closed: Set<RingKind>; complete: boolean } | null>(null);
   const seq = useRef(0);
@@ -122,12 +124,25 @@ export function Celebrations() {
             <p className="text-[18px] font-semibold text-ink">{badge.title}</p>
             <p className="text-[13px] text-ink-2">{badge.description}</p>
             {more > 0 ? <p className="text-[12px] text-ink-2">…and {more} more on Progress.</p> : null}
-            <Button className="mt-2 w-full" onClick={closeBadge}>
-              Nice
-            </Button>
+            <div className="mt-2 flex w-full gap-2">
+              <Button
+                variant="secondary"
+                className="flex-1"
+                onClick={() => {
+                  setShare({ kind: "award", awardId: badge.id, label: `"${badge.title}"` });
+                  closeBadge();
+                }}
+              >
+                Share
+              </Button>
+              <Button className="flex-1" onClick={closeBadge}>
+                Nice
+              </Button>
+            </div>
           </div>
         </Sheet>
       ) : null}
+      <ShareSheet what={share} onClose={() => setShare(null)} />
     </>
   );
 }

@@ -10,13 +10,14 @@ import {
   type LogEntry,
   type Occurrence,
 } from "@life/shared";
-import { Archive, ArrowLeft, CircleCheck, Flame, Pencil, Trash2, Trophy, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, CircleCheck, Flame, Pencil, Share2, Trash2, Trophy, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bars, Button, ConfirmSheet, Heatmap, Tag, addDays, type HeatMark } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { SyncingNote } from "@/components/history/syncing-note";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { DayEntryRow } from "@/components/today/day-entry-row";
 import { PrayerInsightsPanel } from "@/components/prayer/insights-panel";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
@@ -109,6 +110,7 @@ function ItemView() {
 
   const closedThrough = useClosedThrough();
   const synced = useHasSynced();
+  const [share, setShare] = useState<ShareWhat | null>(null);
   const { weekStart } = useUserSettings();
   const history = useMemo(() => (item && today ? itemHistory(item, children, occs, from, today, today, closedThrough) : null), [item, children, occs, from, today, closedThrough]);
 
@@ -179,6 +181,15 @@ function ItemView() {
           <Stat icon={<Flame />} label="Streak" value={`${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}`} />
           <Stat icon={<Trophy />} label="Best" value={`${stats.bestStreak}`} />
           <Stat icon={<CircleCheck />} label={`Done · ${STATS_DAYS}d`} value={stats.completionRate === null ? "—" : `${stats.completionRate}%`} />
+          {stats.currentStreak >= 2 ? (
+            <button
+              type="button"
+              onClick={() => setShare({ kind: "item_streak", itemId: item.id, label: `your ${stats.currentStreak}-day ${item.title} streak` })}
+              className="col-span-3 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium text-link hover:bg-track"
+            >
+              <Share2 className="h-4 w-4" aria-hidden /> Share this streak with friends
+            </button>
+          ) : null}
           {stats.skipped || stats.moved ? (
             <p className="col-span-3 px-1 text-[12px] text-ink-2">
               Last {STATS_DAYS} days: {stats.skipped} skipped · {stats.moved} moved — neither breaks a streak.
@@ -247,6 +258,7 @@ function ItemView() {
         </Button>
       </div>
 
+      <ShareSheet what={share} onClose={() => setShare(null)} />
       <ConfirmSheet
         open={deleting}
         title={`Delete “${item.title}”?`}

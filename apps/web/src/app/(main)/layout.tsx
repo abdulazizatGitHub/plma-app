@@ -7,6 +7,7 @@ import { RequireAuth } from "@/components/providers/require-auth";
 import { StoreProvider } from "@/components/providers/store-provider";
 import { Celebrations } from "@/components/rewards/celebrations";
 import { RewardsProvider } from "@/lib/v2/use-rewards";
+import { SocialProvider } from "@/lib/v2/use-social";
 import { TodayProvider } from "@/lib/v2/use-today";
 
 export default function MainLayout({ children }: LayoutProps<"/">) {
@@ -16,6 +17,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
         <RewardsProvider>
         <TodayProvider>
         <AddSheetProvider>
+          <SocialProvider>
           <Celebrations />
           <LocationProvider>
           <OnboardingGate />
@@ -27,6 +29,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
           </div>
           <AppNav />
           </LocationProvider>
+          </SocialProvider>
         </AddSheetProvider>
         </TodayProvider>
         </RewardsProvider>

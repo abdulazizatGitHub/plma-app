@@ -12,7 +12,8 @@ import { anchorSchema, scheduleSchema, trackingSchema, triggerSchema } from "./t
 export const ITEM_TYPES = ["task", "habit", "goal", "plan", "group"] as const;
 export const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 export const OCCURRENCE_STATUSES = ["todo", "in_progress", "done", "skipped", "moved", "missed"] as const;
-export const VISIBILITIES = ["private", "friends", "everyone"] as const;
+/** Who sees my progress and achievements (SOC-06): "selected" = an allow-list of friends (owner, 2026-10-16). */
+export const VISIBILITIES = ["private", "friends", "selected", "everyone"] as const;
 
 const provenance = {
   sourceTemplateId: idSchema.nullable(),

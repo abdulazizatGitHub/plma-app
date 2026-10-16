@@ -36,6 +36,7 @@ import { useToday } from "@/lib/v2/use-today";
 import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
 import { useRewards } from "@/lib/v2/use-rewards";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { DaySummaryCard } from "./day-summary";
 import { IshaCarryOver, PrayerGroup, headlineText } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
@@ -182,6 +183,7 @@ export function TodayScreen() {
   const rings = useMemo(() => dayRings(entries, day, access === "history", settings), [entries, day, access, settings]);
   // A ring that just closed on this day pulses once.
   const [pulse, setPulse] = useState<string | null>(null);
+  const [share, setShare] = useState<ShareWhat | null>(null);
   const lastRings = useRef<{ day: string; closed: Record<string, boolean> } | null>(null);
   useEffect(() => {
     if (!ready) return;
@@ -318,6 +320,7 @@ export function TodayScreen() {
           progress={progress}
           rings={rings}
           pulse={pulse}
+          onShare={access === "live" || access === "late" ? () => setShare({ kind: "day", date: date ?? undefined, label: date === today ? "today" : "this day" }) : undefined}
           date={date}
           today={today}
           streak={streak}
@@ -327,6 +330,7 @@ export function TodayScreen() {
         />
       </div>
 
+      <ShareSheet what={share} onClose={() => setShare(null)} />
       <div data-tour="tiles">
       <StatusTiles
         counts={{ todo: progress.counts.todo, in_progress: progress.counts.in_progress, done: progress.counts.done }}

@@ -169,6 +169,14 @@ Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 - **Words:** never "lost" or "broken". "A freeze covered 11 Oct — your 13-day streak keeps going." "A new streak starts today — your best is still 12."
 - **One streak per screen:** once server rewards arrive, theirs (with freezes) is the only streak shown.
 
+## 5e. Friends and sharing (owner, 2026-10-16)
+
+- **Avatars:** initials on the person's chosen category pastel (`--cat-*`); no photos yet. The top-bar account button uses the same.
+- **Activity:** a bell in the top bar with a small red dot for unread. Each card shows a picture (mini ring stack, flame with the count, moon for prayers, or the award medal), one line ("Sara shared a 21-day Fajr streak"), a quiet detail line, and one **Kudos** button that turns into "Sent".
+- **Leaderboard:** rank or medal (gold `--cat-yellow`, silver `--track`, bronze `--cat-peach`), avatar, name and points. Your row sits on `--track`. Friends | Everyone tabs; the period follows the page.
+- **Share sheet:** pick friends with round checks plus "Select all"; the button reads "Send to N" and stays disabled until someone is picked.
+- **Words:** "Others never see your items — only points, streak and awards." A block is never announced to the blocked person.
+
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 
 - **Phone first.**

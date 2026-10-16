@@ -64,6 +64,13 @@
       "when": 1792089451967,
       "tag": "0008_rings_awards",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792162473056,
+      "tag": "0009_social",
+      "breakpoints": true
     }
   ]
 }

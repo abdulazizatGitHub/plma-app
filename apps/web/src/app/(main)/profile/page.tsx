@@ -8,6 +8,8 @@ import { useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
 import { ChipChoice, SegmentedTabs, ThemeSwatches } from "@/components/kit";
 import { useTheme } from "@/components/providers/theme-provider";
 import { AccountCard } from "@/components/settings/account-card";
+import { ProfileForm } from "@/components/social/profile-form";
+import { VisibilityCard } from "@/components/social/visibility-card";
 import type { ThemeMode } from "@/lib/theme/theme-utils";
 
 /** Account, theme, your day, and links to prayer and reminder settings. */
@@ -24,6 +26,15 @@ export default function ProfilePage() {
         <h2 className="mb-3 text-[15px] font-medium text-ink">Account</h2>
         <AccountCard />
       </section>
+      <section className="card p-5" aria-label="You">
+        <h2 className="mb-3 text-[15px] font-medium text-ink">You</h2>
+        <ProfileForm />
+      </section>
+      <VisibilityCard />
+      <Link href="/friends" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
+        <span className="flex-1">Friends</span>
+        <span className="text-[12px] font-normal text-ink-2">Invite, requests, leaderboard</span>
+      </Link>
       <section className="card p-5">
         <h2 className="mb-1 text-[15px] font-medium text-ink">Theme</h2>
         <p className="mb-3 text-[13px] text-ink-2">Each theme comes from one of the app&apos;s reference designs.</p>
