@@ -83,3 +83,40 @@ Accountability with friends, without giving up privacy.
   - API 15/15: streak counting, restart after a gap, view once, a non-recipient can't open, item_done only once done, friend-streak award.
   - 9a privacy suite still 29/29.
   - Browser 10/10 with two accounts.
+
+## 9b Groups — built (2026-10-16)
+
+- **Groups:**
+  - up to 50 members; the owner and admins invite friends or share a group link (sign up, then join, the same device-held claim as friend links)
+  - roles: owner / admin / member
+  - anyone can leave; if the owner leaves, the longest-standing admin (else member) takes over
+  - the owner can delete the group
+- **Group goals:**
+  - "Each member" or "Together"
+  - counted as days done, a count with a unit, or minutes
+  - this week, this month, or picked dates
+  - optional reward text
+  - at most 10 at once
+- **Linked items:** each member gets a server-made **linked item** on their own Today (`items.group_goal_id`, tagged "Group · Family") and logs as usual.
+  - Members may change its category, priority and reminders.
+  - The name, tracking and dates are locked, in the editor and by the sync guard.
+  - Leaving or ending a goal archives it, so history stays.
+- **Progress:** members see each other's progress on group goals, and nothing else of theirs.
+- **Rewards:** given once, after the period closes (hourly sweep, or `npm run jobs:finalize -w @life/api`).
+  - Members who met it get the "Group goal met" award.
+  - A met "together" goal gives each contributor +10 points (`bonus_points`, included in totals).
+- **Group streak:** grows on days every member (at least 2) checked in with "Snap the group". Awards at 7 and 30 days.
+- **Boards:**
+  - a Groups tab on the leaderboard: my groups by average points per active member, plus public groups (opt-in when creating)
+  - the top 3 groups each week and month earn every member a medal
+- **Migration 0011:** `groups`, `group_members`, `group_links`, `group_invites`, `group_goals`, `group_goal_results`, `bonus_points`, `group_snap_days` (RLS on, server-only).
+- **Checks:**
+  - API 26/26, including the acceptance: A creates "70k steps this week", B joins by link, both get the item, progress shows, rewards are given once, and leaving archives the item.
+  - Also covered: non-members see nothing; linked items can't be redefined or forged.
+  - Browser 8/8 with two accounts.
+  - All five API suites (93 checks) pass together.
+
+## Acceptance (9b)
+
+- [x] Two real accounts: A invites B, B joins via the link, and both log toward "70k steps this week" (their own Today items). A met goal gives awards, and a "together" goal gives its points once.
+- [x] Group vs group uses average points per active member.

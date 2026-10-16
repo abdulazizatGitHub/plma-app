@@ -184,6 +184,16 @@ Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 - **Viewer:** full-screen on `--ink` at 90%, with the card large in the middle. Kudos and Snap back sit at the bottom; tapping anywhere closes it, and it opens once.
 - **Streak badge:** the number, then a filled flame (`--progress`), plus an hourglass (`--todo`) when it ends soon. Body text uses words, not emoji.
 
+## 5g. Groups (owner, 2026-10-16)
+
+- **Group tile:** a rounded square in the group's pastel with its icon (users, home, moon, dumbbell, book, graduation, heart, star). The group streak shows as the same 🔥 badge as friends.
+- **Group card (list):** the tile, the name with its streak, stacked member avatars, "N checked in today", and the soonest goal with a bar.
+- **Group page:**
+  - **Header card:** a full-width **Snap the group** button, which becomes "Checked in today".
+  - **Goal cards:** a bar for each member ("You" in bold, ✓ when met) or one total bar for "together", then the reward line with a gift icon.
+  - **Members:** owner (crown) and admin (shield) labels; ✓ for who checked in today.
+- **Linked items** on Today carry a `primary` tag "Group · Family". Their editor explains that the name, counting and dates belong to the group.
+
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 
 - **Phone first.**

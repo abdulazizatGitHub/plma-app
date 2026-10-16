@@ -6,6 +6,7 @@ import { registerPushRoutes, type ReminderRouteDeps } from "../reminders/routes.
 import { guardOccurrences } from "../history/guard.js";
 import { getRewards, markBadgesSeen } from "../rewards/engine.js";
 import { registerSocialRoutes } from "../social/routes.js";
+import { registerGroupRoutes } from "../groups/routes.js";
 import { planPush } from "../sync/plan.js";
 import { applyPush, postgresLookup, pullChanges, userBootstrapper } from "../sync/store.js";
 import { existingCategories, packPushBody, packSummaries } from "../templates/packs.js";
@@ -23,6 +24,8 @@ export function apiRoutes(sql: Sql, verify: TokenVerifier, reminders?: ReminderR
 
     // Profile, friends, invites, leaderboards, shares (Phase 9a); includes GET /v1/me.
     registerSocialRoutes(app, { sql, send: reminders?.send ?? null });
+    // Groups and group goals (Phase 9b).
+    registerGroupRoutes(app, { sql, send: reminders?.send ?? null });
 
     app.get("/v1/sync/pull", async (request, reply) => {
       const query = syncPullQueryV2Schema.safeParse(request.query);

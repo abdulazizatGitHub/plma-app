@@ -14,7 +14,25 @@ export type OwnershipLookup = {
   foreignIds(entity: SyncEntity, ids: string[], userId: string): Promise<string[]>;
   /** Of `ids`, those that exist in `entity` and belong to `userId`. */
   ownedIds(entity: SyncEntity, ids: string[], userId: string): Promise<string[]>;
+  /** Stored group-goal items of `userId` among `ids` (Phase 9b): what a member may not change. */
+  linkedItems?(ids: string[], userId: string): Promise<Map<string, { groupGoalId: string; title: string; tracking: unknown; schedule: unknown }>>;
 };
+
+/** A member may change a linked item's category, priority, order or archive it — not what the goal defines. */
+const LOCKED_FIELDS = ["groupGoalId", "title", "tracking", "schedule"] as const;
+
+/** JSON with sorted keys: jsonb reorders keys, so plain stringify can't compare. */
+function canonical(v: unknown): string {
+  if (v === undefined) return "null";
+  if (v === null || typeof v !== "object") return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonical).join(",")}]`;
+  const o = v as Record<string, unknown>;
+  return `{${Object.keys(o)
+    .filter((k) => o[k] !== undefined)
+    .sort()
+    .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`)
+    .join(",")}}`;
+}
 
 export type PushPlan =
   | { ok: true; rows: Map<SyncEntity, Row[]> }
@@ -44,15 +62,24 @@ export async function planPush(userId: string, body: unknown, lookup: OwnershipL
     if (change.entity === "userSettings" && row.id !== userId) {
       return fail(403, "forbidden", "user settings id must equal the user id");
     }
-    if (change.entity === "items" && row.groupGoalId !== null) {
-      return fail(422, "unsupported", "group goals arrive in Phase 9");
-    }
+
     const list = rows.get(change.entity) ?? [];
     // Last one wins if the same row appears twice in a batch.
     const at = list.findIndex((r) => r.id === row.id);
     if (at >= 0) list[at] = row;
     else list.push(row);
     rows.set(change.entity, list);
+  }
+
+  // Group-goal items (Phase 9b) are created by the server; members can't make or redefine them.
+  const linked = (rows.get("items") ?? []).filter((r) => r.groupGoalId !== null);
+  if (linked.length) {
+    const stored = lookup.linkedItems ? await lookup.linkedItems(linked.map((r) => r.id), userId) : new Map<string, Record<string, unknown>>();
+    for (const r of linked) {
+      const s = stored.get(r.id);
+      const same = !!s && LOCKED_FIELDS.every((f) => canonical((s as Record<string, unknown>)[f]) === canonical(r[f]));
+      if (!same) return fail(422, "group_goal_item", "A group goal's item is set by the group — only its category, priority and reminders can change.");
+    }
   }
 
   for (const [entity, list] of rows) {

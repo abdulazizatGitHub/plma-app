@@ -31,6 +31,8 @@ const SocialContext = createContext<SocialState | null>(null);
 const CACHE = "social_me";
 /** An invite link opened while signed out waits here until the user is in. */
 export const PENDING_INVITE = "life_pending_invite";
+/** The same for a group link (Phase 9b). */
+export const PENDING_GROUP_INVITE = "life_pending_group_invite";
 
 /**
  * Social basics for every screen (Phase 9a): who I am (name, @username,
@@ -84,10 +86,28 @@ export function SocialProvider({ children }: { children: ReactNode }) {
       void refreshUnread();
     }
     let code: string | null = null;
+    let groupCode: string | null = null;
     try {
       code = localStorage.getItem(PENDING_INVITE);
+      groupCode = localStorage.getItem(PENDING_GROUP_INVITE);
     } catch {
       /* storage blocked */
+    }
+    if (groupCode && !claiming.current) {
+      claiming.current = true;
+      void api<{ groupId: string; name: string }>(`/v1/group-invite/${encodeURIComponent(groupCode)}/accept`, { body: {} }).then((r) => {
+        claiming.current = false;
+        if (r.ok || r.status === 404) {
+          try {
+            localStorage.removeItem(PENDING_GROUP_INVITE);
+          } catch {
+            /* fine */
+          }
+        }
+        if (r.ok) notify({ message: `You joined ${r.data.name}` });
+        else if (r.status === 404) notify({ message: "That group link isn't valid any more." });
+      });
+      return;
     }
     if (!code || claiming.current) return;
     claiming.current = true;

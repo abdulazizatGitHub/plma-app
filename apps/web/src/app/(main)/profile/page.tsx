@@ -33,7 +33,11 @@ export default function ProfilePage() {
       <VisibilityCard />
       <Link href="/friends" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
         <span className="flex-1">Friends</span>
-        <span className="text-[12px] font-normal text-ink-2">Invite, requests, leaderboard</span>
+        <span className="text-[12px] font-normal text-ink-2">Invite, snaps, streaks</span>
+      </Link>
+      <Link href="/groups" className="card flex min-h-12 items-center gap-3 px-5 text-[14px] font-medium text-ink">
+        <span className="flex-1">Groups</span>
+        <span className="text-[12px] font-normal text-ink-2">Goals together, group streak</span>
       </Link>
       <section className="card p-5">
         <h2 className="mb-1 text-[15px] font-medium text-ink">Theme</h2>

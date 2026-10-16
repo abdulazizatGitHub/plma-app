@@ -24,7 +24,7 @@ import {
   dayAccess,
   type DayAccess,
 } from "@life/shared";
-import { AlertTriangle, ArrowRight, Bell, BellOff, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bell, BellOff, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
@@ -67,6 +67,8 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
     if (course && course !== entry.plan.title) tags.push(<Tag key="course">{course}</Tag>);
   }
   if (lockedBy) tags.push(<Tag key="lock" icon={<Lock />}>Waits for {lockedBy}</Tag>);
+  // A group goal's item (Phase 9b): which group it belongs to.
+  if (item.groupGoalId && typeof item.meta.groupName === "string") tags.push(<Tag key="group" tone="primary" icon={<Users />}>Group · {item.meta.groupName}</Tag>);
   if (category) {
     tags.push(
       <Tag key="cat" color={`var(--cat-${categoryTone(category)})`} icon={<Icon />}>
@@ -128,6 +130,7 @@ function entryMeta(entry: DayEntry, category: Category | undefined, when: string
   const t = item.tracking;
   const parts: (string | null | undefined)[] = [];
   parts.push(category?.name);
+  if (item.groupGoalId && typeof item.meta.groupName === "string") parts.push(`Group · ${item.meta.groupName}`);
   if (entry.plan) {
     const kind = stepKindOf(item);
     parts.push(kind !== "custom" && STEP_KINDS[kind].label !== item.title ? `${entry.plan.title} · ${STEP_KINDS[kind].label}` : entry.plan.title);

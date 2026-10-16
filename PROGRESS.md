@@ -17,6 +17,7 @@ Last updated: **2026-10-16**
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
 | **v2 Phase 5** | **Built and verified.** Plans: presets (content collab, university course, blank), dated steps on Today, "waits for" locks, cadence warnings and suggestions, rules per plan or category, /plans and the plan page, category Plans section. Browser 10/10. |
 | **v2 Phase 7** | **Built and verified.** History and analytics: Progress week/month (average of finished days, trend, perfect days, streaks, insights, categories), item log, category last-7-days card. History can't be rewritten: target snapshots, day closing (missed rows), a server guard on past days, and a 2-day correction window marked late. Tests: 371; API integration 11/11; browser checks. |
+| **v2 Phase 9b** | **Built and verified.** Groups (roles, link and friend invites, up to 50), group goals (each or together; days, counts or minutes; week, month or dates) as linked items on members' Todays, group streak with check-ins, Groups board, group goal awards and +10 bonus, group podium. Tests 437; API 26/26 (all five suites 93/93); browser 8/8. |
 | **Snaps (9a+)** | **Built and verified.** Snapchat-style snaps (one-tap check-in, item done, any share), open-once viewer with Kudos and Snap back, friend streaks (🔥, ⌛ and a push), chat-style friends list, friend-streak awards. Tests 427; API 15/15; browser 10/10. |
 | **v2 Phase 9a** | **Built and verified.** Profile (@username, avatar colour), visibility (Everyone / Friends / Selected / Only me), friends by invite link or @username, block, Friends and Everyone leaderboards with podium awards, shares (day, streak, award, item streak) with kudos, Activity with a bell, social pushes. Tests 421; API privacy and flow suite 29/29; podium check; browser 11/11 with two accounts. **9b (groups and group goals) next.** |
 | **v2 Phase 8.1** | **Built and verified.** Three daily rings (Prayer, Commitments, Balance) lead Today and Progress; monthly challenge; awards catalogue with milestones, perfect month, Jumu'ah and Hijri seasonal awards (Hijri adjustment in Prayer settings); All awards page. Tests 410; API integration 12/12 (+ Phase 8's 11/11); browser 7/7. |
@@ -41,7 +42,7 @@ Last updated: **2026-10-16**
 | 04 | [prayer-quran](./docs/phases/phase-04-prayer-quran.md) | Done | Yes |
 | 05 | [health](./docs/phases/phase-05-health.md) | Done | Yes |
 | 06–14 (v1 plan) | [archive](./docs/phases/archive/) | Superseded by v2 | — |
-| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–8 and 9a done (6 awaits phone checks) · 9b next | see phase docs |
+| v2 0–12 | [v2 phases](./docs/phases/v2/README.md) | 0–9 done (6 awaits phone checks) · 10 next | see phase docs |
 
 ---
 
