@@ -11,12 +11,15 @@ import { useFriends } from "@/lib/v2/use-friends";
 import { useSocial } from "@/lib/v2/use-social";
 import { Avatar, PersonLabel } from "./avatar";
 import { UsernameSheet } from "./profile-form";
+import { StreakBadge } from "./streak-badge";
 
-export type ShareWhat = { kind: ShareKind; awardId?: string; itemId?: string; date?: string; label: string };
+export type ShareWhat = { kind: ShareKind; awardId?: string; itemId?: string; date?: string; label: string; to?: string[] };
 
 /**
- * Pick friends and send (SHR-01). Sharing ignores visibility: you choose who
- * gets it (owner, 2026-10-16). "Send" stays disabled until someone is picked.
+ * The snap sheet (SHR-01, Snapchat-style, owner 2026-10-16): pick friends and
+ * send. Friends with a streak about to end come first, each with its 🔥.
+ * Sharing ignores visibility — you choose who gets it. "Send" stays disabled
+ * until someone is picked.
  */
 export function ShareSheet({ what, onClose }: { what: ShareWhat | null; onClose: () => void }) {
   // Mounted only while open, so friends are fetched when it's actually used.
@@ -28,7 +31,7 @@ function ShareSheetOpen({ what, onClose }: { what: ShareWhat; onClose: () => voi
   const api = useApi();
   const { notify } = useAddSheet();
   const { data, loaded } = useFriends();
-  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [picked, setPicked] = useState<Set<string>>(new Set(what.to ?? []));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needName, setNeedName] = useState(false);
@@ -56,12 +59,12 @@ function ShareSheetOpen({ what, onClose }: { what: ShareWhat; onClose: () => voi
     const r = await api<{ id: string }>("/v1/shares", { body: { kind: what.kind, awardId: what.awardId, itemId: what.itemId, date: what.date, recipients: [...picked] } });
     setSending(false);
     if (!r.ok) return setError(r.message);
-    notify({ message: `Shared with ${picked.size === 1 ? friends.find((f) => picked.has(f.id))?.name : `${picked.size} friends`}` });
+    notify({ message: `Snapped ${picked.size === 1 ? friends.find((f) => picked.has(f.id))?.name : `${picked.size} friends`}` });
     onClose();
   }
 
   return (
-    <Sheet open onClose={onClose} title={`Share ${what.label}`}>
+    <Sheet open onClose={onClose} title={`Snap ${what.label}`}>
       {!loaded ? (
         <div className="skeleton h-24" aria-busy="true" />
       ) : friends.length === 0 ? (
@@ -88,6 +91,7 @@ function ShareSheetOpen({ what, onClose }: { what: ShareWhat; onClose: () => voi
                   <button type="button" role="checkbox" aria-checked={on} onClick={() => toggle(f.id)} className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-track">
                     <Avatar person={f} size={34} />
                     <PersonLabel person={f} />
+                    <StreakBadge streak={f.streak} />
                     <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-2 ${on ? "border-primary-strong bg-primary-strong text-on-primary-strong" : "border-border"}`} aria-hidden>
                       {on ? <Check className="h-3 w-3" /> : null}
                     </span>

@@ -515,6 +515,8 @@ export const shareRecipients = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     seenAt: ts("seen_at"),
+    /** Snaps open once (owner, 2026-10-16): after this only "opened" shows. */
+    openedAt: ts("opened_at"),
   },
   (t) => [uniqueIndex("share_recipients_pair_idx").on(t.shareId, t.recipientId), index("share_recipients_recipient_idx").on(t.recipientId)],
 );
@@ -541,4 +543,36 @@ export const podiumPeriods = pgTable("podium_periods", {
   period: text("period").primaryKey(),
   finalizedAt: ts("finalized_at").defaultNow().notNull(),
 });
+
+/** Snap streaks: which side of a pair sent a snap on each date (each side's own date). */
+export const snapDays = pgTable(
+  "snap_days",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userA: uuid("user_a")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    userB: uuid("user_b")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+    aSent: boolean("a_sent").notNull().default(false),
+    bSent: boolean("b_sent").notNull().default(false),
+  },
+  (t) => [uniqueIndex("snap_days_pair_date_idx").on(t.userA, t.userB, t.date)],
+);
+
+/** "Your streak ends soon" pushes already sent (once per user, friend and day). */
+export const snapNudges = pgTable(
+  "snap_nudges",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    friendId: uuid("friend_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: date("date").notNull(),
+  },
+  (t) => [uniqueIndex("snap_nudges_idx").on(t.userId, t.friendId, t.date)],
+);
 

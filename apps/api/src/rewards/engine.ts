@@ -19,6 +19,7 @@ import {
   type RewardsPayload,
 } from "@life/shared";
 import type { Sql, TransactionSql } from "postgres";
+import { bestFriendStreak } from "../social/streaks.js";
 import { toDto } from "../sync/sql.js";
 
 /*
@@ -224,6 +225,7 @@ export async function awardAll(sql: Db, userId: string, u: UserScoring, days: Re
     hijriOffset: u.hijriOffset,
     challenges,
     plansFinished: await plansFinished(sql, userId, await loadItems(sql, userId), u.today),
+    friendStreakBest: await bestFriendStreak(sql, userId),
   });
   const earned = awards.filter((b) => b.earned).map((b) => ({ user_id: userId, badge_id: b.id }));
   if (earned.length) await sql`INSERT INTO user_badges ${sql(earned, "user_id", "badge_id")} ON CONFLICT (user_id, badge_id) DO NOTHING`;

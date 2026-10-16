@@ -33,6 +33,7 @@ export const STATIC_AWARDS: AwardDef[] = [
   { id: "streak_7", group: "streaks", title: "7-day streak", description: "You kept it going a whole week.", icon: "flame" },
   { id: "streak_30", group: "streaks", title: "30-day streak", description: "A month of complete days.", icon: "flame" },
   { id: "streak_100", group: "streaks", title: "100-day streak", description: "A hundred complete days.", icon: "flame" },
+  ...[7, 30, 100].map((n): AwardDef => ({ id: `friend_streak_${n}`, group: "streaks", title: `${n}-day friend streak`, description: `Snapped back and forth with a friend ${n} days running.`, icon: "flame" })),
   { id: "prayers_week", group: "rings", title: "A week of prayers", description: "Prayer ring closed seven days running.", icon: "moon" },
   { id: "perfect_week", group: "rings", title: "Perfect week", description: "Every day of a week perfect (at least 5 with something due).", icon: "star" },
   { id: "perfect_month", group: "rings", title: "Perfect month", description: "Every ring closed on every day of a month (at least 20 with something due).", icon: "star" },
@@ -153,6 +154,8 @@ export type AwardInput = {
   plansFinished: number;
   hijriOffset: number;
   challenges: Challenge[];
+  /** Best snap streak with any friend (Phase 9a+). */
+  friendStreakBest?: number;
 };
 
 export function evaluateAwards(input: AwardInput): AwardProgress[] {
@@ -219,6 +222,7 @@ export function evaluateAwards(input: AwardInput): AwardProgress[] {
   for (const need of [5, 10, 20]) out.push({ id: `level_${need}`, earned: levelClosed >= need, have: Math.min(levelAll, need), need });
 
   out.push({ id: "first_plan", earned: input.plansFinished > 0 });
+  for (const need of [7, 30, 100]) out.push({ id: `friend_streak_${need}`, earned: (input.friendStreakBest ?? 0) >= need, have: Math.min(input.friendStreakBest ?? 0, need), need });
 
   // Monthly challenges.
   const thisMonth = today.slice(0, 7);

@@ -1,6 +1,6 @@
 "use client";
 
-import { usernameSchema, type PublicPerson } from "@life/shared";
+import { timeLeft, usernameSchema, type FriendsPayload, type PublicPerson } from "@life/shared";
 import { ArrowLeft, Ban, Check, Copy, MoreHorizontal, RefreshCw, Send, Share2, UserMinus, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
@@ -10,10 +10,24 @@ import { Avatar, PersonLabel } from "@/components/social/avatar";
 import { UsernameSheet } from "@/components/social/profile-form";
 import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { useApi } from "@/lib/v2/api";
+import { ago } from "@/lib/v2/dates";
+import { StreakBadge } from "@/components/social/streak-badge";
 import { useFriends } from "@/lib/v2/use-friends";
 import { useSocial } from "@/lib/v2/use-social";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
+
+/** The line under a friend, chat-style: their last snap, the streak's state, or their points. */
+function snapStatus(f: FriendsPayload["friends"][number]): string {
+  if (f.streak.atRisk && f.streak.endsAt) return `${timeLeft(f.streak.endsAt, new Date())} — snap to keep your ${f.streak.count}-day streak`;
+  if (f.streak.endedAt) return `Your ${f.streak.endedAt}-day streak ended — send a snap to start again`;
+  if (f.last) {
+    const when = ago(f.last.at);
+    if (f.last.direction === "in") return f.last.opened ? `Opened · ${when}` : `New snap · ${when}`;
+    return f.last.opened ? `They opened your snap · ${when}` : `Delivered · ${when}`;
+  }
+  return f.progress ? `${fmt(f.progress.weekPoints)} pts this week · @${f.username ?? ""}` : f.username ? `@${f.username}` : "Say hi with a snap";
+}
 
 /** Friends (SOC-01): your invite link, add by @username, requests, friends, blocked. */
 export default function FriendsPage() {
@@ -185,18 +199,21 @@ export default function FriendsPage() {
             {data.friends.map((f) => (
               <li key={f.id} className="flex items-center gap-3 px-2 py-2">
                 <Avatar person={f} />
-                <PersonLabel person={f} />
-                <span className="text-right text-[12px] text-ink-2">
-                  {f.progress ? (
-                    <>
-                      <b className="text-ink tabular-nums">{fmt(f.progress.weekPoints)}</b> pts this week
-                      <br />
-                      {f.progress.streak}-day streak
-                    </>
-                  ) : (
-                    "Private"
-                  )}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-[14px] font-medium text-ink">{f.name}</span>
+                    <StreakBadge streak={f.streak} />
+                  </span>
+                  <span className="block truncate text-[12px] text-ink-2">{snapStatus(f)}</span>
                 </span>
+                <Button
+                  size="sm"
+                  variant={f.last?.direction === "in" && !f.streak.today.me ? "primary" : "secondary"}
+                  onClick={() => setShare({ kind: "day", label: "today's rings", to: [f.id] })}
+                  aria-label={`Snap ${f.name}`}
+                >
+                  <Send className="h-3.5 w-3.5" aria-hidden /> {f.last?.direction === "in" && !f.streak.today.me ? "Snap back" : "Snap"}
+                </Button>
                 <button
                   type="button"
                   aria-label={`More for ${f.name}`}
@@ -233,9 +250,9 @@ export default function FriendsPage() {
         <PopoverMenu anchor={menu.anchor} onClose={() => setMenu(null)} label={menu.person.name}>
           <PopoverMenuItem
             icon={<Send />}
-            label="Share my streak"
+            label="Snap my streak"
             onClick={() => {
-              setShare({ kind: "streak", label: "your streak" });
+              setShare({ kind: "streak", label: "your streak", to: [menu.person.id] });
               setMenu(null);
             }}
           />

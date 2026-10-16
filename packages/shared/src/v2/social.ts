@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RING_LABEL } from "./rings.js";
+import type { FriendStreak } from "./snaps.js";
 
 /*
  * Social (Phase 9a, SOC-01…06, SHR-01, owner 2026-10-16). Private by default:
@@ -46,8 +47,11 @@ export type PublicPerson = { id: string; name: string; username: string | null; 
 /** Also shown when their visibility allows it. */
 export type PersonProgress = { weekPoints: number; monthPoints: number; level: number; streak: number };
 
+/** The last snap between me and a friend, for the chat-style list. */
+export type LastSnap = { direction: "in" | "out"; at: string; opened: boolean; shareId: string } | null;
+
 export type FriendsPayload = {
-  friends: (PublicPerson & { progress: PersonProgress | null; since: string })[];
+  friends: (PublicPerson & { progress: PersonProgress | null; since: string; streak: FriendStreak; last: LastSnap })[];
   incoming: (PublicPerson & { at: string })[];
   outgoing: (PublicPerson & { at: string })[];
   blocked: PublicPerson[];
@@ -58,7 +62,8 @@ export type LeaderboardPayload = { board: "friends" | "everyone"; period: "week"
 
 /* ---------- shares ---------- */
 
-export const SHARE_KINDS = ["day", "streak", "award", "item_streak"] as const;
+/** "day" with today's date is the one-tap check-in; "item_done" snaps a finished item (owner, 2026-10-16). */
+export const SHARE_KINDS = ["day", "streak", "award", "item_streak", "item_done"] as const;
 export type ShareKind = (typeof SHARE_KINDS)[number];
 
 export const shareRequestSchema = z
@@ -83,7 +88,8 @@ export type SharePayload =
     }
   | { kind: "streak"; current: number; best: number }
   | { kind: "award"; awardId: string; title: string; icon: string; earnedAt: string }
-  | { kind: "item_streak"; title: string; current: number; best: number; prayer: boolean };
+  | { kind: "item_streak"; title: string; current: number; best: number; prayer: boolean }
+  | { kind: "item_done"; title: string; date: string; value: number | null; unit: string | null; prayer: boolean };
 
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", timeZone: "UTC" });
 
@@ -94,7 +100,7 @@ export function shareText(sender: string, p: SharePayload): string {
       const day = WEEKDAY.format(new Date(`${p.date}T12:00:00Z`));
       if (p.complete) return `${sender} closed every ring on ${day}${p.perfect ? " — a perfect day" : ""}`;
       const closed = (["prayer", "commit", "balance"] as const).filter((k) => p.rings[k] && p.rings[k][0] >= p.rings[k][1]);
-      return closed.length ? `${sender} closed the ${closed.map((k) => RING_LABEL[k]).join(" and ")} ring${closed.length > 1 ? "s" : ""} on ${day}` : `${sender} shared ${day}`;
+      return closed.length ? `${sender} closed the ${closed.map((k) => RING_LABEL[k]).join(" and ")} ring${closed.length > 1 ? "s" : ""} on ${day}` : `${sender} checked in on ${day}`;
     }
     case "streak":
       return `${sender} is on a ${p.current}-day streak`;
@@ -102,6 +108,8 @@ export function shareText(sender: string, p: SharePayload): string {
       return `${sender} earned "${p.title}"`;
     case "item_streak":
       return `${sender} shared a ${p.current}-day ${p.title} streak`;
+    case "item_done":
+      return p.value !== null && p.unit ? `${sender} logged ${p.value.toLocaleString("en-US")} ${p.unit}` : `${sender} did ${p.title}`;
   }
 }
 
@@ -116,11 +124,13 @@ export function shareSubject(p: SharePayload): string {
       return `your "${p.title}" award`;
     case "item_streak":
       return `your ${p.current}-day ${p.title} streak`;
+    case "item_done":
+      return `your ${p.title}`;
   }
 }
 
 export type ActivityEntry =
-  | { type: "share"; id: string; at: string; from: PublicPerson; payload: SharePayload; kudosSent: boolean; seen: boolean }
+  | { type: "share"; id: string; at: string; from: PublicPerson; kind: ShareKind; payload: SharePayload | null; opened: boolean; kudosSent: boolean; seen: boolean }
   | { type: "kudos"; id: string; at: string; from: PublicPerson; share: SharePayload; seen: boolean }
   | { type: "request"; id: string; at: string; from: PublicPerson; seen: boolean }
   | { type: "accepted"; id: string; at: string; from: PublicPerson; seen: boolean };

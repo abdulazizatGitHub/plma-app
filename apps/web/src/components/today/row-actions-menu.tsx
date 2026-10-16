@@ -1,12 +1,13 @@
 "use client";
 
 import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, removeStep, skip, start, toggleDone, type DayEntry, type ItemDependency } from "@life/shared";
-import { ArrowRight, Bell, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
+import { ArrowRight, Bell, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, Send, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useStore } from "@/components/providers/store-provider";
 import { useActions } from "@/lib/v2/use-day";
+import { useSocial } from "@/lib/v2/use-social";
 
 /** Which row's menu is open, and the element it is anchored to. */
 export type RowMenuTarget = {
@@ -31,6 +32,7 @@ type RowActionsMenuProps = {
  */
 export function RowActionsMenu({ target, date: screenDate, today, onClose }: RowActionsMenuProps) {
   const run = useActions();
+  const { openSnap } = useSocial();
   const { openEdit, openReminder, openMove } = useAddSheet();
   const { store } = useStore();
   const router = useRouter();
@@ -78,6 +80,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
         <>
           {logging && state === "todo" && !isGroup && entry.item.tracking.kind !== "quantity" && entry.item.tracking.kind !== "duration" ? (
             <PopoverMenuItem icon={<Play />} label="Mark started" onClick={() => act((ctx) => start(entry, date, ctx))} />
+          ) : null}
+          {date === today && state === "done" && !prayers ? (
+            <PopoverMenuItem
+              icon={<Send />}
+              label={`Snap "${entry.item.title} done"`}
+              onClick={() => {
+                onClose();
+                openSnap({ kind: "item_done", itemId: entry.item.id, label: `"${entry.item.title} done"` });
+              }}
+            />
           ) : null}
           {logging && state === "done" && !isGroup ? (
             <PopoverMenuItem icon={<RotateCcw />} label="Mark not done" onClick={() => act((ctx) => toggleDone(entry, date, ctx))} />

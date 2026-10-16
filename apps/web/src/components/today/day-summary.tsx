@@ -1,7 +1,7 @@
 "use client";
 
 import { RING_LABEL, RING_ORDER, type DayAccess, type DayEntry, type DayProgress, type DayRings, type DayStreak, type RewardsPayload } from "@life/shared";
-import { Check, Flame, Lock, Share2, Sparkles, Trophy } from "lucide-react";
+import { Check, Flame, Lock, Send, Sparkles, Trophy } from "lucide-react";
 import { RingStack } from "@/components/kit";
 import { RewardsLine } from "@/components/rewards/rewards-panel";
 import { RING_BG, ringCount, ringNoun, ringsLabel, stackFromRings } from "@/lib/v2/rings";
@@ -24,7 +24,7 @@ type DaySummaryProps = {
   rewards?: RewardsPayload | null;
   /** A ring that just closed (a soft pulse). */
   pulse?: string | null;
-  /** Share the day with friends (shown once a ring is closed). */
+  /** Snap today's rings to friends (Today only). */
   onShare?: () => void;
 };
 
@@ -75,9 +75,9 @@ export function DaySummaryCard({ access, progress, rings, streak, nextUp, fixUnt
           {closed ? <Lock /> : rings.complete ? <Trophy /> : <Sparkles />}
         </span>
         <span className="flex-1">{summary}</span>
-        {onShare && (rings.prayer?.closed || rings.commit?.closed || rings.balance?.closed) ? (
-          <button type="button" onClick={onShare} className="-my-1 inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full px-2 text-[12.5px] font-medium text-link hover:bg-track">
-            <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
+        {onShare ? (
+          <button type="button" onClick={onShare} className="-my-1 inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full bg-primary-strong px-2.5 text-[12.5px] font-medium text-on-primary-strong hover:opacity-90">
+            <Send className="h-3.5 w-3.5" aria-hidden /> Snap
           </button>
         ) : null}
       </p>

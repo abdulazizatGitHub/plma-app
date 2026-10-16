@@ -177,6 +177,13 @@ Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
 - **Share sheet:** pick friends with round checks plus "Select all"; the button reads "Send to N" and stays disabled until someone is picked.
 - **Words:** "Others never see your items — only points, streak and awards." A block is never announced to the blocked person.
 
+## 5f. Snaps and streaks (owner, 2026-10-16)
+
+- **Snap button:** a send (paper-plane) icon in the top bar, a filled "Snap" pill on Today's card, and Snap / Snap back on friend rows. One tap opens the snap sheet: friends with a 🔥 count, at-risk ones first.
+- **Snaps list:** the friend's avatar and name (bold when new), plus a small square in the kind's colour (rings `--primary`, check-in `--done`, streaks `--progress`, awards `--cat-lilac`). The square is **filled when new and hollow once opened**.
+- **Viewer:** full-screen on `--ink` at 90%, with the card large in the middle. Kudos and Snap back sit at the bottom; tapping anywhere closes it, and it opens once.
+- **Streak badge:** the number, then a filled flame (`--progress`), plus an hourglass (`--todo`) when it ends soon. Body text uses words, not emoji.
+
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 
 - **Phone first.**

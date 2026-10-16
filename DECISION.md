@@ -866,3 +866,20 @@ Use this template for each decision:
   - Podium periods use Monday weeks and calendar months, so they're the same for everyone.
   - The API's CORS now allows PUT and PATCH.
 - **Related:** `apps/api/src/social/*`, `packages/shared/src/v2/social.ts`, migration `0009_social`, [phase-09](./docs/phases/v2/phase-09-social.md).
+
+### 2026-10-16 — Snaps and friend streaks, like Snapchat
+
+- **Context:** The owner wanted sharing and streaks to feel like Snapchat.
+- **Decision:**
+  - **A friend streak grows on each day both of you snap each other.** Each side counts by their own day. Today never breaks it. ⌛ shows in the last 4 hours, with one push.
+  - **A snap is a one-tap check-in** (today's rings, or an item you finished) **or any share**. It is built on the server.
+  - **Snaps open once,** then only "Opened" remains; the streak and a short log stay.
+  - Freezes are for your own day streak, not friend streaks.
+- **Alternatives considered:**
+  - Streaks from both closing rings, with no sending (rejected: Snapchat's pull is the exchange).
+  - Photo snaps (deferred: needs image storage).
+  - Disappear after 24h (rejected: "opened once" is clearer).
+- **Consequences:**
+  - The one-tap check-in reuses the "day" share for today (no separate kind).
+  - Friend streaks are visible between the two friends whatever their visibility setting, because they describe the exchange, not anyone's progress.
+- **Related:** `packages/shared/src/v2/snaps.ts`, `apps/api/src/social/streaks.ts`, migration `0010_snaps`.
