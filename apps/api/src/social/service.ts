@@ -7,16 +7,17 @@ import {
   periodMonth,
   periodWeek,
   rewardsSummary,
-  shareText,
   type ActivityEntry,
   type ActivityPayload,
   type FriendsPayload,
+  type LastSnap,
   type Item,
   type LeaderboardPayload,
   type LeaderboardRow,
   type PersonProgress,
   type ProfilePatch,
   type PublicPerson,
+  type ShareKind,
   type ShareRequest,
   type SharePayload,
 } from "@life/shared";
@@ -27,6 +28,7 @@ import type { PushSender } from "../reminders/service.js";
 import { toDto } from "../sync/sql.js";
 import { blockedIds, friendIds, pair, people, visibleTo, type Db } from "./privacy.js";
 import { pushToUser } from "./push.js";
+import { markSnapDays, streaksFor, viewerDay } from "./streaks.js";
 
 /*
  * Social (Phase 9a): profile, friends, invite links, leaderboards, podium
@@ -118,19 +120,54 @@ export async function friendsOf(sql: Db, userId: string): Promise<FriendsPayload
   const ppl = await people(sql, ids);
   const accepted = rows.filter((r) => r.status === "accepted");
   const visible = await visibleTo(sql, userId, accepted.map(other));
+  const friendIdsList = accepted.map(other);
+  const streaks = await streaksFor(sql, userId, friendIdsList);
+  const last = await lastSnaps(sql, userId, friendIdsList);
   const friends = await Promise.all(
     accepted.map(async (r) => {
       const id = other(r);
-      return { ...ppl.get(id)!, progress: visible.has(id) ? await personProgress(sql, id) : null, since: iso(r.accepted_at ?? r.created_at) };
+      return {
+        ...ppl.get(id)!,
+        progress: visible.has(id) ? await personProgress(sql, id) : null,
+        since: iso(r.accepted_at ?? r.created_at),
+        streak: streaks.get(id)!,
+        last: last.get(id) ?? null,
+      };
     }),
   );
   const pending = rows.filter((r) => r.status === "pending");
+  // Like a chat list: streaks about to end first, then the most recent snaps.
+  const order = (f: (typeof friends)[number]) => [f.streak.atRisk ? 0 : 1, -(f.last ? Date.parse(f.last.at) : 0)];
   return {
-    friends: friends.filter((f) => f.id).sort((a, b) => a.name.localeCompare(b.name)),
+    friends: friends
+      .filter((f) => f.id)
+      .sort((a, b) => {
+        const [x1, x2] = order(a);
+        const [y1, y2] = order(b);
+        return x1 - y1 || x2 - y2 || a.name.localeCompare(b.name);
+      }),
     incoming: pending.filter((r) => r.requested_by !== userId).map((r) => ({ ...ppl.get(other(r))!, at: iso(r.created_at) })),
     outgoing: pending.filter((r) => r.requested_by === userId).map((r) => ({ ...ppl.get(other(r))!, at: iso(r.created_at) })),
     blocked: blockedRows.map((b) => ppl.get(b.blocked)!).filter(Boolean),
   };
+}
+
+/** The newest snap between me and each friend, either way. */
+async function lastSnaps(sql: Db, userId: string, friendIds: string[]): Promise<Map<string, LastSnap>> {
+  if (!friendIds.length) return new Map();
+  const rows = await sql<{ id: string; sender_id: string; recipient_id: string; created_at: string; opened_at: string | null }[]>`
+    SELECT DISTINCT ON (other) s.id, s.sender_id, r.recipient_id, s.created_at, r.opened_at,
+      CASE WHEN s.sender_id = ${userId} THEN r.recipient_id ELSE s.sender_id END AS other
+    FROM shares s JOIN share_recipients r ON r.share_id = s.id
+    WHERE (s.sender_id = ${userId} AND r.recipient_id = ANY(${friendIds}::uuid[]))
+       OR (r.recipient_id = ${userId} AND s.sender_id = ANY(${friendIds}::uuid[]))
+    ORDER BY other, s.created_at DESC`;
+  return new Map(
+    rows.map((r) => {
+      const out = r.sender_id === userId;
+      return [out ? r.recipient_id : r.sender_id, { direction: out ? "out" : "in", at: iso(r.created_at), opened: !!r.opened_at, shareId: r.id }];
+    }),
+  );
 }
 
 async function isBlockedPair(sql: Db, a: string, b: string) {
@@ -380,6 +417,17 @@ async function buildPayload(sql: Sql, userId: string, req: ShareRequest): Promis
       if (!b || !def) fail(404, "not_found", "You haven't earned that award.");
       return { kind: "award", awardId: def!.id, title: def!.title, icon: def!.icon, earnedAt: iso(b.earned_at) };
     }
+    case "item_done": {
+      const items = await loadItems(sql, userId);
+      const item = items.find((i) => i.id === req.itemId);
+      if (!item) fail(404, "not_found", "No such item.");
+      const [o] = await sql<{ value: number | null }[]>`
+        SELECT value FROM occurrences WHERE user_id = ${userId} AND item_id = ${item!.id} AND date = ${u!.today}::date AND status = 'done' AND deleted_at IS NULL LIMIT 1`;
+      if (!o) fail(400, "not_done", "Finish it first — then snap it.");
+      const t = item!.tracking;
+      const unit = t.kind === "quantity" ? t.unit : t.kind === "duration" ? "min" : null;
+      return { kind: "item_done", title: item!.title, date: u!.today, value: unit ? (o.value ?? null) : null, unit, prayer: typeof item!.meta.prayerKey === "string" };
+    }
     case "item_streak": {
       const items = await loadItems(sql, userId);
       const item = items.find((i) => i.id === req.itemId);
@@ -417,9 +465,22 @@ export async function createShare({ sql, send }: Deps, userId: string, req: Shar
     await tx`INSERT INTO share_recipients ${tx(recipients.map((recipient_id) => ({ share_id: s.id, recipient_id })), "share_id", "recipient_id")}`;
     return s;
   });
+  // Every snap keeps the streak with each recipient going (on the sender's own day).
+  await markSnapDays(sql, userId, recipients, (await viewerDay(sql, userId)).today);
   const sender = await nameOf(sql, userId);
-  for (const r of recipients) void pushToUser(sql, send, r, { title: "Shared with you", body: shareText(sender, payload), url: "/activity", tag: `share:${share.id}` }).catch(() => 0);
+  for (const r of recipients) void pushToUser(sql, send, r, { title: `New snap from ${sender}`, body: "Tap to open it.", url: "/activity", tag: `share:${share.id}` }).catch(() => 0);
   return { id: share.id, payload };
+}
+
+/** Opens a snap once: the payload comes back the first time only (view once). */
+export async function openSnap(sql: Db, userId: string, shareId: string) {
+  const [r] = await sql<{ payload: SharePayload; opened_at: string | null; sender_id: string }[]>`
+    SELECT s.payload, r.opened_at, s.sender_id FROM shares s JOIN share_recipients r ON r.share_id = s.id
+    WHERE s.id = ${shareId} AND r.recipient_id = ${userId}`;
+  if (!r || (await isBlockedPair(sql, userId, r.sender_id))) fail(404, "not_found", "That snap is gone.");
+  if (r.opened_at) return { opened: true, payload: null };
+  await sql`UPDATE share_recipients SET opened_at = now(), seen_at = COALESCE(seen_at, now()) WHERE share_id = ${shareId} AND recipient_id = ${userId}`;
+  return { opened: false, payload: r.payload };
 }
 
 export async function sendKudos({ sql, send }: Deps, userId: string, shareId: string) {
@@ -437,8 +498,8 @@ export async function sendKudos({ sql, send }: Deps, userId: string, shareId: st
 
 export async function activity(sql: Db, userId: string): Promise<ActivityPayload> {
   const blocked = await blockedIds(sql, userId);
-  const received = await sql<{ id: string; sender_id: string; payload: SharePayload; created_at: string; seen_at: string | null; kudos: boolean }[]>`
-    SELECT s.id, s.sender_id, s.payload, s.created_at, r.seen_at,
+  const received = await sql<{ id: string; sender_id: string; kind: string; payload: SharePayload; created_at: string; seen_at: string | null; opened_at: string | null; kudos: boolean }[]>`
+    SELECT s.id, s.sender_id, s.kind, s.payload, s.created_at, r.seen_at, r.opened_at,
       EXISTS (SELECT 1 FROM kudos k WHERE k.share_id = s.id AND k.from_user = ${userId}) AS kudos
     FROM share_recipients r JOIN shares s ON s.id = r.share_id
     WHERE r.recipient_id = ${userId} ORDER BY s.created_at DESC LIMIT 50`;
@@ -452,7 +513,20 @@ export async function activity(sql: Db, userId: string): Promise<ActivityPayload
   const other = (r: { user_a: string; user_b: string }) => (r.user_a === userId ? r.user_b : r.user_a);
   const ppl = await people(sql, [...received.map((r) => r.sender_id), ...kudosRows.map((k) => k.from_user), ...requests.map(other)]);
   const entries: ActivityEntry[] = [
-    ...received.filter((r) => !blocked.has(r.sender_id)).map((r): ActivityEntry => ({ type: "share", id: r.id, at: iso(r.created_at), from: ppl.get(r.sender_id)!, payload: r.payload, kudosSent: r.kudos, seen: !!r.seen_at })),
+    ...received.filter((r) => !blocked.has(r.sender_id)).map(
+        (r): ActivityEntry => ({
+          type: "share",
+          id: r.id,
+          at: iso(r.created_at),
+          from: ppl.get(r.sender_id)!,
+          kind: r.kind as ShareKind,
+          // View once: an opened snap keeps only who, what kind and when.
+          payload: r.opened_at ? null : r.payload,
+          opened: !!r.opened_at,
+          kudosSent: r.kudos,
+          seen: !!r.seen_at,
+        }),
+      ),
     ...kudosRows.filter((k) => !blocked.has(k.from_user)).map((k): ActivityEntry => ({ type: "kudos", id: k.id, at: iso(k.created_at), from: ppl.get(k.from_user)!, share: k.payload, seen: !!k.seen_at })),
     ...requests.map(
       (r): ActivityEntry =>

@@ -4,6 +4,7 @@ import type { AvatarColor } from "@life/shared";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useStore } from "@/components/providers/store-provider";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { useApi } from "./api";
 
 export type Me = {
@@ -22,6 +23,8 @@ type SocialState = {
   refreshMe: () => Promise<void>;
   refreshUnread: () => Promise<void>;
   setMe: (me: Me) => void;
+  /** Opens the snap sheet from anywhere (header, Today card, an item's menu). */
+  openSnap: (what: ShareWhat) => void;
 };
 
 const SocialContext = createContext<SocialState | null>(null);
@@ -42,6 +45,7 @@ export function SocialProvider({ children }: { children: ReactNode }) {
   const [unread, setUnread] = useState(0);
   const claiming = useRef(false);
   const lastFetch = useRef(0);
+  const [snap, setSnap] = useState<ShareWhat | null>(null);
 
   useEffect(() => {
     if (!store) return;
@@ -101,11 +105,16 @@ export function SocialProvider({ children }: { children: ReactNode }) {
     });
   }, [lastResult, refreshMe, refreshUnread, api, notify]);
 
-  const value = useMemo(() => ({ me, unread, refreshMe, refreshUnread, setMe }), [me, unread, refreshMe, refreshUnread, setMe]);
-  return <SocialContext.Provider value={value}>{children}</SocialContext.Provider>;
+  const value = useMemo(() => ({ me, unread, refreshMe, refreshUnread, setMe, openSnap: setSnap }), [me, unread, refreshMe, refreshUnread, setMe]);
+  return (
+    <SocialContext.Provider value={value}>
+      {children}
+      <ShareSheet what={snap} onClose={() => setSnap(null)} />
+    </SocialContext.Provider>
+  );
 }
 
-const NONE: SocialState = { me: null, unread: 0, refreshMe: async () => {}, refreshUnread: async () => {}, setMe: () => {} };
+const NONE: SocialState = { me: null, unread: 0, refreshMe: async () => {}, refreshUnread: async () => {}, setMe: () => {}, openSnap: () => {} };
 
 export function useSocial(): SocialState {
   return useContext(SocialContext) ?? NONE;

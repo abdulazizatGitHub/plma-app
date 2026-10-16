@@ -29,3 +29,13 @@ export function whenLabel(iso: string, today: string, sep = " · "): string {
   if (iso === today) return near;
   return near === "Tomorrow" || near === "Yesterday" ? `${near}${sep}${shortDate(iso)}` : shortDate(iso);
 }
+
+/** "2m", "3h", "Yesterday", "12 Oct" — how long ago (snaps). */
+export function ago(at: string, now = Date.now()): string {
+  const m = Math.max(0, Math.round((now - Date.parse(at)) / 60_000));
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
+  if (m < 24 * 60) return `${Math.round(m / 60)}h`;
+  if (m < 48 * 60) return "Yesterday";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" }).format(new Date(at));
+}

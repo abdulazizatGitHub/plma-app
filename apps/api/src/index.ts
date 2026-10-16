@@ -13,6 +13,7 @@ import { registerActionRoute } from "./reminders/routes.js";
 import { closeAllDays } from "./history/close.js";
 import { registerPublicSocialRoutes } from "./social/routes.js";
 import { finalizePodiums } from "./social/service.js";
+import { nudgeStreaks } from "./social/streaks.js";
 import { planDebouncer, planUser, replanAll, tick } from "./reminders/service.js";
 import { apiRoutes } from "./routes/v1.js";
 
@@ -106,7 +107,12 @@ if (send && env.reminderJobs !== "off") {
 // (each pull also closes the caller's days, so this only covers devices that stay away).
 if (env.reminderJobs !== "off") {
   // …then gives podium awards for leaderboard periods that have fully closed (Phase 9a).
-  const closeSweep = () => void closeAllDays(pg).then(() => finalizePodiums(pg)).catch(onJobError);
+  // …and nudges snap streaks that are about to end (owner, 2026-10-16).
+  const closeSweep = () =>
+    void closeAllDays(pg)
+      .then(() => finalizePodiums(pg))
+      .then(() => nudgeStreaks(pg, send))
+      .catch(onJobError);
   setTimeout(closeSweep, 20_000);
   setInterval(closeSweep, 60 * 60_000);
 }

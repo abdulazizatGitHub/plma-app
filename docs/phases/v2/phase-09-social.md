@@ -55,3 +55,31 @@ Accountability with friends, without giving up privacy.
 - [x] The leaderboard shows only names, avatars and points (API key check; browser).
 - [x] Sharing a 21-day Fajr streak reaches the friend, and their kudos shows on the sharer's side (API 29/29; browser 11/11).
 - [x] No social response contains an item title except a share sent to that person (privacy suite).
+
+## 9a+ Snaps and friend streaks (owner, 2026-10-16) — built
+
+- **Snaps (Snapchat-style):**
+  - What you can snap:
+    - a one-tap check-in of today's rings (top-bar Snap, the Today card's Snap, a friend's row, or "Snap back")
+    - an item done today, from its ⋯ menu ("item_done")
+    - any earlier share (a day, streak, award or item streak)
+  - Snaps are built on the server from stored facts.
+- **View once:**
+  - A snap opens full-screen once (`POST /v1/snaps/:id/open`), with Kudos and "Snap back".
+  - After that the list shows only "Opened".
+  - The list marks each snap with a square in its kind's colour: filled when new, hollow once opened.
+- **Friend streaks:**
+  - 🔥 N with each friend: the days on which you both snapped each other, each on your own day (timezone and day-end hour).
+  - Today never breaks a streak. ⌛ shows when fewer than 4 hours are left.
+  - An hourly push says "Your 12-day streak with Sara ends in 3h", once per friend per day, respecting quiet hours.
+  - Freezes don't apply. A streak that ends gets a gentle "send a snap to start again".
+  - Awards for 7, 30 and 100-day friend streaks.
+- **Friends list is chat-style:**
+  - At-risk streaks first, then by latest snap.
+  - Each row shows its status: "New snap · 5m", "Delivered", "They opened your snap", or "Opened".
+  - Each row has a Snap / Snap back button.
+- **Server:** migration 0010 (`share_recipients.opened_at`, `snap_days`, `snap_nudges`); `apps/api/src/social/streaks.ts`.
+- **Checks:**
+  - API 15/15: streak counting, restart after a gap, view once, a non-recipient can't open, item_done only once done, friend-streak award.
+  - 9a privacy suite still 29/29.
+  - Browser 10/10 with two accounts.

@@ -16,6 +16,7 @@ import {
   leaderboard,
   markActivitySeen,
   myInvite,
+  openSnap,
   profile,
   removeFriend,
   requestFriend,
@@ -105,6 +106,11 @@ export function registerSocialRoutes(app: FastifyInstance, deps: SocialDeps) {
     const p = idParam.safeParse(request.params);
     if (!p.success) return bad(reply, "Unknown share.");
     return guard(reply, () => sendKudos(deps, me(request), p.data.id));
+  });
+  app.post<{ Params: { id: string } }>("/v1/snaps/:id/open", async (request, reply) => {
+    const p = idParam.safeParse(request.params);
+    if (!p.success) return bad(reply, "Unknown snap.");
+    return guard(reply, () => openSnap(sql, me(request), p.data.id));
   });
   app.get("/v1/activity", async (request) => activity(sql, me(request)));
   app.post("/v1/activity/seen", async (request) => markActivitySeen(sql, me(request)));

@@ -1,7 +1,7 @@
 "use client";
 
 import { awardDef, shareText, type AwardIcon, type SharePayload } from "@life/shared";
-import { Flame, Moon } from "lucide-react";
+import { CircleCheck, Flame, Moon } from "lucide-react";
 import { RingStack } from "@/components/kit";
 import { AWARD_ICON, AWARD_TONE } from "@/components/rewards/rewards-panel";
 import { RING_COLOR } from "@/lib/v2/rings";
@@ -33,6 +33,14 @@ export function ShareVisual({ payload, size = 48 }: { payload: SharePayload; siz
       </span>
     );
   }
+  if (payload.kind === "item_done") {
+    const DoneIcon = payload.prayer ? Moon : CircleCheck;
+    return (
+      <span className="inline-flex shrink-0 items-center justify-center rounded-full text-ink" style={{ width: size, height: size, background: payload.prayer ? "var(--cat-lilac)" : "var(--cat-mint)" }} aria-hidden>
+        <DoneIcon className="h-1/2 w-1/2" />
+      </span>
+    );
+  }
   const Icon = payload.kind === "item_streak" && payload.prayer ? Moon : Flame;
   return (
     <span className="relative inline-flex shrink-0 items-center justify-center rounded-full text-ink" style={{ width: size, height: size, background: payload.kind === "item_streak" && payload.prayer ? "var(--cat-lilac)" : "var(--cat-peach)" }} aria-hidden>
@@ -45,8 +53,14 @@ export function ShareVisual({ payload, size = 48 }: { payload: SharePayload; siz
 /** "21-day Fajr streak · best 30" etc. */
 export function shareDetail(p: SharePayload): string | null {
   if (p.kind === "streak" || p.kind === "item_streak") return p.best > p.current ? `Best ${p.best}` : "Their best yet";
-  if (p.kind === "day") return p.perfect ? "Perfect day" : p.complete ? "Day complete" : null;
+  if (p.kind === "day") {
+    if (p.perfect) return "Perfect day";
+    if (p.complete) return "Day complete";
+    const rings = [p.rings.prayer, p.rings.commit, p.rings.balance].filter((r): r is [number, number] => !!r);
+    return rings.length ? `${rings.filter(([f, d]) => f >= d).length} of ${rings.length} rings closed so far` : null;
+  }
   if (p.kind === "award") return awardDef(p.awardId)?.description ?? null;
+  if (p.kind === "item_done") return p.value !== null && p.unit ? p.title : "Done today";
   return null;
 }
 

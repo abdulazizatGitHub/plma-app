@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Bell, Cloud, CloudOff, RefreshCw } from "lucide-react";
+import { AlertCircle, Bell, Cloud, CloudOff, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/components/providers/store-provider";
 import { useSocial } from "@/lib/v2/use-social";
@@ -39,7 +39,7 @@ function ActivityBell() {
   return (
     <Link
       href="/activity"
-      aria-label={unread ? `Activity, ${unread} new` : "Activity"}
+      aria-label={unread ? `Snaps, ${unread} new` : "Snaps"}
       className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
     >
       <Bell className="h-[18px] w-[18px]" aria-hidden />
@@ -48,7 +48,22 @@ function ActivityBell() {
   );
 }
 
-/** Top bar: app mark, sync status, activity, account menu. Pages keep their own H1. */
+/** One tap to snap today's rings to friends (Snapchat-style). */
+function SnapButton() {
+  const { openSnap } = useSocial();
+  return (
+    <button
+      type="button"
+      aria-label="Snap today's rings to friends"
+      onClick={() => openSnap({ kind: "day", label: "today's rings" })}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+    >
+      <Send className="h-[18px] w-[18px]" aria-hidden />
+    </button>
+  );
+}
+
+/** Top bar: app mark, sync status, snap, snaps inbox, account menu. Pages keep their own H1. */
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur">
@@ -61,6 +76,7 @@ export function AppHeader() {
         </Link>
         <div className="flex items-center gap-1">
           <SyncIndicator />
+          <SnapButton />
           <ActivityBell />
           <UserMenu />
         </div>
