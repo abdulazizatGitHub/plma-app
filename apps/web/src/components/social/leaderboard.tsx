@@ -1,15 +1,16 @@
 "use client";
 
-import type { LeaderboardPayload } from "@life/shared";
+import type { GroupBoardRow, LeaderboardPayload } from "@life/shared";
 import { Medal } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SegmentedTabs } from "@/components/kit";
 import { useStore } from "@/components/providers/store-provider";
 import { useApi } from "@/lib/v2/api";
+import { GroupTile } from "@/components/groups/group-bits";
 import { Avatar } from "./avatar";
 
-type Board = "friends" | "everyone";
+type Board = "friends" | "everyone" | "groups";
 type Period = "week" | "month";
 
 const MEDAL = ["var(--cat-yellow)", "var(--track)", "var(--cat-peach)"];
@@ -26,8 +27,23 @@ export function Leaderboard({ period }: { period: Period }) {
   const [board, setBoard] = useState<Board>("friends");
   const [data, setData] = useState<LeaderboardPayload | null>(null);
   const [offline, setOffline] = useState(false);
+  const [groups, setGroups] = useState<GroupBoardRow[] | null>(null);
+  const [scope, setScope] = useState<"mine" | "public">("mine");
+
+  // Group vs group (Phase 9b): average points per active member.
+  useEffect(() => {
+    if (board !== "groups") return;
+    let live = true;
+    void api<{ rows: GroupBoardRow[] }>(`/v1/groups/board?period=${period}&scope=${scope}`).then((r) => {
+      if (live) setGroups(r.ok ? r.data.rows : []);
+    });
+    return () => {
+      live = false;
+    };
+  }, [api, board, period, scope]);
 
   useEffect(() => {
+    if (board === "groups") return;
     const key = `social_board_${board}_${period}`;
     let live = true;
     void api<LeaderboardPayload>(`/v1/leaderboard?board=${board}&period=${period}`).then((r) => {
@@ -67,10 +83,45 @@ export function Leaderboard({ period }: { period: Period }) {
         options={[
           { value: "friends", label: "Friends" },
           { value: "everyone", label: "Everyone" },
+          { value: "groups", label: "Groups" },
         ]}
       />
-      {offline ? <p className="text-[12px] text-ink-2">Offline — showing the last copy.</p> : null}
-      {!data ? (
+      {board === "groups" ? (
+        <div className="space-y-2">
+          {!groups ? (
+            <div className="skeleton h-20" aria-busy="true" />
+          ) : groups.length ? (
+            <ol className="divide-y divide-border" aria-label={`Groups this ${period}`}>
+              {groups.map((g) => (
+                <li key={g.id} className={`flex items-center gap-3 py-2 ${g.mine ? "-mx-2 rounded-[12px] bg-track px-2" : ""}`} aria-label={`${g.rank}. ${g.name}, ${g.average} points per member`}>
+                  <span className="w-6 text-center text-[13px] font-semibold text-ink-2 tabular-nums">{g.rank}</span>
+                  <GroupTile icon={g.icon} color={g.color} size={32} />
+                  <Link href={g.mine ? `/groups/view?id=${g.id}` : "#"} className={`min-w-0 flex-1 truncate text-[14px] text-ink ${g.mine ? "" : "pointer-events-none"}`}>
+                    {g.name}
+                  </Link>
+                  <span className="text-right">
+                    <span className="block text-[14px] font-semibold text-ink tabular-nums">{fmt(g.average)}</span>
+                    <span className="block text-[10.5px] text-ink-2">per member</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-[13px] text-ink-2">
+              {scope === "mine" ? "You're not in a group yet. " : "No public groups have points yet. "}
+              <Link href="/groups" className="font-medium text-link">
+                Groups
+              </Link>
+            </p>
+          )}
+          <button type="button" onClick={() => setScope(scope === "mine" ? "public" : "mine")} className="min-h-8 rounded-full px-2 text-[12.5px] font-medium text-link hover:bg-track">
+            {scope === "mine" ? "See public groups" : "Back to my groups"}
+          </button>
+          <p className="text-[11.5px] text-ink-2">Groups are ranked by average points per active member. The top three each week and month earn every member a medal.</p>
+        </div>
+      ) : null}
+      {board === "groups" ? null : offline ? <p className="text-[12px] text-ink-2">Offline — showing the last copy.</p> : null}
+      {board === "groups" ? null : !data ? (
         <div className="skeleton h-24" aria-busy="true" aria-label="Loading leaderboard" />
       ) : (
         <>

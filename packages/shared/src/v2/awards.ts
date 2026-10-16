@@ -34,6 +34,7 @@ export const STATIC_AWARDS: AwardDef[] = [
   { id: "streak_30", group: "streaks", title: "30-day streak", description: "A month of complete days.", icon: "flame" },
   { id: "streak_100", group: "streaks", title: "100-day streak", description: "A hundred complete days.", icon: "flame" },
   ...[7, 30, 100].map((n): AwardDef => ({ id: `friend_streak_${n}`, group: "streaks", title: `${n}-day friend streak`, description: `Snapped back and forth with a friend ${n} days running.`, icon: "flame" })),
+  ...[7, 30].map((n): AwardDef => ({ id: `group_streak_${n}`, group: "streaks", title: `${n}-day group streak`, description: `Everyone in a group snapped it ${n} days running.`, icon: "flame" })),
   { id: "prayers_week", group: "rings", title: "A week of prayers", description: "Prayer ring closed seven days running.", icon: "moon" },
   { id: "perfect_week", group: "rings", title: "Perfect week", description: "Every day of a week perfect (at least 5 with something due).", icon: "star" },
   { id: "perfect_month", group: "rings", title: "Perfect month", description: "Every ring closed on every day of a month (at least 20 with something due).", icon: "star" },
@@ -58,7 +59,7 @@ export function awardDef(id: string): AwardDef | null {
     // podium:<global|friends>:<week|month>:<period start>:<1|2|3> (Phase 9a)
     const [, board, period, start, place] = id.split(":");
     const n = Number(place);
-    if ((board === "global" || board === "friends") && (period === "week" || period === "month") && /^\d{4}-\d{2}(-\d{2})?$/.test(start ?? "") && n >= 1 && n <= 3) {
+    if ((board === "global" || board === "friends" || board === "group") && (period === "week" || period === "month") && /^\d{4}-\d{2}(-\d{2})?$/.test(start ?? "") && n >= 1 && n <= 3) {
       const medal = ["Gold", "Silver", "Bronze"][n - 1];
       const when =
         period === "week"
@@ -67,13 +68,17 @@ export function awardDef(id: string): AwardDef | null {
       return {
         id,
         group: "leaderboards",
-        title: `${medal} · ${board === "global" ? "everyone" : "friends"}`,
-        description: `${["1st", "2nd", "3rd"][n - 1]} place on the ${board === "global" ? "Everyone" : "Friends"} board, ${when}.`,
+        title: `${medal} · ${board === "global" ? "everyone" : board === "group" ? "groups" : "friends"}`,
+        description:
+          board === "group"
+            ? `Your group came ${["1st", "2nd", "3rd"][n - 1]} among groups, ${when}.`
+            : `${["1st", "2nd", "3rd"][n - 1]} place on the ${board === "global" ? "Everyone" : "Friends"} board, ${when}.`,
         icon: "medal",
       };
     }
     return null;
   }
+  if (kind === "group_goal" && arg) return { id, group: "challenges", title: "Group goal met", description: "You did your part of a group goal.", icon: "target" };
   if (kind === "ramadan" && /^\d+$/.test(arg ?? "")) return { id, group: "seasonal", title: `Ramadan ${arg}`, description: "Prayer ring closed every day of Ramadan.", icon: "moon" };
   if (kind === "dhul_hijjah" && /^\d+$/.test(arg ?? "")) {
     return { id, group: "seasonal", title: `Dhul Hijjah ${arg}`, description: "Every ring closed on the first ten days of Dhul Hijjah.", icon: "calendar" };
@@ -156,6 +161,8 @@ export type AwardInput = {
   challenges: Challenge[];
   /** Best snap streak with any friend (Phase 9a+). */
   friendStreakBest?: number;
+  /** Best streak in any group (Phase 9b). */
+  groupStreakBest?: number;
 };
 
 export function evaluateAwards(input: AwardInput): AwardProgress[] {
@@ -222,6 +229,7 @@ export function evaluateAwards(input: AwardInput): AwardProgress[] {
   for (const need of [5, 10, 20]) out.push({ id: `level_${need}`, earned: levelClosed >= need, have: Math.min(levelAll, need), need });
 
   out.push({ id: "first_plan", earned: input.plansFinished > 0 });
+  for (const need of [7, 30]) out.push({ id: `group_streak_${need}`, earned: (input.groupStreakBest ?? 0) >= need, have: Math.min(input.groupStreakBest ?? 0, need), need });
   for (const need of [7, 30, 100]) out.push({ id: `friend_streak_${need}`, earned: (input.friendStreakBest ?? 0) >= need, have: Math.min(input.friendStreakBest ?? 0, need), need });
 
   // Monthly challenges.

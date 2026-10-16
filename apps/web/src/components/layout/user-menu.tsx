@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, LogOut, RefreshCw, UserRound, Users } from "lucide-react";
+import { CalendarClock, LogOut, RefreshCw, UserRound, Users, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -115,6 +115,9 @@ export function UserMenu() {
           </MenuLink>
           <MenuLink href="/friends" icon={<Users className="h-4 w-4" />} onClick={close}>
             Friends
+          </MenuLink>
+          <MenuLink href="/groups" icon={<UsersRound className="h-4 w-4" />} onClick={close}>
+            Groups
           </MenuLink>
           <MenuLink href="/pending" icon={<CalendarClock className="h-4 w-4" />} onClick={close}>
             <span className="flex-1">Pending</span>

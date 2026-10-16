@@ -132,6 +132,8 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
       let changes: Change[];
       if (item) {
         changes = updateItem(item, draft, existingChildren, ctx);
+        // A group goal's item (Phase 9b): its name, tracking and dates belong to the group.
+        if (item.groupGoalId) changes[0] = { entity: "items", row: { ...(changes[0].row as Item), title: item.title, tracking: item.tracking, schedule: item.schedule } };
         saved = changes[0].row as Item;
         // Sub-items as updateItem left them (new schedule/category), so saveChildren builds on those.
         const updated = new Map(changes.slice(1).map((c) => [c.row.id, c.row as Item]));
@@ -153,10 +155,17 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
   }
 
   const once = isOnce(s);
+  const linked = !!item?.groupGoalId;
   return (
     <form noValidate onSubmit={submit} className="space-y-3">
+      {linked ? (
+        <p className="card px-3.5 py-3 text-[13px] text-ink-2">
+          Part of a group goal{typeof item?.meta.groupName === "string" ? ` in ${item.meta.groupName}` : ""}: its name, how it&apos;s counted and its dates are set by the group. You can change its category, importance and reminders.
+        </p>
+      ) : null}
       <Section title="What">
         <TextField
+          disabled={linked}
           label="Name"
           placeholder={s.kind === "group" ? "e.g. Gym — Push day" : s.kind === "habit" ? "e.g. Steps" : "e.g. Quiz — Data Structures"}
           required
@@ -166,7 +175,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
           onBlur={touch("title")}
           error={shown("title")}
         />
-        <PillGroup legend="Kind" options={KINDS} value={s.kind} onChange={(v) => set("kind", v)} />
+        {linked ? null : <PillGroup legend="Kind" options={KINDS} value={s.kind} onChange={(v) => set("kind", v)} />}
         <fieldset>
           <legend className="mb-1 text-[12px] font-medium text-ink">Category</legend>
           <div className="flex flex-wrap gap-1.5">
@@ -180,6 +189,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         </fieldset>
       </Section>
 
+      <fieldset disabled={linked} className={linked ? "contents opacity-60" : "contents"}>
       {s.kind === "group" ? (
         <Section title="Sub-items">
           <p className="-mt-1 text-[12px] text-ink-2">Tick them one by one; the routine is done when all are.</p>
@@ -343,6 +353,7 @@ export function ItemEditor({ item, existingChildren, preset, onSaved, onCancel }
         )}
       </Section>
 
+      </fieldset>
       <Section title="Importance">
         <SegmentedTabs label="Importance" options={[...PRIORITY]} value={s.priority} onChange={(v) => set("priority", v)} />
         <Checkbox checked={s.isOptional} onChange={(v) => set("isOptional", v)}>

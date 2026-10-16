@@ -883,3 +883,20 @@ Use this template for each decision:
   - The one-tap check-in reuses the "day" share for today (no separate kind).
   - Friend streaks are visible between the two friends whatever their visibility setting, because they describe the exchange, not anyone's progress.
 - **Related:** `packages/shared/src/v2/snaps.ts`, `apps/api/src/social/streaks.ts`, migration `0010_snaps`.
+
+### 2026-10-16 — Phase 9b: groups and group goals
+
+- **Context:** SOC-02/03/04. Owner choices: up to 50 members with admins inviting; both "each member" and "together" goals; award plus a small bonus; a group streak with group check-ins; a board of my groups plus opt-in public groups.
+- **Decision:**
+  - **A goal becomes an item on each member's own Today,** made by the server. People log the way they always do, and history is theirs. The group reads progress from those items.
+  - **The goal fixes the item's name, tracking and dates.** Members can still set its category, priority and reminders. The editor locks those fields and the sync guard refuses changes (compared key-order-insensitively, since jsonb reorders keys).
+  - **Rewards come once a period's days are final** (4 days after the end): award, +10 for each "together" contributor, and podium medals for the top groups.
+  - Members see each other's progress on group goals only (SOC-05).
+- **Alternatives considered:**
+  - A shared group item instead of per-member items (rejected: it breaks offline logging and personal history).
+  - Instant rewards (rejected: they could be gamed inside the correction window).
+- **Consequences:**
+  - Leaving a group or ending a goal archives the linked items rather than deleting them.
+  - `jobs:finalize` runs the end-of-period jobs on demand.
+  - Leaderboards don't count group bonus points, which keeps the boards about daily effort.
+- **Related:** `apps/api/src/groups/*`, `packages/shared/src/v2/groups.ts`, migration `0011_groups`.

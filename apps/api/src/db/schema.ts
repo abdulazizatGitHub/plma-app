@@ -576,3 +576,137 @@ export const snapNudges = pgTable(
   (t) => [uniqueIndex("snap_nudges_idx").on(t.userId, t.friendId, t.date)],
 );
 
+/* ---------- Groups (Phase 9b): server-only, never synced ---------- */
+
+export const groups = pgTable("groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  icon: text("icon").notNull().default("users"),
+  color: text("color").notNull().default("sky"),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** "everyone" = on the public groups board. */
+  visibility: text("visibility").notNull().default("members"),
+  createdAt: ts("created_at").defaultNow().notNull(),
+  archivedAt: ts("archived_at"),
+});
+
+export const groupMembers = pgTable(
+  "group_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: owner(),
+    role: text("role").notNull().default("member"),
+    joinedAt: ts("joined_at").defaultNow().notNull(),
+    leftAt: ts("left_at"),
+  },
+  (t) => [uniqueIndex("group_members_pair_idx").on(t.groupId, t.userId), index("group_members_user_idx").on(t.userId)],
+);
+
+/** A group's join link (rotatable) — one active per group. */
+export const groupLinks = pgTable(
+  "group_links",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    code: text("code").notNull().unique(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    revokedAt: ts("revoked_at"),
+  },
+  (t) => [index("group_links_group_idx").on(t.groupId)],
+);
+
+/** A friend invited to a group, until they accept or decline. */
+export const groupInvites = pgTable(
+  "group_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    invitedUser: uuid("invited_user")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("group_invites_pair_idx").on(t.groupId, t.invitedUser)],
+);
+
+export const groupGoals = pgTable(
+  "group_goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    mode: text("mode").notNull(),
+    tracking: text("tracking").notNull(),
+    unit: text("unit"),
+    target: doublePrecision("target").notNull(),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on").notNull(),
+    reward: text("reward"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: ts("created_at").defaultNow().notNull(),
+    archivedAt: ts("archived_at"),
+    /** Results written and rewards given (once). */
+    finalizedAt: ts("finalized_at"),
+  },
+  (t) => [index("group_goals_group_idx").on(t.groupId)],
+);
+
+export const groupGoalResults = pgTable(
+  "group_goal_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => groupGoals.id, { onDelete: "cascade" }),
+    userId: owner(),
+    value: doublePrecision("value").notNull().default(0),
+    metAt: ts("met_at"),
+  },
+  (t) => [uniqueIndex("group_goal_results_pair_idx").on(t.goalId, t.userId)],
+);
+
+/** Points outside the day scores (a met "together" goal's +10), once per key. */
+export const bonusPoints = pgTable(
+  "bonus_points",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    key: text("key").notNull(),
+    points: integer("points").notNull(),
+    date: date("date").notNull(),
+    reason: text("reason").notNull(),
+  },
+  (t) => [uniqueIndex("bonus_points_user_key_idx").on(t.userId, t.key)],
+);
+
+/** Who snapped a group on which date (each on their own date): the group streak. */
+export const groupSnapDays = pgTable(
+  "group_snap_days",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    userId: owner(),
+    date: date("date").notNull(),
+    createdAt: ts("created_at").defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("group_snap_days_idx").on(t.groupId, t.userId, t.date)],
+);
+

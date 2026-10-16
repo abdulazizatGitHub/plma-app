@@ -3,8 +3,10 @@ import {
   awardDef,
   evaluateAwards,
   itemSchema,
+  levelOf,
   makeChallenge,
   periodMonth,
+  periodWeek,
   logicalDateIn,
   occurrenceSchema,
   planProgress,
@@ -19,6 +21,7 @@ import {
   type RewardsPayload,
 } from "@life/shared";
 import type { Sql, TransactionSql } from "postgres";
+import { bestGroupStreak } from "../groups/streak.js";
 import { bestFriendStreak } from "../social/streaks.js";
 import { toDto } from "../sync/sql.js";
 
@@ -226,6 +229,7 @@ export async function awardAll(sql: Db, userId: string, u: UserScoring, days: Re
     challenges,
     plansFinished: await plansFinished(sql, userId, await loadItems(sql, userId), u.today),
     friendStreakBest: await bestFriendStreak(sql, userId),
+    groupStreakBest: await bestGroupStreak(sql, userId),
   });
   const earned = awards.filter((b) => b.earned).map((b) => ({ user_id: userId, badge_id: b.id }));
   if (earned.length) await sql`INSERT INTO user_badges ${sql(earned, "user_id", "badge_id")} ON CONFLICT (user_id, badge_id) DO NOTHING`;
@@ -266,8 +270,21 @@ export async function getRewards(sql: Sql, userId: string, now = new Date()): Pr
   const current = challenges.find((c) => c.month === month) ?? null;
   const monthEnd = periodMonth(u.today).to;
   const weekFrom = addDays(u.today, -6);
+  // Bonus points outside the day scores (a met "together" group goal, Phase 9b).
+  const bonuses = await sql<{ date: string | Date; points: number }[]>`SELECT date, points FROM bonus_points WHERE user_id = ${userId}`;
+  const week = periodWeek(u.today, u.weekStart);
+  const bonus = (pred: (d: string) => boolean) => bonuses.filter((b) => pred(isoDay(b.date)!)).reduce((n, b) => n + b.points, 0);
+  const summary = rewardsSummary(days, { closedThrough: u.closedThrough, today: u.today, weekStart: u.weekStart });
+  const points = summary.points + bonus(() => true);
+  const lvl = levelOf(points);
   return {
-    ...rewardsSummary(days, { closedThrough: u.closedThrough, today: u.today, weekStart: u.weekStart }),
+    ...summary,
+    points,
+    level: lvl.level,
+    levelStart: lvl.start,
+    nextLevelAt: lvl.next,
+    weekPoints: summary.weekPoints + bonus((d) => d >= week.from && d <= week.to),
+    todayPoints: summary.todayPoints + bonus((d) => d === u.today),
     today: u.today,
     badges: stored.filter((b) => awardDef(b.badge_id)).map((b) => ({ id: b.badge_id, earnedAt: new Date(b.earned_at).toISOString(), seen: !!b.seen_at })),
     awards,

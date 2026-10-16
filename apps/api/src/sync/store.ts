@@ -19,6 +19,12 @@ export function postgresLookup(sql: Sql): OwnershipLookup {
       const rows = await sql.unsafe(`SELECT "id" FROM ${table(entity)} WHERE "id" = ANY($1::uuid[]) AND "user_id" = $2`, [ids, userId]);
       return rows.map((r) => r.id as string);
     },
+    async linkedItems(ids, userId) {
+      if (!ids.length) return new Map();
+      const rows = await sql<{ id: string; group_goal_id: string; title: string; tracking: unknown; schedule: unknown }[]>`
+        SELECT id, group_goal_id, title, tracking, schedule FROM items WHERE id = ANY(${ids}::uuid[]) AND user_id = ${userId} AND group_goal_id IS NOT NULL`;
+      return new Map(rows.map((r) => [r.id, { groupGoalId: r.group_goal_id, title: r.title, tracking: r.tracking, schedule: r.schedule }]));
+    },
   };
 }
 

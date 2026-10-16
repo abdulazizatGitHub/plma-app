@@ -1,7 +1,8 @@
 "use client";
 
 import { timeLeft, usernameSchema, type FriendsPayload, type PublicPerson } from "@life/shared";
-import { ArrowLeft, Ban, Check, Copy, MoreHorizontal, RefreshCw, Send, Share2, UserMinus, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Ban, Check, Copy, MoreHorizontal, RefreshCw, Send, Share2, UserMinus, UserPlus, Users, X } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button, ConfirmSheet, PopoverMenu, PopoverMenuItem, TextField } from "@/components/kit";
@@ -117,7 +118,12 @@ export default function FriendsPage() {
         <ArrowLeft className="h-4 w-4" aria-hidden /> Back
       </button>
       <header>
-        <h1 className="text-2xl font-semibold text-ink">Friends</h1>
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="text-2xl font-semibold text-ink">Friends</h1>
+          <Link href="/groups" className="inline-flex min-h-9 items-center gap-1 rounded-full bg-track px-3 text-[13px] font-medium text-ink hover:bg-border">
+            <Users className="h-4 w-4" aria-hidden /> Groups
+          </Link>
+        </div>
         <p className="text-[13px] text-ink-2">Keep each other going. Friends see your points and streak — never your items — unless you choose otherwise in Profile.</p>
       </header>
       {offline ? <p className="card px-3 py-2.5 text-[13px] text-ink-2">You&apos;re offline — showing the last copy. Changes need a connection.</p> : null}

@@ -78,6 +78,13 @@
       "when": 1792171296409,
       "tag": "0010_snaps",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792172873786,
+      "tag": "0011_groups",
+      "breakpoints": true
     }
   ]
 }

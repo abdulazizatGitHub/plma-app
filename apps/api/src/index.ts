@@ -12,6 +12,8 @@ import { webPushSender } from "./reminders/push.js";
 import { registerActionRoute } from "./reminders/routes.js";
 import { closeAllDays } from "./history/close.js";
 import { registerPublicSocialRoutes } from "./social/routes.js";
+import { registerPublicGroupRoutes } from "./groups/routes.js";
+import { finalizeGroupGoals, finalizeGroupPodiums } from "./groups/service.js";
 import { finalizePodiums } from "./social/service.js";
 import { nudgeStreaks } from "./social/streaks.js";
 import { planDebouncer, planUser, replanAll, tick } from "./reminders/service.js";
@@ -78,6 +80,7 @@ const replanSoon = planDebouncer((userId) => planUser(pg, userId), 3000, onJobEr
 const reminderDeps = { sql: pg, send, actionSecret: env.reminderActionSecret, vapidPublicKey: env.vapidPublicKey, replanSoon };
 registerActionRoute(app, reminderDeps);
 registerPublicSocialRoutes(app, pg);
+registerPublicGroupRoutes(app, pg);
 await app.register(apiRoutes(pg, verify, reminderDeps));
 
 if (send && env.reminderJobs !== "off") {
@@ -112,6 +115,8 @@ if (env.reminderJobs !== "off") {
     void closeAllDays(pg)
       .then(() => finalizePodiums(pg))
       .then(() => nudgeStreaks(pg, send))
+      .then(() => finalizeGroupGoals(pg))
+      .then(() => finalizeGroupPodiums(pg))
       .catch(onJobError);
   setTimeout(closeSweep, 20_000);
   setInterval(closeSweep, 60 * 60_000);
