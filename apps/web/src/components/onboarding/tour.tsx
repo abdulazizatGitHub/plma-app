@@ -9,7 +9,11 @@ type TourStep = { target: string; title: string; body: string };
 
 /** First-run tips on Today (owner, 2026-10-11): each points at the real control. */
 export const TOUR_STEPS: TourStep[] = [
-  { target: "ring", title: "Your day at a glance", body: "The ring fills as you finish today's items. Skipped or moved items don't count against you." },
+  {
+    target: "ring",
+    title: "Your three rings",
+    body: "Prayer, Commitments and Balance fill as you go. Close every ring that applies for a complete day — that keeps your streak. Skipped or moved items don't count against you.",
+  },
   {
     target: "prayers",
     title: "Your prayers",
@@ -23,6 +27,8 @@ export const TOUR_STEPS: TourStep[] = [
   },
   { target: "add", title: "Add anything", body: "+ adds a task for today or any day. “More options” makes habits, counts, checklists and routines." },
   { target: "nav:/categories", title: "Your categories", body: "Organise, reorder or archive your areas, and add more interests any time." },
+  { target: "snap", title: "Snap your day", body: "Send today's rings to friends in one tap. Snap each other every day to keep a streak going together." },
+  { target: "activity", title: "Snaps and requests", body: "Snaps from friends open here — once. Friend requests and kudos show up here too." },
 ];
 
 const PAD = 6;

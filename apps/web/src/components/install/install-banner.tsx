@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useInstall } from "@/lib/v2/install";
 
 /**
@@ -10,7 +11,9 @@ import { useInstall } from "@/lib/v2/install";
  */
 export function InstallBanner() {
   const { bannerVisible, dismissBanner, install, canPrompt } = useInstall();
-  if (!bannerVisible) return null;
+  // First-run setup has its own install step.
+  const setup = usePathname() === "/welcome";
+  if (!bannerVisible || setup) return null;
   return (
     <div role="region" aria-label="Install the app" className="bg-primary-strong text-on-primary-strong">
       <div className="mx-auto flex w-full max-w-xl items-center gap-2.5 px-4 pt-[calc(env(safe-area-inset-top)+6px)] pb-1.5 md:max-w-2xl lg:max-w-none lg:px-6">

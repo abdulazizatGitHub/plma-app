@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Clock, Compass, Download, Eye, LogOut, Moon, Palette, Pencil, RefreshCw, Sparkles, Users, UsersRound } from "lucide-react";
+import { Bell, BookOpen, Clock, Compass, Download, Eye, LogOut, Moon, Palette, Pencil, RefreshCw, Sparkles, Users, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -117,6 +117,7 @@ export default function ProfilePage() {
       </SettingsGroup>
 
       <SettingsGroup title="Help">
+        <SettingsRow icon={<BookOpen />} tone="mint" label="App guide" href="/help" value="How Life works" />
         <SettingsRow icon={<Download />} tone="sky" label="Install the app" onClick={openGuide} value={installed ? "Installed" : "How to"} />
         <SettingsRow
           icon={<Compass />}

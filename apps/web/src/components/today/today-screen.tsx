@@ -37,6 +37,7 @@ import { rowTransitionName, useSettledPlacement } from "@/lib/v2/use-settle";
 import { DayEntryRow } from "./day-entry-row";
 import { useRewards } from "@/lib/v2/use-rewards";
 import { useSocial } from "@/lib/v2/use-social";
+import { GettingStarted } from "@/components/onboarding/getting-started";
 import { DaySummaryCard } from "./day-summary";
 import { IshaCarryOver, PrayerGroup, headlineText } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
@@ -330,6 +331,7 @@ export function TodayScreen() {
         />
       </div>
 
+      {isToday ? <GettingStarted rings={rings} /> : null}
       <div data-tour="tiles">
       <StatusTiles
         counts={{ todo: progress.counts.todo, in_progress: progress.counts.in_progress, done: progress.counts.done }}
