@@ -13,7 +13,8 @@ const apiRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.join(apiRoot, "../..");
 
 const fromShell = new Set(Object.keys(process.env));
-const root = dotenv.config({ path: path.join(repoRoot, ".env.local"), quiet: true }).parsed ?? {};
+// ENV_FILE=.env.preprod.local runs scripts against another environment (docs/guides/DEPLOY_PREPROD.md).
+const root = dotenv.config({ path: path.join(repoRoot, process.env.ENV_FILE ?? ".env.local"), quiet: true }).parsed ?? {};
 const api = dotenv.config({ path: path.join(apiRoot, ".env"), quiet: true }).parsed ?? {};
 for (const [key, value] of Object.entries({ ...api, ...root })) {
   if (!fromShell.has(key)) process.env[key] = value;
@@ -23,7 +24,7 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL ?? "postgresql://life:life_dev@localhost:5434/life",
   supabaseUrl: (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/\/$/, ""),
   supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET ?? "",
-  corsOrigins: process.env.CORS_ORIGIN?.split(",") ?? ["http://localhost:3000"],
+  corsOrigins: process.env.CORS_ORIGIN?.split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean) ?? ["http://localhost:3000"],
   port: Number(process.env.PORT ?? 4000),
   host: process.env.HOST ?? "0.0.0.0",
   /** Web Push (Phase 6). Without them reminders are off and the rest of the API still runs. */

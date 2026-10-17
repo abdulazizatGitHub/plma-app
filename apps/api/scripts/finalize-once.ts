@@ -1,5 +1,5 @@
 // Runs the end-of-period jobs once (normally hourly): group goal results and rewards, podiums.
-// `npm run jobs:finalize -w @life/api` — useful after maintenance or in tests.
+// `npm run jobs:finalize -w @life/api` — useful after maintenance or in tests (ENV_FILE=… for another environment).
 import postgres from "postgres";
 import { finalizeGroupGoals, finalizeGroupPodiums } from "../src/groups/service.js";
 import { finalizePodiums } from "../src/social/service.js";
