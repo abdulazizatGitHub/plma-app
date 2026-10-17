@@ -1,5 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="96" fill="#fce7f3"/>
-  <path d="M256 120c-48 0-88 40-88 88 0 32 18 60 44 76v180h88V284c26-16 44-44 44-76 0-48-40-88-88-88z" fill="#f472b6"/>
-  <circle cx="256" cy="208" r="36" fill="#fdf2f8"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Life: the three daily rings (Prayer, Commitments, Balance) on the primary blue. Colours are app tokens. -->
+  <rect width="512" height="512" rx="112" fill="#4766d0"/>
+  <g fill="none" stroke-linecap="round" stroke-width="34" transform="rotate(-90 256 256)">
+    <circle cx="256" cy="256" r="160" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="160" stroke="#97bb7d" stroke-dasharray="854 1006"/>
+    <circle cx="256" cy="256" r="114" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="114" stroke="#f4f4f9" stroke-dasharray="537 716"/>
+    <circle cx="256" cy="256" r="68" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="68" stroke="#ebac80" stroke-dasharray="320 427"/>
+  </g>
 </svg>
