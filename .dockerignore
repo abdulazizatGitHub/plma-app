@@ -1,0 +1,16 @@
+# Keep secrets and build output out of Docker images.
+**/node_modules
+**/.next
+**/dist
+**/coverage
+.git
+.github
+.husky
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+docs
+apps/web
+*.log

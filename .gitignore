@@ -3,6 +3,9 @@ dist
 .next
 .env
 .env.local
+# Any env file (e.g. .env.preprod.local) — only the placeholder example is tracked.
+.env.*
+!.env.example
 *.log
 .DS_Store
 life_pg_data

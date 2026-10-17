@@ -900,3 +900,24 @@ Use this template for each decision:
   - `jobs:finalize` runs the end-of-period jobs on demand.
   - Leaderboards don't count group bonus points, which keeps the boards about daily effort.
 - **Related:** `apps/api/src/groups/*`, `packages/shared/src/v2/groups.ts`, migration `0011_groups`.
+
+### 2026-10-17 — Preprod hosting: Vercel, Northflank and a separate Supabase project
+
+- **Context:** Before going further, the app needs testing on real phones over HTTPS: installing, push on Android and iPhone, and offline use. The owner asked for free hosting, a new Supabase project for preprod, and no domain yet.
+- **Decision:**
+  - **Web on Vercel Hobby**, from root `apps/web`, with `preprod` as the production branch.
+  - **API on the Northflank Sandbox**, built from `apps/api/Dockerfile` with the repo root as build context. It runs with `tsx`, because `@life/shared` ships TypeScript source.
+  - **A new Supabase Free project** for the database, sign-in and email (the built-in sender).
+  - Scripts choose an env file with `ENV_FILE`, for example `.env.preprod.local`. That file is git-ignored and created by `scripts/preprod-secrets.mjs`.
+  - `scripts/smoke-preprod.mjs` checks a deploy.
+- **Alternatives considered:**
+  - **Render free:** the service sleeps after 15 minutes, which would stop the minute-by-minute reminder jobs.
+  - **Fly.io:** no longer has a free plan.
+  - **Railway:** a trial credit, not a free plan.
+  - **Supabase Edge Functions for the API:** would mean rewriting Fastify and the jobs.
+  - **Reusing the dev database:** rejected because test accounts and migrations would mix.
+- **Consequences:**
+  - The API must run as **one instance**, since it holds the jobs; `REMINDER_JOBS=off` is there for any extra instance.
+  - Free-plan limits apply: Supabase pauses after a week idle and its email is rate-limited; Vercel Hobby is non-commercial. Production needs its own decision.
+  - `CORS_ORIGIN` now ignores spaces and a trailing slash.
+- **Related:** [docs/guides/DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md), `apps/api/Dockerfile`, `scripts/preprod-secrets.mjs`, `scripts/smoke-preprod.mjs`.
