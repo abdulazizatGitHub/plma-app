@@ -1,18 +1,19 @@
 {
-  "name": "Life — Personal Tracker",
+  "id": "/",
+  "name": "Life — prayers, habits and goals",
   "short_name": "Life",
-  "description": "Personal life management, habits, and consistency tracking",
+  "description": "Prayers, habits, plans and goals in one calm place — with friends to keep you going.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#fbf2ef",
-  "theme_color": "#9c3b4e",
+  "background_color": "#f4f4f9",
+  "theme_color": "#4766d0",
   "orientation": "portrait-primary",
+  "categories": ["lifestyle", "productivity", "health"],
   "icons": [
-    {
-      "src": "/icons/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Clock, Compass, Eye, LogOut, Moon, Palette, Pencil, RefreshCw, Sparkles, Users, UsersRound } from "lucide-react";
+import { Bell, Clock, Compass, Download, Eye, LogOut, Moon, Palette, Pencil, RefreshCw, Sparkles, Users, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -18,6 +18,7 @@ import { useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
 import { useFriends } from "@/lib/v2/use-friends";
 import { useGroups } from "@/lib/v2/use-groups";
 import { useRewards } from "@/lib/v2/use-rewards";
+import { useInstall } from "@/lib/v2/install";
 import { useSocial } from "@/lib/v2/use-social";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -43,6 +44,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [open, setOpen] = useState<Open>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const { installed, openGuide } = useInstall();
 
   const realName = me?.displayName || user?.name || "";
   const name = realName || "Set your name";
@@ -115,6 +117,7 @@ export default function ProfilePage() {
       </SettingsGroup>
 
       <SettingsGroup title="Help">
+        <SettingsRow icon={<Download />} tone="sky" label="Install the app" onClick={openGuide} value={installed ? "Installed" : "How to"} />
         <SettingsRow
           icon={<Compass />}
           tone="teal"
