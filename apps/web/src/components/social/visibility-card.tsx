@@ -23,15 +23,17 @@ const WHAT: Record<Vis, string> = {
  * Selected friends or Only me. Items are never shown either way; sharing
  * something with chosen friends always works.
  */
-export function VisibilityCard() {
+export const VISIBILITY_LABEL: Record<Vis, string> = { everyone: "Everyone", friends: "Friends", selected: "Selected friends", private: "Only me" };
+
+export function VisibilityCard({ bare }: { bare?: boolean } = {}) {
   const settings = useUserSettings();
   const save = useSaveSettings();
   const value = settings.visibility as Vis;
   const [picking, setPicking] = useState(false);
   return (
-    <section className="card space-y-3 p-5" aria-label="Who can see my progress">
+    <section className={bare ? "space-y-3" : "card space-y-3 p-5"} aria-label="Who can see my progress">
       <div>
-        <h2 className="text-[15px] font-medium text-ink">Who can see my progress</h2>
+        {bare ? null : <h2 className="text-[15px] font-medium text-ink">Who can see my progress</h2>}
         <p className="text-[13px] text-ink-2">Others never see your items — only points, streak and awards. Anything you share goes to the friends you choose.</p>
       </div>
       <ChipChoice<Vis>
