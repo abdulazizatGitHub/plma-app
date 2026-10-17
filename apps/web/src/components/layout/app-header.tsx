@@ -39,6 +39,7 @@ function ActivityBell() {
   return (
     <Link
       href="/activity"
+      data-tour="activity"
       aria-label={unread ? `Snaps, ${unread} new` : "Snaps"}
       className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
     >
@@ -55,6 +56,7 @@ function SnapButton() {
     <button
       type="button"
       aria-label="Snap today's rings to friends"
+      data-tour="snap"
       onClick={() => openSnap({ kind: "day", label: "today's rings" })}
       className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
     >

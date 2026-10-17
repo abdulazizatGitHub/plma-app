@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { InstallProvider, detectPlatform } from "@/lib/v2/install";
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 import { InstallBanner } from "./install-banner";
 import { InstallGuide } from "./install-guide";
 

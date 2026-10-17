@@ -18,6 +18,8 @@ import {
   ONBOARDED_KEY,
   TOUR_KEY,
 } from "@/components/onboarding/onboarding-gate";
+import { DayStep, IntroSlides, ProfileStep, ReadyStep } from "@/components/onboarding/first-run";
+import { ONBOARDED_AT_KEY } from "@/components/onboarding/getting-started";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { useStore } from "@/components/providers/store-provider";
 import { wholeNumber } from "@/lib/forms/validators";
@@ -33,6 +35,8 @@ import {
 /** A ticked suggestion and its (possibly edited) target, keyed "packId:index". */
 type Picks = Record<string, { target: string }>;
 
+/** When setup finished (for the first-weeks "Getting started" card). */
+const stamp = () => String(Date.now());
 const keyOf = (pack: StarterPack, index: number) => `${pack.id}:${index}`;
 const DAILY = { v: 1, kind: "daily" } as const;
 
@@ -88,7 +92,8 @@ function Welcome() {
   const { store } = useStore();
   const { notify } = useAddSheet();
   const router = useRouter();
-  const [step, setStep] = useState<"interests" | "items">("interests");
+  // First run (owner, 2026-10-17): intro → you → your day → interests → items → ready.
+  const [step, setStep] = useState<"intro" | "profile" | "day" | "interests" | "items" | "ready">(adding ? "interests" : "intro");
   const [interests, setInterests] = useState<string[]>([]);
   const [picks, setPicks] = useState<Picks>({});
 
@@ -138,6 +143,7 @@ function Welcome() {
       );
     if (!adding) {
       store?.setMeta(ONBOARDED_KEY, choices.length ? "packs" : "empty");
+      store?.setMeta(ONBOARDED_AT_KEY, stamp());
       store?.setMeta(TOUR_KEY, "pending");
       void store?.flush(); // the flags must survive an immediate reload
     }
@@ -146,7 +152,8 @@ function Welcome() {
         message: `Added ${choices.length} categor${choices.length === 1 ? "y" : "ies"}${pickedCount ? ` and ${pickedCount} item${pickedCount === 1 ? "" : "s"}` : ""}`,
       });
     }
-    router.replace(adding ? "/categories" : "/");
+    if (adding) router.replace("/categories");
+    else setStep("ready");
   }
 
   const submit = () =>
@@ -170,21 +177,26 @@ function Welcome() {
     <button
       type="button"
       onClick={() =>
-        step === "items" ? setStep("interests") : router.push("/categories")
+        step === "items" ? setStep("interests") : adding ? router.push("/categories") : setStep("day")
       }
       className="inline-flex min-h-8 items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden />{" "}
-      {step === "items" ? "Interests" : "Categories"}
+      {step === "items" ? "Interests" : adding ? "Categories" : "Your day"}
     </button>
   );
+
+  if (step === "intro") return <IntroSlides onDone={() => setStep("profile")} />;
+  if (step === "profile") return <ProfileStep onDone={() => setStep("day")} />;
+  if (step === "day") return <DayStep onDone={() => setStep("interests")} />;
+  if (step === "ready") return <ReadyStep onDone={() => router.replace("/")} />;
 
   if (step === "items") {
     return (
       <div className="space-y-4">
         {back}
         <header>
-          <p className="text-[12px] font-medium text-ink-2">Step 2 of 2</p>
+          <p className="text-[12px] font-medium text-ink-2">{adding ? "Step 2 of 2" : "Step 4 of 4"}</p>
           <h1 className="text-xl font-semibold text-ink">
             Pick what goes on your day
           </h1>
@@ -275,9 +287,9 @@ function Welcome() {
 
   return (
     <div className="space-y-4">
-      {adding ? back : null}
+      {back}
       <header>
-        <p className="text-[12px] font-medium text-ink-2">Step 1 of 2</p>
+        <p className="text-[12px] font-medium text-ink-2">{adding ? "Step 1 of 2" : "Step 3 of 4"}</p>
         <h1 className="text-xl font-semibold text-ink">
           {adding ? "Add interests" : "What matters to you?"}
         </h1>
