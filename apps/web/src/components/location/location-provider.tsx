@@ -199,7 +199,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
               >
                 <Smartphone className="h-4 w-4 shrink-0" aria-hidden />
                 <span className="flex-1">
-                  Always <span id="always-note" className="block text-[11.5px]">Needs the Life phone app (coming later)</span>
+                  Always <span id="always-note" className="block text-[11.5px]">Needs the Mehrmah phone app (coming later)</span>
                 </span>
               </button>
               <Button size="lg" className="w-full" disabled={busy} onClick={() => void takeDevicePosition(panel.ask)}>
@@ -222,7 +222,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
           </div>
         ) : panel?.kind === "upgrade" ? (
           <div className="space-y-3">
-            <p className="text-[13px] text-ink-2">{panel.ask.reason} This needs location even when the app is closed, which the web app can&apos;t do. It will work in the Life phone app.</p>
+            <p className="text-[13px] text-ink-2">{panel.ask.reason} This needs location even when the app is closed, which the web app can&apos;t do. It will work in the Mehrmah phone app.</p>
             <Button size="lg" className="w-full" onClick={close}>
               OK
             </Button>

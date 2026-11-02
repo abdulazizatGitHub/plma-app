@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "../legal-page";
 
-export const metadata: Metadata = { title: "Privacy — Life" };
+export const metadata: Metadata = { title: "Privacy — Mehrmah" };
 
 export default function PrivacyPage() {
   return (

@@ -66,7 +66,7 @@ function Invite() {
             <h1 className="text-[20px] font-semibold text-ink">This invite link isn&apos;t valid</h1>
             <p className="text-[13.5px] text-ink-2">It may have been replaced by a new one. Ask your friend to send it again.</p>
             <Link href="/" className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary-strong px-5 text-[13px] font-medium text-on-primary-strong">
-              Open Life
+              Open Mehrmah
             </Link>
           </>
         ) : (
@@ -78,7 +78,7 @@ function Invite() {
               <h1 className="text-[20px] font-semibold text-ink">{inviter.name} invited you</h1>
               {inviter.username ? <p className="text-[13px] text-ink-2">@{inviter.username}</p> : null}
             </div>
-            <p className="text-[13.5px] text-ink-2">Life keeps your prayers, habits and plans in one place. Friends cheer each other on — they see points and streaks, never your items.</p>
+            <p className="text-[13.5px] text-ink-2">Mehrmah keeps your prayers, habits and plans in one place. Friends cheer each other on — they see points and streaks, never your items.</p>
             {status === "signed_in" ? (
               <Button className="w-full" disabled={busy} onClick={() => void accept()}>
                 {busy ? "Adding…" : `Add ${inviter.name} as a friend`}

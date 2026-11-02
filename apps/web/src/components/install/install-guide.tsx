@@ -16,7 +16,7 @@ function LifeIcon({ size = 34, pop }: { size?: number; pop?: boolean }) {
     <span className={`flex flex-col items-center gap-0.5 ${pop ? "install-pop" : ""}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- a static icon in a mockup */}
       <img src="/icons/icon-192.png" alt="" width={size} height={size} className="rounded-[22%]" />
-      <span className="text-[8px] font-medium text-ink">Life</span>
+      <span className="text-[8px] font-medium text-ink">Mehrmah</span>
     </span>
   );
 }
@@ -112,7 +112,7 @@ const IPHONE: Step[] = [
         </div>
         <div className="flex items-center gap-2 p-3">
           <LifeIcon size={30} />
-          <div className="flex-1 rounded-[6px] bg-surface px-2 py-1 text-[9px] text-ink">Life</div>
+          <div className="flex-1 rounded-[6px] bg-surface px-2 py-1 text-[9px] text-ink">Mehrmah</div>
         </div>
       </Phone>
     ),
@@ -120,7 +120,7 @@ const IPHONE: Step[] = [
   {
     caption: (
       <>
-        Open <b>Life</b> from your Home Screen. Reminders and offline use now work.
+        Open <b>Mehrmah</b> from your Home Screen. Reminders and offline use now work.
       </>
     ),
     screen: (
@@ -204,7 +204,7 @@ const ANDROID: Step[] = [
   {
     caption: (
       <>
-        Open <b>Life</b> from your home screen or app drawer.
+        Open <b>Mehrmah</b> from your home screen or app drawer.
       </>
     ),
     screen: (
@@ -265,11 +265,11 @@ const COMPUTER: Step[] = [
     ),
   },
   {
-    caption: <>Life opens in its own window, and you can pin it to your taskbar or Dock.</>,
+    caption: <>Mehrmah opens in its own window, and you can pin it to your taskbar or Dock.</>,
     screen: (
       <Screen>
         <div className="install-pop absolute inset-3 overflow-hidden rounded-[8px] border border-border bg-bg shadow-md">
-          <div className="flex items-center gap-1.5 bg-primary-strong px-2 py-1 text-[9px] font-semibold text-on-primary-strong">Life</div>
+          <div className="flex items-center gap-1.5 bg-primary-strong px-2 py-1 text-[9px] font-semibold text-on-primary-strong">Mehrmah</div>
           {page}
         </div>
       </Screen>
@@ -279,7 +279,7 @@ const COMPUTER: Step[] = [
 
 const STEPS: Record<Device, Step[]> = { iphone: IPHONE, android: ANDROID, computer: COMPUTER };
 
-/** "Install Life" (owner, 2026-10-17): animated step cards for iPhone, Android and computers. */
+/** "Install Mehrmah" (owner, 2026-10-17): animated step cards for iPhone, Android and computers. */
 export function InstallGuide() {
   const { guideOpen, closeGuide, platform, canPrompt, install, installed } = useInstall();
   const [device, setDevice] = useState<Device>(deviceFor(platform));
@@ -304,14 +304,14 @@ export function InstallGuide() {
   }, [guideOpen, playing, step, steps.length]);
 
   return (
-    <Sheet open={guideOpen} onClose={closeGuide} title="Install Life">
+    <Sheet open={guideOpen} onClose={closeGuide} title="Install Mehrmah">
       <div className="space-y-3">
         {installed ? (
           <p className="flex items-center gap-2 rounded-[12px] bg-done/25 px-3 py-2 text-[13px] text-ink">
-            <Check className="h-4 w-4" aria-hidden /> Life is installed on this device.
+            <Check className="h-4 w-4" aria-hidden /> Mehrmah is installed on this device.
           </p>
         ) : (
-          <p className="text-[13px] text-ink-2">Installed, Life opens like an app, works offline, and can send you reminders.</p>
+          <p className="text-[13px] text-ink-2">Installed, Mehrmah opens like an app, works offline, and can send you reminders.</p>
         )}
         {canPrompt && !installed ? (
           <Button className="w-full" onClick={() => void install()}>

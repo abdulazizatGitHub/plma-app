@@ -1,6 +1,6 @@
-# Life — user guide
+# Mehrmah — user guide
 
-How to use the Life app. This file is generated from the in-app **App guide** (Profile → Help → App guide); edit `apps/web/src/lib/help/content.ts` and run `npm run docs:guide -w web`.
+How to use the Mehrmah app. This file is generated from the in-app **App guide** (Profile → Help → App guide); edit `apps/web/src/lib/help/content.ts` and run `npm run docs:guide -w web`.
 
 ## Contents
 
@@ -19,9 +19,9 @@ How to use the Life app. This file is generated from the in-app **App guide** (P
 
 ## Getting started
 
-### What is Life?
+### What is Mehrmah?
 
-Life keeps your prayers, habits, tasks and plans in one calm place. Each day is summed up by three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.
+Mehrmah keeps your prayers, habits, tasks and plans in one calm place. Each day is summed up by three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.
 
 Everything works offline. Changes are saved on your device first and sync when you're back online.
 
@@ -105,7 +105,7 @@ A step can **wait for** another; it stays locked until that one is done. Cadence
 
 ### Turning reminders on
 
-Go to **Profile → Reminders** and tap **Turn on**. Your browser asks for permission once. On iPhone, install Life to your Home Screen first — iPhones only send reminders to installed apps.
+Go to **Profile → Reminders** and tap **Turn on**. Your browser asks for permission once. On iPhone, install Mehrmah to your Home Screen first — iPhones only send reminders to installed apps.
 
 Each item reminds you according to its importance; you can set a custom time, repeat and snooze per item. Quiet hours and the global switch are in the same place.
 
@@ -167,7 +167,7 @@ Anything you snap goes only to the friends you pick. Blocking someone hides you 
 
 ## Offline and sync
 
-### Using Life offline
+### Using Mehrmah offline
 
 Everything you do is saved on this device first, so Today works without a connection. The cloud icon at the top shows sync; tap it to sync now. Friends, snaps and leaderboards need a connection and show their last copy offline.
 
@@ -177,7 +177,7 @@ Signing out removes your data from this device; it stays safe in your account.
 
 ### iPhone and iPad
 
-Open Life in **Safari**, tap **Share** (on newer iPhones it's under **⋯**), choose **Add to Home Screen**, then **Add**. Open Life from your Home Screen — reminders and offline use now work. In other browsers on iPhone, open the page in Safari first.
+Open Mehrmah in **Safari**, tap **Share** (on newer iPhones it's under **⋯**), choose **Add to Home Screen**, then **Add**. Open Mehrmah from your Home Screen — reminders and offline use now work. In other browsers on iPhone, open the page in Safari first.
 
 ### Android
 

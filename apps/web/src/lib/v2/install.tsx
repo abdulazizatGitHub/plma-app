@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /*
- * Installing Life to the Home Screen (owner, 2026-10-17). Where the browser
+ * Installing Mehrmah to the Home Screen (owner, 2026-10-17). Where the browser
  * offers its own install prompt (Chrome, Edge, Samsung Internet on Android and
  * desktop) one tap installs; elsewhere — iPhone Safari above all — a guide
  * shows the steps. Once installed (opened from the Home Screen) nothing shows.

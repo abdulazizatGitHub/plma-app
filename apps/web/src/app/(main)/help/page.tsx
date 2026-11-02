@@ -60,7 +60,7 @@ export default function HelpPage() {
       </button>
       <header>
         <h1 className="text-2xl font-semibold text-ink">App guide</h1>
-        <p className="text-[13px] text-ink-2">How Life works, in short answers.</p>
+        <p className="text-[13px] text-ink-2">How Mehrmah works, in short answers.</p>
       </header>
       <label className="flex h-11 items-center gap-2 rounded-[14px] border border-border bg-surface px-3">
         <Search className="h-4 w-4 text-ink-2" aria-hidden />

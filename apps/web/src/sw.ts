@@ -82,7 +82,7 @@ self.addEventListener("push", (event) => {
   try {
     data = event.data?.json() as ReminderPush;
   } catch {
-    data = { title: "Life", body: event.data?.text() ?? "", tag: "life", url: "/", token: null };
+    data = { title: "Mehrmah", body: event.data?.text() ?? "", tag: "life", url: "/", token: null };
   }
   const actions = data.token
     ? [

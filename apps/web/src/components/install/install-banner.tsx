@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useInstall } from "@/lib/v2/install";
 
 /**
- * A slim bar above the top menu (owner, 2026-10-17): "Install Life" until it's
+ * A slim bar above the top menu (owner, 2026-10-17): "Install Mehrmah" until it's
  * installed. Install opens the browser's prompt where there is one, else the
  * step-by-step guide. Dismissed, it comes back after two weeks.
  */
@@ -20,7 +20,7 @@ export function InstallBanner() {
         {/* eslint-disable-next-line @next/next/no-img-element -- tiny static icon */}
         <img src="/icons/icon-192.png" alt="" width={28} height={28} className="shrink-0 rounded-[8px] ring-1 ring-white/30" />
         <p className="min-w-0 flex-1 text-[12.5px] leading-tight">
-          <b>Install Life</b> <span className="opacity-85">— works offline and sends reminders.</span>
+          <b>Install Mehrmah</b> <span className="opacity-85">— works offline and sends reminders.</span>
         </p>
         <button type="button" onClick={() => void install()} className="shrink-0 rounded-full bg-on-primary-strong px-3 py-1 text-[12.5px] font-semibold text-primary-strong hover:opacity-90">
           {canPrompt ? "Install" : "How to install"}
