@@ -66,7 +66,7 @@ function Invite() {
             <h1 className="text-[20px] font-semibold text-ink">This group link isn&apos;t valid</h1>
             <p className="text-[13.5px] text-ink-2">It may have been replaced by a new one. Ask the group to send it again.</p>
             <Link href="/" className="inline-flex min-h-10 items-center justify-center rounded-full bg-primary-strong px-5 text-[13px] font-medium text-on-primary-strong">
-              Open Life
+              Open Mehrmah
             </Link>
           </>
         ) : (

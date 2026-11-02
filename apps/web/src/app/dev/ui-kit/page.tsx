@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { UiKit } from "./ui-kit";
 
-export const metadata = { title: "UI kit — Life v2" };
+export const metadata = { title: "UI kit — Mehrmah v2" };
 
 /** Dev-only gallery of the v2 UI kit (v2 Phase 0). Not shipped to production. */
 export default function UiKitPage() {

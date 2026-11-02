@@ -63,7 +63,7 @@ export function GettingStarted({ rings, now = Date.now() }: { rings: DayRings; n
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <h2 className="text-[15px] font-semibold text-ink">{left ? "Getting started" : "You're all set"}</h2>
-          <p className="text-[12.5px] text-ink-2">{left ? `${tasks.length - left} of ${tasks.length} done — a few first steps to get the most out of Life.` : "Nice work. You can hide this now."}</p>
+          <p className="text-[12.5px] text-ink-2">{left ? `${tasks.length - left} of ${tasks.length} done — a few first steps to get the most out of Mehrmah.` : "Nice work. You can hide this now."}</p>
         </div>
         <button type="button" onClick={dismiss} aria-label="Hide getting started" className="-mt-1 -mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-track">
           <X className="h-4 w-4" aria-hidden />

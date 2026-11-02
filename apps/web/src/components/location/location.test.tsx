@@ -101,7 +101,7 @@ describe("LocationProvider", () => {
     permission = "granted";
     renderFeature("always");
     fireEvent.click(screen.getByRole("button", { name: "Need location" }));
-    expect(await screen.findByRole("dialog", { name: "Allow location all the time?" })).toHaveTextContent("Life phone app");
+    expect(await screen.findByRole("dialog", { name: "Allow location all the time?" })).toHaveTextContent("Mehrmah phone app");
   });
 
   it("Choose a city works without GPS; Never is remembered and not asked again", async () => {

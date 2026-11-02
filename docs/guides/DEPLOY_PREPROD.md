@@ -1,12 +1,12 @@
 # Deploying preprod
 
-Preprod is a full copy of Life on free hosting, for testing on real phones over HTTPS. That covers installing the app, push reminders on Android and iPhone, and offline use. It has its own database and accounts, separate from dev.
+Preprod is a full copy of Mehrmah on free hosting, for testing on real phones over HTTPS. That covers installing the app, push reminders on Android and iPhone, and offline use. It has its own database and accounts, separate from dev.
 
 | Part | Where | Free plan |
 |------|-------|-----------|
 | Web app (Next.js PWA) | **Vercel** (Hobby) | `https://<project>.vercel.app` |
 | API (Fastify) | **Northflank** (Sandbox) | always-on service with a `*.code.run` URL |
-| Database, sign-in and email | **Supabase** (Free), a **new project** just for preprod | built-in email sender |
+| Database, sign-in and email | **Supabase** (Free), a **new project** just for preprod | emails sent through a Gmail account (custom SMTP) |
 
 Both hosts deploy the **`preprod`** branch. To release to preprod, merge `dev` into `preprod` and push. Both rebuild on their own.
 
@@ -184,7 +184,7 @@ git checkout preprod && git merge --no-ff dev && git push   # Vercel and Northfl
 
 - **Supabase Free:**
   - A project **pauses after about a week with no activity**. Restore it from the dashboard; no data is lost.
-  - The built-in email sender allows only **a few emails per hour** and may land in spam. Before inviting more than a handful of testers, set up SMTP (see the email templates README).
+  - Custom SMTP is required before templates can be edited. Gmail allows about 500 emails a day; Gmail-sent emails may land in spam until there's a domain.
   - Two free projects per account, so dev plus preprod fits.
 - **Northflank Sandbox:**
   - small CPU and memory, which is plenty for testing

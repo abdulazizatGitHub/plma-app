@@ -29,7 +29,7 @@ export function AuthShell({ title, subtitle, onSubmit, children, footer, redirec
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[14px] font-semibold text-on-fill" aria-hidden>
           L
         </span>
-        <span className="text-[15px] font-semibold text-ink">Life</span>
+        <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
       </div>
       <h1 className="text-xl font-semibold text-ink">{title}</h1>
       {subtitle ? <p className="mt-0.5 text-[13px] text-ink-2">{subtitle}</p> : null}

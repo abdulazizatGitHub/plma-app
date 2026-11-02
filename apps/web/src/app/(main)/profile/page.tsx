@@ -117,7 +117,7 @@ export default function ProfilePage() {
       </SettingsGroup>
 
       <SettingsGroup title="Help">
-        <SettingsRow icon={<BookOpen />} tone="mint" label="App guide" href="/help" value="How Life works" />
+        <SettingsRow icon={<BookOpen />} tone="mint" label="App guide" href="/help" value="How Mehrmah works" />
         <SettingsRow icon={<Download />} tone="sky" label="Install the app" onClick={openGuide} value={installed ? "Installed" : "How to"} />
         <SettingsRow
           icon={<Compass />}

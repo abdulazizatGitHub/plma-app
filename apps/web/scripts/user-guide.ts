@@ -7,9 +7,9 @@ import { HELP } from "../src/lib/help/content";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const lines = [
-  "# Life — user guide",
+  "# Mehrmah — user guide",
   "",
-  "How to use the Life app. This file is generated from the in-app **App guide** (Profile → Help → App guide); edit `apps/web/src/lib/help/content.ts` and run `npm run docs:guide -w web`.",
+  "How to use the Mehrmah app. This file is generated from the in-app **App guide** (Profile → Help → App guide); edit `apps/web/src/lib/help/content.ts` and run `npm run docs:guide -w web`.",
   "",
   "## Contents",
   "",

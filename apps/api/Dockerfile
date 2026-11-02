@@ -1,4 +1,4 @@
-# Life API (Fastify) — preprod / production image.
+# Mehrmah API (Fastify) — preprod / production image.
 # Build from the repo root:  docker build -f apps/api/Dockerfile -t life-api .
 # The shared package is TypeScript source, so the API runs through tsx (as in dev).
 FROM node:22-slim

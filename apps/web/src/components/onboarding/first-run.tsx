@@ -151,7 +151,7 @@ export function ReadyStep({ onDone }: { onDone: () => void }) {
     <div className="space-y-4">
       <header>
         <h1 className="text-xl font-semibold text-ink">You&apos;re all set</h1>
-        <p className="mt-0.5 text-[13px] text-ink-2">Two last things help Life work best. Both can be done later from Profile.</p>
+        <p className="mt-0.5 text-[13px] text-ink-2">Two last things help Mehrmah work best. Both can be done later from Profile.</p>
       </header>
       <section className="card flex items-start gap-3 p-4" aria-label="Reminders">
         <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-ink" style={{ background: "var(--cat-yellow)" }} aria-hidden>
@@ -163,7 +163,7 @@ export function ReadyStep({ onDone }: { onDone: () => void }) {
           {on ? (
             <p className="text-[13px] font-medium text-ink">Reminders are on.</p>
           ) : push.state === "ios-install" ? (
-            <p className="text-[13px] text-ink-2">On iPhone, reminders work once Life is on your Home Screen — install it below first.</p>
+            <p className="text-[13px] text-ink-2">On iPhone, reminders work once Mehrmah is on your Home Screen — install it below first.</p>
           ) : push.state === "denied" ? (
             <p className="text-[13px] text-ink-2">Notifications are blocked for this site — allow them in the browser&apos;s site settings.</p>
           ) : push.state === "unsupported" ? (

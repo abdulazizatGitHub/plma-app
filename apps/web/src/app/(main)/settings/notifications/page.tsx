@@ -163,7 +163,7 @@ export default function NotificationSettingsPage() {
           </>
         ) : push.state === "ios-install" ? (
           <div className="space-y-2 text-[13px] text-ink">
-            <p>On iPhone and iPad, reminders work once Life is on your Home Screen:</p>
+            <p>On iPhone and iPad, reminders work once Mehrmah is on your Home Screen:</p>
             <ol className="space-y-1.5">
               <li className="flex items-center gap-2">
                 <Share className="h-4 w-4 shrink-0 text-ink-2" aria-hidden /> 1. Tap <b>Share</b> in Safari&apos;s toolbar.
@@ -172,7 +172,7 @@ export default function NotificationSettingsPage() {
                 <SquarePlus className="h-4 w-4 shrink-0 text-ink-2" aria-hidden /> 2. Choose <b>Add to Home Screen</b>.
               </li>
               <li className="flex items-center gap-2">
-                <BellRing className="h-4 w-4 shrink-0 text-ink-2" aria-hidden /> 3. Open Life from the Home Screen and turn notifications on here.
+                <BellRing className="h-4 w-4 shrink-0 text-ink-2" aria-hidden /> 3. Open Mehrmah from the Home Screen and turn notifications on here.
               </li>
             </ol>
           </div>
@@ -182,7 +182,7 @@ export default function NotificationSettingsPage() {
             Notifications are blocked for this site. Allow them in your browser&apos;s site settings (the icon next to the address), then come back.
           </p>
         ) : push.state === "unsupported" ? (
-          <p className="text-[13px] text-ink-2">This browser can&apos;t show notifications from Life. Try Chrome, Edge or Firefox, or the installed app.</p>
+          <p className="text-[13px] text-ink-2">This browser can&apos;t show notifications from Mehrmah. Try Chrome, Edge or Firefox, or the installed app.</p>
         ) : push.state === "off" ? (
           <Button disabled={push.busy} onClick={() => void push.turnOn()}>
             <BellRing className="h-4 w-4" aria-hidden /> Turn on notifications

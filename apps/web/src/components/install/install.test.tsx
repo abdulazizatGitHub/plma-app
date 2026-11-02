@@ -46,7 +46,7 @@ describe("install banner and guide", () => {
     app();
     const banner = screen.getByRole("region", { name: "Install the app" });
     fireEvent.click(within(banner).getByRole("button", { name: "How to install" }));
-    const guide = screen.getByRole("dialog", { name: "Install Life" });
+    const guide = screen.getByRole("dialog", { name: "Install Mehrmah" });
     expect(within(guide).getByRole("tab", { name: "iPhone" })).toHaveAttribute("aria-selected", "true");
     const steps = within(within(guide).getByRole("list", { name: "Steps for iphone" })).getAllByRole("button");
     expect(steps.map((b) => b.textContent)).toEqual([

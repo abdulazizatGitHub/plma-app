@@ -15,9 +15,9 @@ export const HELP: HelpSection[] = [
     articles: [
       {
         id: "what",
-        q: "What is Life?",
+        q: "What is Mehrmah?",
         a: [
-          "Life keeps your prayers, habits, tasks and plans in one calm place. Each day is summed up by three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.",
+          "Mehrmah keeps your prayers, habits, tasks and plans in one calm place. Each day is summed up by three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.",
           "Everything works offline. Changes are saved on your device first and sync when you're back online.",
         ],
       },
@@ -148,7 +148,7 @@ export const HELP: HelpSection[] = [
         id: "on",
         q: "Turning reminders on",
         a: [
-          "Go to **Profile → Reminders** and tap **Turn on**. Your browser asks for permission once. On iPhone, install Life to your Home Screen first — iPhones only send reminders to installed apps.",
+          "Go to **Profile → Reminders** and tap **Turn on**. Your browser asks for permission once. On iPhone, install Mehrmah to your Home Screen first — iPhones only send reminders to installed apps.",
           "Each item reminds you according to its importance; you can set a custom time, repeat and snooze per item. Quiet hours and the global switch are in the same place.",
         ],
       },
@@ -250,7 +250,7 @@ export const HELP: HelpSection[] = [
     articles: [
       {
         id: "offline",
-        q: "Using Life offline",
+        q: "Using Mehrmah offline",
         a: [
           "Everything you do is saved on this device first, so Today works without a connection. The cloud icon at the top shows sync; tap it to sync now. Friends, snaps and leaderboards need a connection and show their last copy offline.",
           "Signing out removes your data from this device; it stays safe in your account.",
@@ -266,7 +266,7 @@ export const HELP: HelpSection[] = [
       {
         id: "iphone",
         q: "iPhone and iPad",
-        a: ["Open Life in **Safari**, tap **Share** (on newer iPhones it's under **⋯**), choose **Add to Home Screen**, then **Add**. Open Life from your Home Screen — reminders and offline use now work. In other browsers on iPhone, open the page in Safari first."],
+        a: ["Open Mehrmah in **Safari**, tap **Share** (on newer iPhones it's under **⋯**), choose **Add to Home Screen**, then **Add**. Open Mehrmah from your Home Screen — reminders and offline use now work. In other browsers on iPhone, open the page in Safari first."],
       },
       {
         id: "android",

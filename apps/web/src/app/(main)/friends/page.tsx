@@ -74,10 +74,10 @@ export default function FriendsPage() {
   };
   const shareLink = async () => {
     if (!url) return;
-    const text = `Join me on Life — let's keep each other going.`;
+    const text = `Join me on Mehrmah — let's keep each other going.`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Life", text, url });
+        await navigator.share({ title: "Mehrmah", text, url });
         return;
       } catch {
         return; // cancelled

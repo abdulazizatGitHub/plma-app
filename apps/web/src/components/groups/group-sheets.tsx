@@ -221,7 +221,7 @@ export function InviteSheet({ group, open, onClose }: { group: GroupDetail; open
     const link = `${window.location.origin}/group-invite?code=${c}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: group.name, text: `Join ${group.name} on Life`, url: link });
+        await navigator.share({ title: group.name, text: `Join ${group.name} on Mehrmah`, url: link });
         return;
       } catch {
         return;
