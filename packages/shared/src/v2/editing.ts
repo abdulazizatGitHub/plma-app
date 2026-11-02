@@ -7,7 +7,7 @@ import type { Schedule, Tracking } from "./tracking.js";
  * Like actions.ts they only return rows; the caller saves and syncs them.
  */
 
-const cat = (row: Category): Change => ({ entity: "categories", row: categorySchema.parse(row) });
+const cat = (row: Omit<Category, "remindersMuted"> & Partial<Pick<Category, "remindersMuted">>): Change => ({ entity: "categories", row: categorySchema.parse(row) });
 const itm = (row: Item): Change => ({ entity: "items", row: itemSchema.parse(row) });
 const live = <T extends { deletedAt: string | null }>(r: T) => !r.deletedAt;
 

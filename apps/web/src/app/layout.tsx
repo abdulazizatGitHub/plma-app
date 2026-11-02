@@ -13,15 +13,19 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Life — Personal Tracker",
+  title: "Mehrmah — Personal Tracker",
   description:
     "Track prayers, habits, health, studies, goals, and content creation with calm consistency.",
-  applicationName: "Life",
+  applicationName: "Mehrmah",
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/icons/icon.svg", type: "image/svg+xml" }, { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Life",
+    title: "Mehrmah",
   },
 };
 

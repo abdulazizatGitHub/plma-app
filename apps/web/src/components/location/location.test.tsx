@@ -4,6 +4,7 @@ import type { UserSettings } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { pickTime } from "@/test/time-field";
 import PrayerSettingsPage from "@/app/(main)/settings/prayer/page";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { decideLocation } from "@/lib/location/access";
@@ -100,7 +101,7 @@ describe("LocationProvider", () => {
     permission = "granted";
     renderFeature("always");
     fireEvent.click(screen.getByRole("button", { name: "Need location" }));
-    expect(await screen.findByRole("dialog", { name: "Allow location all the time?" })).toHaveTextContent("Life phone app");
+    expect(await screen.findByRole("dialog", { name: "Allow location all the time?" })).toHaveTextContent("Mehrmah phone app");
   });
 
   it("Choose a city works without GPS; Never is remembered and not asked again", async () => {
@@ -137,11 +138,12 @@ describe("Prayer settings page", () => {
   it("shows approximate times, saves method, Asr, offsets and fixed times", async () => {
     page();
     expect(await screen.findByText(/Approximate — Karachi/)).toBeInTheDocument();
-    fireEvent.change(screen.getByRole("combobox", { name: "Method" }), { target: { value: "mwl" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Method:/ }));
+    fireEvent.click(screen.getByRole("radio", { name: "Muslim World League" }));
     fireEvent.click(screen.getByRole("tab", { name: "Shafi'i / others" }));
     fireEvent.click(screen.getByRole("button", { name: "Maghrib one minute later" }));
     await waitFor(() => expect(settings()).toMatchObject({ calcMethod: "mwl", madhab: "shafi", prayerOffsets: { maghrib: 1 } }));
-    fireEvent.change(screen.getByLabelText("Isha fixed time"), { target: { value: "20:30" } });
+    pickTime("Isha fixed time", "20:30");
     await waitFor(() => expect(settings()?.prayerManual).toEqual({ isha: "20:30" }));
     expect(within(screen.getByRole("list", { name: "Today's prayer times" })).getByText("8:30 PM")).toBeInTheDocument();
   });

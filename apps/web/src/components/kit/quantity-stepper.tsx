@@ -118,15 +118,35 @@ type QuantityRowProps = Omit<QuantityStepperProps, "label"> & {
   onMore?: (anchor: HTMLElement) => void;
   tags?: React.ReactNode;
   highlight?: boolean;
+  /** A day that can't be logged: no stepper, just the value. */
+  readOnly?: boolean;
+  /** Being edited right now: keep the stepper open even once the goal is reached. */
+  active?: boolean;
+  /**
+   * Compact (Today's grouped list): one round + on the right logs a step;
+   * tap the progress bar for the full − / + (owner, 2026-10-13: less clutter).
+   */
+  compact?: boolean;
+  badges?: React.ReactNode;
 };
 
 /** Task row for counted items: title, "4,000 / 10,000 steps", thin progress line, stepper. */
-export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, highlight, ...stepper }: QuantityRowProps) {
+export function QuantityRow({ title, target, meta, priority, categoryColor, onOpen, onMore, tags, highlight, readOnly = false, active = false, compact = false, badges, ...stepper }: QuantityRowProps) {
   const state = quantityState(stepper.value, target);
   const pct = target ? Math.min(100, (stepper.value / target) * 100) : 0;
+  // A reached goal folds its stepper away; "Log more" brings it back (extra effort still counts).
+  const [logMore, setLogMore] = useState(false);
+  const reached = state === "done";
+  // Never fold mid-tap: a row still being edited keeps its stepper until it settles.
+  const showStepper = !readOnly && (compact ? logMore : !reached || logMore || active);
+  const progress = target
+    ? reached
+      ? `Goal reached · ${fmt(stepper.value)}${stepper.unit ? ` ${stepper.unit}` : ""}`
+      : `${fmt(stepper.value)} / ${fmt(target)}${stepper.unit ? ` ${stepper.unit}` : ""}`
+    : `${fmt(stepper.value)}${stepper.unit ? ` ${stepper.unit}` : ""}`;
   const caption = [
-    target ? `${fmt(stepper.value)} / ${fmt(target)}${stepper.unit ? ` ${stepper.unit}` : ""}` : null,
-    meta,
+    compact ? meta : target ? `${fmt(stepper.value)} / ${fmt(target)}${stepper.unit ? ` ${stepper.unit}` : ""}` : null,
+    compact ? progress : meta,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -143,15 +163,56 @@ export function QuantityRow({ title, target, meta, priority, categoryColor, onOp
       onMore={onMore}
       tags={tags}
       highlight={highlight}
+      readOnly={readOnly}
+      flat={compact}
+      badges={badges}
+      aside={
+        compact && !readOnly && !reached ? (
+          <button
+            type="button"
+            aria-label={`Increase ${title} by ${fmt(stepper.step ?? 1)}`}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => stepper.onChange(Math.min(stepper.max ?? MAX_QUANTITY, stepper.value + (stepper.step ?? 1)))}
+            className="press-pop mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-strong text-on-primary-strong"
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+          </button>
+        ) : undefined
+      }
     >
-      {target ? (
+      {target && compact && !readOnly ? (
+        // The bar is the way into the full − / + (and typing a value).
+        <button
+          type="button"
+          aria-expanded={showStepper}
+          aria-label={`Adjust ${title}: ${fmt(stepper.value)} of ${fmt(target)}`}
+          onClick={() => setLogMore((v) => !v)}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="block w-full py-1.5"
+        >
+          <span className="block h-1.5 overflow-hidden rounded-full bg-track">
+            <span className={`block h-full rounded-full transition-[width] duration-(--duration-base) ${reached ? "bg-done" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+          </span>
+        </button>
+      ) : target ? (
         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-track" aria-hidden>
-          <div className="h-full rounded-full bg-primary transition-[width] duration-(--duration-base)" style={{ width: `${pct}%` }} />
+          <div className={`h-full rounded-full transition-[width] duration-(--duration-base) ${reached ? "bg-done" : "bg-primary"}`} style={{ width: `${pct}%` }} />
         </div>
       ) : null}
-      <div className="mt-1.5">
-        <QuantityStepper label={title} {...stepper} />
-      </div>
+      {showStepper ? (
+        <div className="mt-1.5 flex items-center gap-2">
+          <QuantityStepper label={title} {...stepper} />
+          {reached ? (
+            <button type="button" onClick={() => setLogMore(false)} className="min-h-8 rounded-full px-2 text-[12px] font-medium text-ink-2 hover:bg-track">
+              Done
+            </button>
+          ) : null}
+        </div>
+      ) : reached && !readOnly && !compact ? (
+        <button type="button" onClick={() => setLogMore(true)} className="mt-1 min-h-8 rounded-full px-1 text-[12px] font-medium text-link">
+          Log more
+        </button>
+      ) : null}
     </TaskRow>
   );
 }

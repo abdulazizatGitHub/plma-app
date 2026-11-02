@@ -1,17 +1,25 @@
 "use client";
 
-import { createTask, todayLocalDate, updateTask, type Item, type TaskDraft } from "@life/shared";
+import { createTask, todayLocalDate, updateTask, type DayEntry, type Item, type TaskDraft } from "@life/shared";
 import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Sheet, Toast, type ToastData } from "@/components/kit";
+import { ReminderSheet } from "@/components/reminders/reminder-sheet";
+import { MoveSheet } from "@/components/today/move-sheet";
 import { TaskForm } from "@/components/today/task-form";
 import { whenLabel } from "@/lib/v2/dates";
 import { useActions, useCategories, useNextSortOrder } from "@/lib/v2/use-day";
+import { useStore } from "./store-provider";
+import { useToday } from "@/lib/v2/use-today";
 
 type AddSheetState = {
   /** Opens quick add; the day defaults to the one shown on Today. */
   openAdd: () => void;
   openEdit: (item: Item) => void;
+  /** "Remind me…" for one row on one day (today only, or its everyday reminder). */
+  openReminder: (entry: DayEntry, date: string) => void;
+  /** "Move to a date…": chips and a calendar; one tap moves it. */
+  openMove: (entry: DayEntry, from: string) => void;
   /** Today tells us which day is on screen, so + plans *that* day. */
   setDefaultDate: (date: string | null) => void;
   /** Today registers how to jump to a day (for the toast's "View"). */
@@ -30,12 +38,22 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>(null);
   const [defaultDate, setDefaultDate] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [reminderFor, setReminderFor] = useState<{ entry: DayEntry; date: string } | null>(null);
+  const [moveFor, setMoveFor] = useState<{ entry: DayEntry; from: string } | null>(null);
   const showDay = useRef<((date: string) => void) | null>(null);
   const categories = useCategories();
   const run = useActions();
   const nextSortOrder = useNextSortOrder();
   const router = useRouter();
+  const appToday = useToday();
   const close = useCallback(() => setMode(null), []);
+
+  // The server turned a change down (e.g. a closed day): say so; the row was already put back.
+  const notice = (useStore() as { lastResult?: { ok: boolean; notice?: string } | null }).lastResult;
+  const noticeText = notice?.ok ? notice.notice : undefined;
+  useEffect(() => {
+    if (noticeText) setToast({ message: noticeText }); // eslint-disable-line react-hooks/set-state-in-effect -- reflect a sync result
+  }, [notice, noticeText]);
 
   useEffect(() => {
     if (!toast) return;
@@ -47,6 +65,8 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
     () => ({
       openAdd: () => setMode({ kind: "add" }),
       openEdit: (item) => setMode({ kind: "edit", item }),
+      openReminder: (entry, date) => setReminderFor({ entry, date }),
+      openMove: (entry, from) => setMoveFor({ entry, from }),
       setDefaultDate,
       registerShowDay: (show) => {
         showDay.current = show;
@@ -57,8 +77,8 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
   );
 
   /** Tell the user where the task went, with a way to get there (owner: tasks seemed to vanish). */
-  const confirm = (draft: TaskDraft, edited: boolean) => {
-    const today = todayLocalDate();
+  const confirm = (draft: TaskDraft, edited: boolean, remind?: () => void) => {
+    const today = appToday ?? todayLocalDate();
     const verb = edited ? "Saved" : "Added";
     if (draft.date === null) {
       setToast({ message: `${verb} to Pending`, action: { label: "View", onClick: () => router.push("/pending") } });
@@ -66,7 +86,8 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
     }
     const where = whenLabel(draft.date, today, ", ");
     if (draft.date === (defaultDate ?? today) && showDay.current) {
-      setToast({ message: `${verb} to ${where}` });
+      // It's on screen already, so the toast offers the next likely step: a reminder.
+      setToast({ message: `${verb} to ${where}`, action: remind && draft.date >= today ? { label: "Remind me", onClick: remind } : undefined });
       return;
     }
     const target = draft.date;
@@ -102,9 +123,17 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
                     categoryId: editing.categoryId,
                     priority: editing.priority,
                   }
-                : { date: defaultDate ?? todayLocalDate() }
+                : { date: defaultDate ?? appToday ?? todayLocalDate() }
             }
             submitLabel={editing ? "Save" : "Add task"}
+            onNewPlan={
+              editing
+                ? undefined
+                : () => {
+                    close();
+                    router.push("/plans?new=1");
+                  }
+            }
             onMoreOptions={(draft) => {
               close();
               const q = new URLSearchParams();
@@ -119,15 +148,36 @@ export function AddSheetProvider({ children }: { children: ReactNode }) {
               router.push(`/items/edit?${q.toString()}`);
             }}
             onSubmit={(draft) => {
-              void run((ctx) =>
-                editing ? updateTask(editing, draft, ctx) : createTask(crypto.randomUUID(), draft, nextSortOrder(), ctx),
-              );
+              const id = editing?.id ?? crypto.randomUUID();
+              let saved: Item | null = null;
+              void run((ctx) => {
+                const changes = editing ? updateTask(editing, draft, ctx) : createTask(id, draft, nextSortOrder(), ctx);
+                saved = (changes.find((c) => c.entity === "items" && c.row.id === id)?.row as Item | undefined) ?? null;
+                return changes;
+              });
               close();
-              confirm(draft, Boolean(editing));
+              const day = draft.date;
+              confirm(draft, Boolean(editing), () => {
+                if (saved && day) setReminderFor({ entry: { key: `${id}|`, item: saved, slot: "", occurrence: null }, date: day });
+              });
             }}
           />
         ) : null}
       </Sheet>
+      <ReminderSheet entry={reminderFor?.entry ?? null} date={reminderFor?.date ?? ""} today={appToday ?? todayLocalDate()} onClose={() => setReminderFor(null)} />
+      <MoveSheet
+        entry={moveFor?.entry ?? null}
+        from={moveFor?.from ?? ""}
+        today={appToday ?? todayLocalDate()}
+        onClose={() => setMoveFor(null)}
+        onMoved={(to) => {
+          const today = appToday ?? todayLocalDate();
+          setToast({
+            message: `Moved to ${whenLabel(to, today, ", ")}`,
+            action: showDay.current ? { label: "View", onClick: () => showDay.current?.(to) } : undefined,
+          });
+        }}
+      />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </AddSheetContext.Provider>
   );

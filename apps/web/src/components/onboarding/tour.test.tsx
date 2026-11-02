@@ -44,11 +44,11 @@ describe("First-run tour", () => {
     const { unmount } = today();
     const tour = await screen.findByRole("dialog", { name: "App tour" });
     expect(tour).toHaveTextContent("1 of 3"); // ring, tiles, list (the navs aren't rendered here)
-    expect(tour).toHaveTextContent("Your day at a glance");
+    expect(tour).toHaveTextContent("Your three rings");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(tour).toHaveTextContent("To Do · In Progress · Done");
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(tour).toHaveTextContent("Your day at a glance");
+    expect(tour).toHaveTextContent("Your three rings");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));

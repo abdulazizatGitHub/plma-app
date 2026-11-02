@@ -99,7 +99,7 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | Radius | Cards 20; tiles 20; inputs and buttons 14; chips and segmented controls 999 |
 | Spacing | 4-pt base. Screen gutter 16. Card padding 16. Row height ≥ 56. Touch targets ≥ 44. |
 | Shadow | One level only: `0 4px 16px rgb(27 26 34 / 6%)` on cards; none in dark mode, where the border is used instead |
-| Rings | 6–8 px stroke with round caps on `--track`, % centred in Number style |
+| Rings | 6–8 px stroke with round caps on `--track`, % centred in Number style. Exception: the Today summary card ring is 112 px with a 10 px stroke, segmented per item in status colors (done, in progress, to do, missed) |
 | Bars | 6 px wide, fully rounded, on `--track` |
 
 ## 5. Components
@@ -119,6 +119,10 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **Location sheet** | Our pre-prompt before the browser's: Always (disabled on web), While using (primary), Choose a city, Never (text button); city search over bundled cities | — |
 | **Now highlight** | A row whose time window contains now gets a 2 px primary ring (`data-now`) | — |
 | **Day view** | Sections per prayer-based day part, with a time range and a "Now" tag | ref 1 |
+| **PlanCard** | Preset icon tile, title, venue / course caption, "Next: Edit · Wed 14 Oct" and overdue tags, 36 px progress ring | ref 2 project card |
+| **StepRow** | Round tick, or a lock with "Waits for …"; kind icon and title; date and time inputs; a cadence warning box (soft progress fill) with suggested-date chips — never blocks | — |
+| **Rules editor** | Per step kind: weekday chips and a "keep apart by" select; scope tabs This plan / All <category> plans | — |
+| **Settle in place** | Rows don't jump while edited: they keep their section for 2.5 s after the last tap, show a primary "→ Done" tag, then move with a view transition | — |
 | **ConfirmSheet** | Small "Delete …?" sheet: body text, Cancel and a red-filled confirm button | — |
 | **GroupRow** (routine) | Card with a 28 px ring, title, "3/5" tag and category tag; expands to its sub-items as TaskRows; done when all sub-items are done | ref 2 project card |
 | **Checklist row** | TaskRow with a "2/5 steps" tag and a "Show steps" toggle listing small tick rows | — |
@@ -127,6 +131,68 @@ A theme changes the light-mode canvas, the primary fills, and link text. Status 
 | **Pill / PillGroup** | Compact 32 px single-choice pills (When, Kind, Repeat, Category) | ref 2 |
 
 Icons stay **lucide-react** (already a dependency), 20 px with a 1.75 stroke.
+
+## 5b. Controls — tap, don't type (owner, 2026-10-13)
+
+- **No browser-native pickers.**
+  - **Dates:** `DateField` / `Calendar`, a month grid with one-tap quick chips.
+  - **Times:** `TimeField` / `TimeWheel`, scroll wheels.
+  - **Long lists:** `ChoiceSheet`, a sheet of radio rows.
+  - **Short lists:** `ChipChoice`.
+- **Numbers:** `NumberStepper` (− value +). The value stays typeable for big jumps, and the step follows the unit (500 steps, 5 min, 1 page).
+- **Primary actions stay in reach.** Long sheets pin their main button to the bottom; long pages use `StickyActions` above the bottom bar.
+- **Chip rows wrap.** They don't scroll sideways, so the chosen chip is always visible. The one exception is the reminder popup's one-tap picks, where every chip is an action, not a selection.
+- **Category dots** have a thin outline, so pale colors stay visible on chips.
+- **Dark mode:** every category fill is toned down, so light text stays readable on it.
+
+## 5c. History and Progress (owner, 2026-10-13)
+
+- **Progress:**
+  - Week / Month tabs with ‹ › paging.
+  - Summary ring: the average of **finished** days, the trend against the previous period, perfect days and the streak.
+  - Week: tappable bars (open the day). Month: the heatmap.
+  - Insights: Doing well / Needs attention.
+  - "By category" in one grouped card with a rate bar per category.
+- **Item log:** one row per day: a colored dot, the date, what happened (value / target, Missed, Skipped, Moved to …), and small "Qada" / "Late" chips.
+- **Late days:**
+  - an hourglass banner: "Still open — you can fix this day until Thu 12 AM. Changes you make now are marked late."
+  - a quiet "logged late" on rows
+
+## 5d. Rings, rewards and celebrations (owner, 2026-10-14; rings 2026-10-15)
+
+- **Rings lead.** Three concentric rings, outer to inner: Prayer (`--done`), Commitments (`--primary`), Balance (`--progress`), each on a faint track of its own colour; a free ring is a faint dotted track. Today: 104 px with a row per ring ("Commitments 5/8 done"); Progress week: 38 px mini stacks. A ring closing pulses once and toasts; every ring closed = confetti.
+
+- **Where:** on Progress, the monthly challenge, streak, featured awards and All awards, with points last; one quiet line at the foot of Today's card ("13-day streak · 1 freeze · Level 3 · 333 pts"). Nowhere else.
+- **Badges:** round icon tiles in category pastels (streaks peach, prayers lilac, perfect week yellow, plans mint). Locked ones are grey with a small lock and how far along ("19 more days").
+- **Celebrate in proportion:** an item gets a small "+N" pill that floats up from the tap (about 1 s). A perfect day gets a short CSS confetti burst and a toast. A new badge gets its own card, once.
+- **Reduced motion:** no floating or confetti; a toast says the same thing.
+- **Words:** never "lost" or "broken". "A freeze covered 11 Oct — your 13-day streak keeps going." "A new streak starts today — your best is still 12."
+- **One streak per screen:** once server rewards arrive, theirs (with freezes) is the only streak shown.
+
+## 5e. Friends and sharing (owner, 2026-10-16)
+
+- **Avatars:** initials on the person's chosen category pastel (`--cat-*`); no photos yet. The top-bar account button uses the same.
+- **Activity:** a bell in the top bar with a small red dot for unread. Each card shows a picture (mini ring stack, flame with the count, moon for prayers, or the award medal), one line ("Sara shared a 21-day Fajr streak"), a quiet detail line, and one **Kudos** button that turns into "Sent".
+- **Leaderboard:** rank or medal (gold `--cat-yellow`, silver `--track`, bronze `--cat-peach`), avatar, name and points. Your row sits on `--track`. Friends | Everyone tabs; the period follows the page.
+- **Share sheet:** pick friends with round checks plus "Select all"; the button reads "Send to N" and stays disabled until someone is picked.
+- **Words:** "Others never see your items — only points, streak and awards." A block is never announced to the blocked person.
+
+## 5f. Snaps and streaks (owner, 2026-10-16)
+
+- **Snap button:** a send (paper-plane) icon in the top bar, a filled "Snap" pill on Today's card, and Snap / Snap back on friend rows. One tap opens the snap sheet: friends with a 🔥 count, at-risk ones first.
+- **Snaps list:** the friend's avatar and name (bold when new), plus a small square in the kind's colour (rings `--primary`, check-in `--done`, streaks `--progress`, awards `--cat-lilac`). The square is **filled when new and hollow once opened**.
+- **Viewer:** full-screen on `--ink` at 90%, with the card large in the middle. Kudos and Snap back sit at the bottom; tapping anywhere closes it, and it opens once.
+- **Streak badge:** the number, then a filled flame (`--progress`), plus an hourglass (`--todo`) when it ends soon. Body text uses words, not emoji.
+
+## 5g. Groups (owner, 2026-10-16)
+
+- **Group tile:** a rounded square in the group's pastel with its icon (users, home, moon, dumbbell, book, graduation, heart, star). The group streak shows as the same 🔥 badge as friends.
+- **Group card (list):** the tile, the name with its streak, stacked member avatars, "N checked in today", and the soonest goal with a bar.
+- **Group page:**
+  - **Header card:** a full-width **Snap the group** button, which becomes "Checked in today".
+  - **Goal cards:** a bar for each member ("You" in bold, ✓ when met) or one total bar for "together", then the reward line with a gift icon.
+  - **Members:** owner (crown) and admin (shield) labels; ✓ for who checked in today.
+- **Linked items** on Today carry a `primary` tag "Group · Family". Their editor explains that the name, counting and dates belong to the group.
 
 ## 5a. Density and breakpoints (owner, 2026-10-10)
 

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "docs:guide": "tsx scripts/user-guide.ts",
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
@@ -15,7 +16,7 @@
     "@life/shared": "*",
     "@supabase/supabase-js": "^2.117.3",
     "lucide-react": "^0.544.0",
-    "next": "16.3.8",
+    "next": "16.4.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "sql.js": "^1.14.2",
@@ -30,7 +31,7 @@
     "@types/sql.js": "^1.4.11",
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.4",
     "serwist": "^9.2.1",
     "tailwindcss": "^4",
     "typescript": "^5"

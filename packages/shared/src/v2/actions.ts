@@ -1,8 +1,9 @@
 import type { DayEntry } from "./day.js";
 import { MOVED_SLOT_PREFIX } from "./day.js";
-import type { Category, Item, Occurrence, UserSettings } from "./entities.js";
+import type { CadenceRule, Category, Item, ItemDependency, Occurrence, Reminder, UserSettings } from "./entities.js";
 import { occurrenceIdFor } from "./occurrence-id.js";
 import { entryState } from "./progress.js";
+import type { DayReminder } from "./reminders/model.js";
 
 /*
  * Pure builders for Today's actions (FLX-01…03, TRK-01/02/05). Each returns the
@@ -13,9 +14,27 @@ export type Change =
   | { entity: "userSettings"; row: UserSettings }
   | { entity: "categories"; row: Category }
   | { entity: "items"; row: Item }
-  | { entity: "occurrences"; row: Occurrence };
+  | { entity: "occurrences"; row: Occurrence }
+  | { entity: "itemDependencies"; row: ItemDependency }
+  | { entity: "cadenceRules"; row: CadenceRule }
+  | { entity: "reminders"; row: Reminder };
 
-export type ActionContext = { userId: string; now: string; deviceId: string | null };
+export type ActionContext = {
+  userId: string;
+  now: string;
+  deviceId: string | null;
+  /**
+   * The user's today. A change to an earlier day (the correction window) is
+   * stamped `detail.late`; the server re-checks and decides.
+   */
+  today?: string;
+  /**
+   * Whether logging this item for this day now is late — past its on-time
+   * point, which for Isha (and "after Isha" items) is Fajr, not midnight.
+   * Falls back to comparing dates with `today`.
+   */
+  isLate?: (item: Item, date: string) => boolean;
+};
 
 /** The entry's stored occurrence with `patch` applied, or a new one for `date`. */
 async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext, patch: Partial<Occurrence>): Promise<Occurrence> {
@@ -37,7 +56,14 @@ async function occurrenceWith(entry: DayEntry, date: string, ctx: ActionContext,
     completedAt: null,
     deviceId: ctx.deviceId,
   };
-  return { ...base, ...patch, updatedAt: ctx.now, deviceId: ctx.deviceId };
+  const next: Occurrence = { ...base, ...patch, updatedAt: ctx.now, deviceId: ctx.deviceId };
+  const extra: Record<string, unknown> = {};
+  // The goal it was logged against, so editing the target later never rewrites past days.
+  const t = entry.item.tracking;
+  const target = t.kind === "quantity" ? t.target : t.kind === "duration" ? t.targetMin : undefined;
+  if (target !== undefined && patch.value !== undefined) extra.target = target;
+  if (ctx.isLate ? ctx.isLate(entry.item, date) : !!ctx.today && date < ctx.today) extra.late = true;
+  return Object.keys(extra).length ? { ...next, detail: { ...(next.detail ?? {}), ...extra } } : next;
 }
 
 const occ = (row: Occurrence): Change => ({ entity: "occurrences", row });
@@ -240,4 +266,12 @@ export function updateTask(existing: Item, draft: TaskDraft, ctx: ActionContext)
 /** Soft delete — syncs as a tombstone. */
 export function deleteItem(existing: Item, ctx: ActionContext): Change[] {
   return [item({ ...existing, deletedAt: ctx.now, updatedAt: ctx.now })];
+}
+
+/** Set (or with null, clear) this day's own reminder for the entry ("Remind me…", today only). */
+export async function setDayReminder(entry: DayEntry, date: string, reminder: DayReminder | null, ctx: ActionContext): Promise<Change[]> {
+  const detail = { ...(entry.occurrence?.detail ?? {}) };
+  delete detail.reminder;
+  if (reminder) detail.reminder = reminder;
+  return [occ(await occurrenceWith(entry, date, ctx, { detail: Object.keys(detail).length ? detail : null }))];
 }

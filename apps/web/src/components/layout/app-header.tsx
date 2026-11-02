@@ -1,8 +1,9 @@
 "use client";
 
-import { AlertCircle, Cloud, CloudOff, RefreshCw } from "lucide-react";
+import { AlertCircle, Bell, Cloud, CloudOff, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
 import { useStore } from "@/components/providers/store-provider";
+import { useSocial } from "@/lib/v2/use-social";
 import { UserMenu } from "./user-menu";
 
 /** Sync state as one icon + label; tapping it syncs now. */
@@ -32,19 +33,53 @@ function SyncIndicator() {
   );
 }
 
-/** Top bar: app mark, sync status, account menu. Pages keep their own H1. */
+/** Activity (shares, kudos, requests) with an unread dot (Phase 9a). */
+function ActivityBell() {
+  const { unread } = useSocial();
+  return (
+    <Link
+      href="/activity"
+      data-tour="activity"
+      aria-label={unread ? `Snaps, ${unread} new` : "Snaps"}
+      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+    >
+      <Bell className="h-[18px] w-[18px]" aria-hidden />
+      {unread ? <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full border-2 border-bg bg-todo" aria-hidden /> : null}
+    </Link>
+  );
+}
+
+/** One tap to snap today's rings to friends (Snapchat-style). */
+function SnapButton() {
+  const { openSnap } = useSocial();
+  return (
+    <button
+      type="button"
+      aria-label="Snap today's rings to friends"
+      data-tour="snap"
+      onClick={() => openSnap({ kind: "day", label: "today's rings" })}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+    >
+      <Send className="h-[18px] w-[18px]" aria-hidden />
+    </button>
+  );
+}
+
+/** Top bar: app mark, sync status, snap, snaps inbox, account menu. Pages keep their own H1. */
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-12 w-full max-w-xl items-center justify-between px-4 md:max-w-2xl lg:max-w-none lg:px-6">
-        <Link href="/" className="flex items-center gap-2" aria-label="Life — go to Today">
+        <Link href="/" className="flex items-center gap-2" aria-label="Mehrmah — go to Today">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-on-fill" aria-hidden>
             L
           </span>
-          <span className="text-[15px] font-semibold text-ink">Life</span>
+          <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
         </Link>
         <div className="flex items-center gap-1">
           <SyncIndicator />
+          <SnapButton />
+          <ActivityBell />
           <UserMenu />
         </div>
       </div>

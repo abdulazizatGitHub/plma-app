@@ -22,6 +22,69 @@
       "when": 1791719049960,
       "tag": "0002_prayer_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791746081931,
+      "tag": "0003_day_end_hour",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791815010924,
+      "tag": "0004_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791830961356,
+      "tag": "0005_reminder_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791912331610,
+      "tag": "0006_closed_through",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792003131651,
+      "tag": "0007_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792089451967,
+      "tag": "0008_rings_awards",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792162473056,
+      "tag": "0009_social",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792171296409,
+      "tag": "0010_snaps",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792172873786,
+      "tag": "0011_groups",
+      "breakpoints": true
     }
   ]
 }

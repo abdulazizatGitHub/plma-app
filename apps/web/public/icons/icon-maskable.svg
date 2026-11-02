@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Maskable: full-bleed background, rings inside the 80% safe zone. -->
+  <rect width="512" height="512" fill="#4766d0"/>
+  <g fill="none" stroke-linecap="round" stroke-width="27" transform="rotate(-90 256 256)">
+    <circle cx="256" cy="256" r="128" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="128" stroke="#97bb7d" stroke-dasharray="683 805"/>
+    <circle cx="256" cy="256" r="91" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="91" stroke="#f4f4f9" stroke-dasharray="429 572"/>
+    <circle cx="256" cy="256" r="54" stroke="#f4f4f9" stroke-opacity="0.18"/>
+    <circle cx="256" cy="256" r="54" stroke="#ebac80" stroke-dasharray="254 339"/>
+  </g>
+</svg>

@@ -35,7 +35,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   store = await LocalStore.open(uid(), { sqlJs: SQL });
   try {
-    localStorage.removeItem("life_today_view");
+    localStorage.setItem("life_today_view", "status");
   } catch {
     /* ignore */
   }
@@ -57,9 +57,9 @@ describe("Prayer anchors and the Day view", () => {
     const titles = todo.getAllByText(/^(Morning walk|Surah Mulk|Read)$/).map((el) => el.textContent);
     expect(titles).toEqual(["Morning walk", "Surah Mulk", "Read"]);
 
-    fireEvent.click(screen.getByRole("tab", { name: "By time of day" }));
+    fireEvent.click(screen.getByRole("tab", { name: "My day" }));
     expect(within(screen.getByRole("region", { name: "Night" })).getByText("Surah Mulk")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Anytime" })).getByText("Read")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Other" })).getByText("Read")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Morning|After Fajr/ })).toHaveTextContent("Morning walk");
     expect(localStorage.getItem("life_today_view")).toBe("day");
   });

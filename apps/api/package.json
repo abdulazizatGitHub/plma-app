@@ -15,20 +15,25 @@
     "db:migrate:manual": "node scripts/apply-migrations.mjs",
     "db:smoke": "node scripts/pg-smoke.mjs",
     "db:migrate:v1": "tsx src/migrate/cli.ts",
-    "db:seed:templates": "tsx src/templates/seed.ts"
+    "db:seed:templates": "tsx src/templates/seed.ts",
+    "jobs:finalize": "tsx scripts/finalize-once.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",
+    "@fastify/helmet": "^13.1.2",
+    "@fastify/rate-limit": "^10.3.0",
     "@life/shared": "*",
     "dotenv": "^18.0.4",
     "drizzle-orm": "^0.45.3",
     "fastify": "^5.6.0",
     "jose": "^6.2.12",
     "postgres": "^3.4.9",
-    "zod": "^4.1.12"
+    "web-push": "^3.6.7",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^20.19.17",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"

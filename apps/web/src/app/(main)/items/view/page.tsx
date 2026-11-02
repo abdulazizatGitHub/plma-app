@@ -5,23 +5,26 @@ import {
   dateRange,
   deleteItemTree,
   itemHistory,
-  todayLocalDate,
   unarchiveItem,
   type DayEntry,
+  type LogEntry,
   type Occurrence,
 } from "@life/shared";
-import { Archive, ArrowLeft, CircleCheck, Flame, Pencil, Trash2, Trophy, Undo2 } from "lucide-react";
+import { Archive, ArrowLeft, CircleCheck, Flame, Pencil, Share2, Trash2, Trophy, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, createElement, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Bars, Button, ConfirmSheet, Heatmap, Tag, addDays, type HeatMark } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { SyncingNote } from "@/components/history/syncing-note";
+import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { DayEntryRow } from "@/components/today/day-entry-row";
 import { PrayerInsightsPanel } from "@/components/prayer/insights-panel";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { KIND_LABEL, scheduleSummary, trackingSummary } from "@/lib/v2/item-text";
-import { useActions, useAllItems, useCategory, useDay, useItem, useItemOccurrences } from "@/lib/v2/use-day";
+import { useActions, useAllItems, useCategory, useClosedThrough, useDay, useHasSynced, useItem, useItemOccurrences, useUserSettings } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 /** Days of history behind the streak and completion figures. */
 const STATS_DAYS = 90;
@@ -41,6 +44,39 @@ function Stat({ icon, label, value }: { icon: ReactNode; label: string; value: s
   );
 }
 
+const LOG_DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const LOG_MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const MARK_DOT: Record<string, string> = { done: "bg-done", partial: "bg-progress", missed: "bg-todo", skipped: "bg-track", today: "bg-primary" };
+
+/** One day of an item's log: what happened, with the value against the target it was logged with. */
+function LogRow({ entry: l, unit }: { entry: LogEntry; unit: string }) {
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  const amount = l.value !== null && unit ? `${fmt(l.value)}${l.target ? ` / ${fmt(l.target)}` : ""} ${unit}` : null;
+  const what =
+    l.mark === "done"
+      ? (amount ?? "Done")
+      : l.mark === "partial"
+        ? (amount ?? "Started")
+        : l.mark === "missed"
+          ? amount && l.value
+            ? `${amount} — missed`
+            : "Missed"
+          : l.mark === "skipped"
+            ? l.how === "moved"
+              ? `Moved${l.movedTo ? ` to ${LOG_DAY.format(new Date(`${l.movedTo}T12:00:00Z`))}` : ""}`
+              : "Skipped"
+            : amount ?? "Today";
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5">
+      <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${MARK_DOT[l.mark] ?? "bg-track"}`} />
+      <span className="w-28 shrink-0 text-[12.5px] text-ink-2">{LOG_DAY.format(new Date(`${l.date}T12:00:00Z`))}</span>
+      <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{what}</span>
+      {l.qada ? <Tag tone="progress">Qada</Tag> : null}
+      {l.late ? <Tag>Late</Tag> : null}
+    </li>
+  );
+}
+
 /** Value logged on a day, for the 7-day bars (counts and minutes), or 1 / 0.5 for done / started. */
 function barValue(occs: Occurrence[], date: string, mark: HeatMark, measured: boolean): number {
   if (measured) return occs.find((o) => o.date === date && o.slot === "")?.value ?? 0;
@@ -56,15 +92,13 @@ function ItemView() {
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [month, setMonth] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
   useEffect(() => {
-    const t = todayLocalDate();
-    setToday(t); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
-    setMonth(t.slice(0, 7));
-  }, []);
+    if (today) setMonth((m) => m ?? today.slice(0, 7)); // eslint-disable-line react-hooks/set-state-in-effect -- start on this month
+  }, [today]);
 
   const day = today ?? "1970-01-01";
   const { entries } = useDay(day);
@@ -74,7 +108,11 @@ function ItemView() {
   const ids = useMemo(() => (item ? [item.id, ...children.map((c) => c.id)] : []), [item, children]);
   const occs = useItemOccurrences(ids, from, day);
 
-  const history = useMemo(() => (item && today ? itemHistory(item, children, occs, from, today, today) : null), [item, children, occs, from, today]);
+  const closedThrough = useClosedThrough();
+  const synced = useHasSynced();
+  const [share, setShare] = useState<ShareWhat | null>(null);
+  const { weekStart } = useUserSettings();
+  const history = useMemo(() => (item && today ? itemHistory(item, children, occs, from, today, today, closedThrough) : null), [item, children, occs, from, today, closedThrough]);
 
   if (!ready || !today || !month) return <div className="skeleton h-40" aria-busy="true" aria-label="Loading item" />;
   if (!item || item.deletedAt) {
@@ -89,7 +127,9 @@ function ItemView() {
   }
 
   const marks = new Map<string, HeatMark>((history?.days ?? []).map((d) => [d.date, d.mark]));
-  const stats = history ? itemHistory(item, children, occs, statsFrom, today, today) : null;
+  const stats = history ? itemHistory(item, children, occs, statsFrom, today, today, closedThrough) : null;
+  const monthLog = (history?.log ?? []).filter((l) => l.date.startsWith(month) && l.mark !== "not_due" && l.mark !== "future");
+  const unit = item.tracking.kind === "quantity" ? item.tracking.unit : item.tracking.kind === "duration" ? "min" : "";
   const week = dateRange(addDays(today, -6), today);
   const measured = item.tracking.kind === "quantity" || item.tracking.kind === "duration";
   const values = week.map((d) => barValue(occs, d, marks.get(d) ?? "not_due", measured));
@@ -141,6 +181,20 @@ function ItemView() {
           <Stat icon={<Flame />} label="Streak" value={`${stats.currentStreak} day${stats.currentStreak === 1 ? "" : "s"}`} />
           <Stat icon={<Trophy />} label="Best" value={`${stats.bestStreak}`} />
           <Stat icon={<CircleCheck />} label={`Done · ${STATS_DAYS}d`} value={stats.completionRate === null ? "—" : `${stats.completionRate}%`} />
+          {stats.currentStreak >= 2 ? (
+            <button
+              type="button"
+              onClick={() => setShare({ kind: "item_streak", itemId: item.id, label: `your ${stats.currentStreak}-day ${item.title} streak` })}
+              className="col-span-3 inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium text-link hover:bg-track"
+            >
+              <Share2 className="h-4 w-4" aria-hidden /> Share this streak with friends
+            </button>
+          ) : null}
+          {stats.skipped || stats.moved ? (
+            <p className="col-span-3 px-1 text-[12px] text-ink-2">
+              Last {STATS_DAYS} days: {stats.skipped} skipped · {stats.moved} moved — neither breaks a streak.
+            </p>
+          ) : null}
         </section>
       ) : null}
 
@@ -157,8 +211,20 @@ function ItemView() {
       </section>
 
       <section aria-label="History" className="card p-3.5">
-        <Heatmap month={month} marks={marks} onMonth={setMonth} maxMonth={today.slice(0, 7)} minMonth={created} />
+        {synced === false ? <SyncingNote /> : null}
+        <Heatmap month={month} marks={marks} onMonth={setMonth} maxMonth={today.slice(0, 7)} minMonth={created} weekStart={weekStart} />
       </section>
+
+      {monthLog.length && item.meta.prayerSet !== true ? (
+        <section aria-label="Log">
+          <h2 className="mb-1.5 px-1 text-[12px] font-semibold tracking-wide text-ink-2 uppercase">Log · {LOG_MONTH.format(new Date(`${month}-15T12:00:00Z`))}</h2>
+          <ul className="card divide-y divide-border overflow-hidden">
+            {monthLog.map((l) => (
+              <LogRow key={l.date} entry={l} unit={unit} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {item.notes ? (
         <section aria-label="Notes" className="card p-3.5">
@@ -192,6 +258,7 @@ function ItemView() {
         </Button>
       </div>
 
+      <ShareSheet what={share} onClose={() => setShare(null)} />
       <ConfirmSheet
         open={deleting}
         title={`Delete “${item.title}”?`}

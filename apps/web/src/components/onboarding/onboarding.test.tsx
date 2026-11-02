@@ -74,17 +74,41 @@ describe("OnboardingGate", () => {
   });
 });
 
-describe("Welcome (two-step setup)", () => {
+describe("Welcome (first-run guide)", () => {
   const renderWelcome = () =>
     render(
       <AddSheetProvider>
         <WelcomePage />
       </AddSheetProvider>,
     );
+  /** Through the intro, profile and day steps to the interests (each can be skipped). */
+  const toInterests = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "Skip intro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+  };
+
+  it("starts with a short intro: four slides, then who you are and your day", async () => {
+    renderWelcome();
+    expect(await screen.findByRole("heading", { name: "Your day in three rings" })).toBeInTheDocument();
+    for (const t of ["Prayers at the right time", "Plans and reminders", "Friends keep you going"]) {
+      fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      expect(screen.getByRole("heading", { name: t })).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Let's set up" }));
+    expect(screen.getByRole("heading", { name: "Who are you?" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(screen.getByRole("heading", { name: "Your day and prayer times" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "2 AM" }));
+    await waitFor(() => expect((store.query("userSettings") as unknown as { dayEndHour: number }[])[0]?.dayEndHour).toBe(2));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByText("Step 3 of 4")).toBeInTheDocument();
+  });
   const items = () => store.query("items", `WHERE "deleted_at" IS NULL`) as unknown as Item[];
 
   it("interests become categories; only ticked suggestions are added, with edited targets", async () => {
     renderWelcome();
+    await toInterests();
     expect(await screen.findByRole("button", { name: "Pick at least one interest" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: /^Spiritual/ }));
     fireEvent.click(screen.getByRole("button", { name: /^Physical/ }));
@@ -104,11 +128,15 @@ describe("Welcome (two-step setup)", () => {
     expect(items()[0]).toMatchObject({ title: "Steps", tracking: { target: 6000 }, sourceTemplateId: STARTER_PACKS[1].id });
     expect(store.getMeta(ONBOARDED_KEY)).toBe("packs");
     expect(store.getMeta(TOUR_KEY)).toBe("pending");
+    // Last: reminders and installing, then Today.
+    expect(await screen.findByRole("heading", { name: "You're all set" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Go to Today" }));
     expect(replace).toHaveBeenCalledWith("/");
   });
 
   it("a routine suggestion brings its sub-items; an empty target blocks Finish", async () => {
     renderWelcome();
+    await toInterests();
     fireEvent.click(await screen.findByRole("button", { name: /^Physical/ }));
     fireEvent.click(screen.getByRole("button", { name: "Next — 1 interest" }));
     fireEvent.click(screen.getByRole("checkbox", { name: /^Gym — Push day/ }));
@@ -122,6 +150,7 @@ describe("Welcome (two-step setup)", () => {
 
   it("Skip creates nothing but still offers the tour", async () => {
     renderWelcome();
+    await toInterests();
     fireEvent.click(await screen.findByRole("button", { name: "Skip — start empty" }));
     expect(categories()).toEqual([]);
     expect(store.getMeta(ONBOARDED_KEY)).toBe("empty");

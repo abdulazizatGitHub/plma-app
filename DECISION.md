@@ -532,3 +532,392 @@ Use this template for each decision:
 - **Consequences:**
   - Always-on location (and prayer reminders) wait for the native app (Phases 6 and 11). The layer already models that level.
   - Day parts aren't user-editable yet.
+
+### 2026-10-11 — Branching, quality gates, first push; v2 Phase 5: Plans
+
+- **Context:** The owner created `github.com/abdulazizatGitHub/plma-app` and asked for pre-commit and on-push checks (tests, lint, typecheck, error, bug and security checks) and for a branching model. They then asked for Phase 5 (Plans).
+- **Decision (branching):**
+  - **Environment branches:** `dev` → `preprod` → `main`, with `main` live and `preprod` the test deployment.
+  - **Short-lived branches:** `feature/*` and `fix/*` merge into `dev`; `hotfix/*` branches from `main` and is merged back down afterwards.
+  - **Versions are semver tags** on `main` (`v0.4.0` = Phases 0–4), not long-lived version branches, so fixes never need copying between them.
+  - The old v1 app is kept as the tag `v1-final`.
+  - Details are in `docs/guides/BRANCHING_AND_CI.md`.
+- **Decision (gates):**
+  - **Pre-commit (Husky + lint-staged):**
+    - a guard blocks env files, files over 2 MB and `console.log` in app source
+    - ESLint `--fix` runs per workspace (web uses its own ESLint 9)
+    - secretlint uses the recommended preset plus patterns for JWTs, Supabase / Stripe / AWS keys and DB URLs with passwords
+  - **Pre-push:** `npm run verify` (typecheck, lint, tests, `npm audit --omit=dev --audit-level=high`).
+  - **CI:** ci (including build and secret scan), CodeQL `security-and-quality`, gitleaks over the full history, dependency review, release on `v*` tags, and Dependabot into `dev`.
+  - **Security fixes on the way:**
+    - Next 16.3.6 → 16.3.8 (cache poisoning, SSRF and other advisories)
+    - `npm audit fix` for sharp and source-map-js
+    - production dependencies now have 0 vulnerabilities
+  - The full history was scanned before the first push; it contains only placeholders and the local docker dev password.
+- **Decision (Phase 5):**
+  - **A plan** is an item of type `plan` that never appears on Today itself. Its steps are dated one-off tasks with `meta.stepKind`, and they appear on Today on their dates with the plan as context. Undated steps sit in Pending until done.
+  - **"Waits for"** links are `item_dependencies` rows, and loops are refused. A locked step shows a lock and the reason instead of its tick.
+  - **Cadence rules** are `cadence_rules` rows per step kind, scoped to the plan or to the whole category:
+    - `weekdays` = allowed days
+    - `gapDays` = minimum days between steps **of the same kind** (across the category's plans for category rules)
+    - The checker warns and suggests the next three valid dates; the picked date is always saved.
+  - **Presets are data:**
+    - content collab: Shoot, Edit, Payment cleared, Post; Post waits for Payment
+    - university course: quick-add Assignment, Quiz, Presentation, Teacher meeting, FYP
+    - blank
+  - **Where plans live:** `/plans` and `/plans/view?id=` (precached), a Plans section in categories ("Nothing upcoming" for content and university categories without active plans), Categories → Plans, and quick add → New plan.
+  - **Edit queues:** rule edits are queued against the stored rows, like settings edits, so quick taps never duplicate rules.
+- **Consequences:**
+  - Per-step reminders (PLN-03, second half) arrive with Phase 6.
+  - Branch protection and Actions settings are the owner's to switch on in GitHub.
+  - The first push's CI didn't start: GitHub listed the workflows as active, but no runs appeared. Check Settings → Actions → General.
+
+### 2026-10-11 — Rows settle in place before changing section
+
+- **Context:** The owner reported that tapping + (or ticking) made the row vanish from To Do and reappear further down in In Progress or Done, mid-edit.
+- **Decision:**
+  - A row stays in the section it was in while it's being worked on. Every progress tap (+/−, tick, checklist step, minutes) restarts a short pause of 2.5 s (`SETTLE_MS`).
+  - While it waits, a "→ In Progress" / "→ Done" tag says where it's going.
+  - It then moves, animated with the View Transitions API where supported. Reduced-motion settings get an instant move.
+  - The status tiles and the % update at once; only the row's position waits.
+  - Menu actions (Skip, Move) still apply at once, because the user asked for them explicitly.
+- **Where:** `lib/v2/use-settle.ts` (`useSettledPlacement`); Today places rows by their held state.
+
+### 2026-10-12 — Daily items belong to their day; reached goals fold away
+
+- **Context:** The owner noticed two problems:
+  - Past days' habits (steps, reading, gym, prayers) could be ticked days later, which makes history and streaks meaningless.
+  - Steppers stayed big after a goal was reached, inviting endless taps.
+- **Decision (day modes, `dayAccess`):**
+  - **Today: live.**
+  - **Yesterday: late logging** (`LOG_GRACE_DAYS = 1`).
+    - You can log what you did but forgot to record. A banner says it closes at midnight.
+    - Tapping a prayer records **qada**; "on time" stays available in the menu, in case you prayed but forgot to tap.
+  - **Older days: history.**
+    - Read-only: checks are disabled, there are no steppers, and unfinished items are tagged "Missed" under a "Not done" heading.
+    - Unfinished one-off tasks can still be **moved to today**, and missed prayers **recovered as qada** (the owner's earlier qada rule).
+  - **Future days: planned.** Add, skip, move or edit, but no ticking or logging until the day comes.
+  - **Before creation:** repeating items don't appear on days before they were created (unless a record exists then, e.g. v1 history), so they can't be "missed" there.
+- **Decision (goals):**
+  - Extra effort is real data and is kept: "Goal reached · 11,500 steps" plus "+1,500 over".
+  - The stepper folds once the goal is reached; "Log more" brings it back.
+  - It never folds mid-tap: a row still being edited keeps its stepper until it settles.
+
+
+### 2026-10-12 — Days lock at the user's day-end; Today summary card
+
+- **Context:** After midnight the owner could still edit the previous day. Its progress never became final, so streaks and future rewards had nothing solid to stand on. The 48 px ring was also too small to say much about the day.
+- **Decision (day lock):**
+  - Grace is removed (`LOG_GRACE_DAYS = 0`). A day becomes **history** (read-only) as soon as it ends.
+  - "When it ends" is the user's choice: **Profile → Your day → My day ends at**, from midnight up to 4 AM (`user_settings.day_end_hour`, migration `0003`).
+  - Before that hour it is still the previous day. `logicalToday` and `TodayProvider` switch at that boundary, on focus, and when the app returns to the foreground.
+  - Locked days still allow two kinds of recovery: moving unfinished one-off tasks to today, and recording missed prayers as qada.
+- **Decision (summary card):** the header ring is replaced by one card at the top of Today:
+  - a 112 px segmented ring (done, in progress, to do; missed on a closed day) with the % and "done" or "final"
+  - an "X of Y done" legend
+  - a one-line summary: what's left and what's next, or "Day closed"
+  - a per-prayer bar
+  - the perfect-day streak: current and best
+- **Streak rule (`dayStreak`):** consecutive days at 100%. Days with nothing due are neutral. An unfinished today doesn't break the run until it locks. Badges and rewards (Phase 8) build on these locked days.
+
+### 2026-10-12 — Phase 6 reminders: priority windows, one reminder per item, queue table instead of pg-boss
+
+- **Context:** The owner chose reminders that follow priority, with each priority's window editable in Settings. Any item can have its own reminder; when it does, the auto reminder is off, so only one is active at a time. Repeat and snooze are the user's to set, per priority or per item.
+- **Decision (model):**
+  - **Auto reminders are virtual:** they are derived from `user_settings.reminder_profiles`, so editing a priority applies to every item at once.
+  - **A custom reminder is a `reminders` row.**
+    - "Off" is a row with `enabled=false`; "Back to auto" deletes it.
+    - Two offline devices could each make one, so the latest live row wins; there is no unique index, which would break sync.
+  - Defaults per REM-02 (both editable):
+
+    | Priority | Default |
+    |---|---|
+    | low | off |
+    | medium | once |
+    | high | once, plus one follow-up after 30 min |
+    | critical | every 30 min, up to 6 more, until done |
+
+    Snooze is 10 min for all of them.
+  - **Untimed items** remind at a check-in time (default 8 PM).
+  - **Quiet hours** delay fires to their end; a run of repeats continues from there.
+- **Decision (server):**
+  - **No pg-boss.** The `reminder_queue` table is the queue. The tick runs every minute with `FOR UPDATE SKIP LOCKED`, which is safe with several instances, and avoids a second Postgres driver and the pooler's limits.
+  - **Planning:**
+    - The planner rewrites a user's future fires 3 s after any sync push, plus an hourly sweep.
+    - Fires that are due but not yet sent are kept. A race in E2E showed that a replan could otherwise drop them.
+  - **The notification's Done and Snooze** carry a 24-hour HMAC-signed token for exactly one fire.
+    - Done writes the occurrence as a tap would (shared `toggleDone`), never on a locked day.
+    - Snooze waits the item's snooze length.
+- **Limits:**
+  - Push needs HTTPS: Android and iPhone are checked after the preprod deploy.
+  - iPhone needs the app installed to the Home Screen, which the settings page explains.
+  - Delivery can be a minute late. Exact alarms come with the native wrap (Phase 11).
+
+### 2026-10-12 — Prayer timing: now / next / not marked yet; Isha after midnight; never assume qada
+
+- **Context:**
+  - In the evening, the Today card said "next: Fajr · 4:48 AM". After Isha, the code took *tomorrow's* Fajr and matched it to *today's* unmarked Fajr.
+  - Prayers whose time had passed looked just like open ones.
+  - Isha, which is valid until Fajr, locked at midnight.
+- **Decision** (shared `prayer/timing.ts`):
+  - **A prayer's time runs until the next prayer.**
+    - At 9 PM it reads "Isha now · until 5:13 AM tomorrow"; after Isha is marked, "next: Fajr tomorrow · 5:13 AM".
+    - The prayer whose time it is leads the card's next-up line.
+  - **Never assume qada (owner):** people pray on time and mark later, or mark everything at night.
+    - A prayer whose time passed reads "time passed, not marked": a dashed, neutral chip, not qada and not missed.
+    - Tapping it records **prayed on time**. A toast offers "Prayed late?" to switch it to qada.
+    - "Mark today's prayers" has **All on time**.
+    - An unmarked prayer becomes missed only when its day closes.
+  - **Isha after midnight:** while yesterday's Isha is unmarked and before Fajr, Today shows "Isha (Mon) · still on time until …" with **Prayed** (on time), even though yesterday has locked. After Fajr it is a normal closed-day prayer.
+  - **Hanafi preferred times are notes only:**
+    - Isha: "best before" Islamic midnight (midpoint of Maghrib and Fajr)
+    - Asr: before the sun yellows (about 20 min before Maghrib)
+    - Shown in the headline and the check-in; never a status.
+
+### 2026-10-12 — "Remind me…" from a row's menu (today only, or every day)
+
+- **Context:** The owner wanted to set a reminder straight from a task's ⋯ menu, with a popup. They chose **today only** by default, using the existing Phase 6 reminder (priority / custom / off, repeat, snooze) rather than a new set of quick picks.
+- **Decision:**
+  - **Menu item:** "Remind me…" opens a sheet with **Today only / Every day**, plus the same Reminder section as the item editor.
+  - **Today only:**
+    - Stored on that day's occurrence (`detail.reminder`), so it syncs with the day.
+    - It replaces the item's usual reminder for that day only. "Usual" puts it back; "Off" silences just that day.
+    - One reminder is still active per item per day. The global switch and category mute still apply.
+  - **Every day:** saves the item's own custom reminder, exactly as in the editor.
+  - **Defaults and checks:**
+    - A new reminder for today defaults to about 30 minutes from now.
+    - A time that has already passed today can't be saved.
+    - The row shows "6:15 PM (this day)".
+  - **Hidden** on locked days, for prayers (they remind at their own times), and for done items.
+
+### 2026-10-12 — Reminders repeat on chosen days, like an alarm
+
+- **Context:** The owner wanted reminders to repeat like an alarm: every day, the full week, or specific days.
+- **Decision:**
+  - **Days:** a custom reminder has `days` (weekdays, 0 = Sunday; null = every day). Migration 0005 adds `reminders.days`.
+  - **Picker:** the Reminder section (editor and "Remind me…") offers **Repeat on: Every day / Weekdays / Weekends / Pick days**, with Mon–Sun chips. Picking all seven, or none of the presets, stores every day.
+  - **Popup switch:** in the "Remind me…" popup the top switch is **Once (today) / Repeat**.
+  - **Due days only:** a reminder still fires only on days its item is due. Monthly and every-N-days items therefore remind on their own days, with no separate monthly reminder.
+  - **Row tag** reads e.g. "6:00 PM · Mon, Wed, Fri".
+
+### 2026-10-13 — Effortless reminders: one-tap picks, scroll-wheel time picker, chips instead of typing
+
+- **Context:** The owner wanted reminders easy to reach and set, with minimum effort and little manual entry.
+- **Decision:**
+  - **"Remind me…"** is the first item in a row's ⋯ menu. The quick-add toast offers **Remind me** when the task lands on the day you're looking at.
+  - **One-tap picks** set a reminder for that day, close the popup and offer **Undo**. They include:
+    - In 15 / 30 min and In 1 hour
+    - This evening (check-in time)
+    - At its time, and 15 min before it
+    - At the next prayer
+
+    Only picks that make sense now are shown: never past, never spilling into tomorrow.
+  - **Or pick a time** on **scroll wheels** (owner's choice over a clock dial): hour 12…11, minutes in 5s, AM/PM.
+    - Each column is a spinbutton for the keyboard; the mouse wheel and ▲/▼ also work.
+    - "Type it" is there for those who want it, but typing is never needed.
+  - **Repeat:** Once (today) / Every day / Weekdays / Weekends / Pick days.
+  - **Repeat until done and snooze are chips:** Once / every 10, 15, 30, 60 min; 1 / 3 / 6 more / until done; snooze 5 / 10 / 15 / 30.
+  - **Footer:** "No reminder today", and "Use priority default".
+  - **The same `TimeField`** (a button that opens the wheels) replaces every typed time in the app: task time, the item editor, plan steps, quiet hours, check-in, nudges, and fixed prayer times (1-minute steps).
+  - **The editor's Reminder section** reads Default / Custom / Off. Its choices are chips (before-minutes, prayer, before/after, offset) and a collapsible "Repeat & snooze". Priority cards in Settings use chips too.
+  - **No change** to schema or data shapes.
+- **Not done:** making the row's bell tag a button. Tags sit inside the row's own button, and nested buttons aren't valid; the menu and toast cover access.
+
+### 2026-10-13 — Calendar picker in the app's look; compact reminder popup
+
+- **Context:** The owner found two problems:
+  - "Move to a date…" still used the browser's date box, which looked out of place.
+  - In the reminder popup, the Repeat options and the Set button sat below the fold on a phone, so they seemed to be missing.
+- **Decision:**
+  - **`DateField` / `Calendar`** (kit) replace every date entry: Move to a date, the task form, the item editor's date and active range, and plan steps.
+    - The calendar is a Monday-first month grid: today outlined, the picked day filled. One tap on a day picks it.
+    - The move popup and plan steps add quick chips: Tomorrow · Day after · Next Monday · In a week.
+    - **"Move to a date…"** opens its own popup; one tap moves the task, and a toast offers View.
+  - **Compact reminder popup:**
+    - One-tap picks scroll sideways in a single row.
+    - The **Repeat** chips (and day circles) come right under them.
+    - The wheels show 3 rows.
+    - The **Set** button is pinned at the bottom, and its label says what will happen: "Remind me today · 6:45 PM" or "Repeat Weekdays · 6:45 PM".
+
+### 2026-10-13 — Design audit: tap, don't type; no native pickers; actions in reach
+
+- **Context:** The owner asked for every issue like the browser date box and the hidden Repeat options to be found and fixed simply.
+- **How it was audited:** a scripted browser sweep of every screen and sheet, at phone and desktop size, light and dark, checking for:
+  - native controls
+  - off-screen primary actions
+  - overflow and truncation
+  - tap-target size
+  - contrast
+  - unnamed controls
+
+  Screenshots were also reviewed by eye.
+- **Fixed:**
+  - **Native dropdowns:**
+    - "My day ends at": chips
+    - prayer calculation method: `ChoiceSheet`
+    - prayer anchor's prayer and offset: chips
+    - plan rules' step gap: chips
+  - **Typed numbers:** targets, each-tap amount, minutes, every-N-days, day of the month and setup targets use `NumberStepper`.
+  - **Actions in reach:** sticky Save/Add in the item editor, sticky Next/Finish in setup.
+  - **Reminder popup:** Repeat chips wrap.
+  - **Prayer block:** the subtitle stays short; "best before" lives in the card line and the check-in.
+  - **Dark mode:** the sky and yellow category fills are toned down like the rest (the "Content" tag was unreadable).
+  - **Visibility:** category dots get an outline; "Change defaults" gets a readable link color and a proper tap height.
+- **Left as is (by design):** the OTP code boxes and the quantity value on rows are typeable text; the "UI kit (dev)" link exists only in development.
+
+### 2026-10-13 — Today: grouped, quiet, one tap
+
+- **Context:** The owner felt Today was cluttered: every item looked the same, with no separation, and it read as an immature app.
+- **What was wrong:**
+  - every row was its own card
+  - each row had 3–5 chips (category, progress, repeat days, "From …", priority)
+  - full − 0 + steppers doubled the height of half the rows
+  - everything sat in one flat list
+- **Research:** Apple Reminders' Today groups Morning / Afternoon / Evening; Things 3 has This Evening; Habitify uses time-of-day blocks to cut clutter; one-tap check-off is common advice.
+- **Decision:**
+  - **"My day" is the default view**; "By status" stays as the second tab. On "My day":
+    - **Timed items** are grouped by the prayer-based part of the day, with **Now** on the current part.
+    - **Untimed items** — most of them for this user — are grouped **by category**, so time-of-day alone would only make one big "Anytime" pile.
+    - **Finished items** fold into **Done** at the end.
+  - **Each group is one card with thin dividers.**
+  - **Rows have a quiet meta line:** the category dot and name (omitted when the group already is the category), time window, checklist steps and progress.
+    - High and Critical become a small flag.
+    - Repeat days and "From …" leave Today; they stay on the item's page.
+    - Only real signals remain as chips: overdue, missed, waiting, moving, and your own reminder.
+  - **Counts and minutes:** a thin progress bar and one round **+** that logs a step. Tapping the bar opens the full − / + (and typing).
+
+### 2026-10-13 — Phase 7: history that can't be rewritten
+
+- **Context:** The owner wanted week and month history, and asked for every bug and loophole to be closed first. Tracing the code found that history could be rewritten:
+  - a changed target re-judged past days
+  - a changed schedule erased missed days
+  - Skip and Move on past days hid misses
+  - the server accepted edits to any date
+- **Decision:**
+  - **2-day correction window:** a day can be fixed for 2 days after it ends. Edits there are marked **late**, and the **server** sets the mark (whatever the client sends). After that a day is final; only recovering a prayer as qada is allowed.
+  - **The server judges an edit by when it was made** (`updatedAt`), so an on-time log synced days later stays on time. A device clock more than 5 min ahead is refused.
+  - **Day closing:** when the window ends, the server writes `missed` rows for open, required repeating items (`users.closed_through`, migration 0006; hourly, and on every pull).
+    - Closed days are read from stored rows only, so a schedule edit can't change them.
+    - One-off tasks aren't closed: they stay overdue and can still be moved to today.
+    - Missed rows are dated at the start of their day, so any real edit made in the window wins.
+  - **Target snapshot:** counts and minutes store the target they were logged against (`detail.target`).
+  - **Past days:** no Skip, no Remind me; Move only for one-off tasks. The server refuses skipping or moving a repeating item after its day (`late_skip`).
+  - **Refusals return the server's copy;** the app puts it back and says "That day is closed — your change wasn't saved."
+  - **Stats:**
+    - Averages use finished days with something due; free days and today don't count (today shows "so far").
+    - Optional items never count; skipped and moved are neutral; qada counts as done.
+    - Per-category numbers use the item's current category.
+  - **Accepted limits:**
+    - Deleting an item removes its history; Archive keeps it, and the delete prompt says so.
+    - A deliberately wound-back device clock can claim on-time. That only matters for Phase 8 points on days with no stored record.
+    - The legacy v1 health stats stay only for the v1 → v2 migration.
+
+### 2026-10-14 — Phase 7 hardening: entries keep their identity, "late" follows the prayer window, qada is asked on yesterday
+
+- **Context:** Before Phase 8 points are built on history, the owner asked for remaining loopholes to be found. An audit found three real ones and two smaller issues.
+- **Decision:**
+  - **Entries keep their identity.** The server refuses a push that changes a stored entry's item or slot, or moves a repeating item's entry to another day (`identity`). Before this, re-sending a closed day's `missed` row with today's date would have erased the miss. One-off tasks can still move (that is what Move does).
+  - **"Late" means past the item's own on-time point** (`onTimeUntil` in shared): the later of the day's end and the end of the item's time window. Isha, and anything "after Isha", stays on time until Fajr, so a 1 AM log isn't late. Server and app use the same rule.
+  - **Yesterday's prayers ask, never assume.** On a still-fixable day, tapping a prayer opens *Prayed on time / Prayed late (qada) / Missed*. Closed days stay one tap = qada (it can only be made up).
+  - **New device:** Progress, the item log and the category card show "Syncing your history…" until the first sync finishes, instead of empty numbers.
+  - **Heatmap** follows the user's week start, like the week view.
+- **Alternatives considered:** Treating any date change as a fresh entry (rejected — the deterministic id makes it the same row, so the old day would lose it). Keeping "late" date-only (rejected — it would mark normal Isha prayers late and cost them points).
+- **Consequences:** The app never sends an identity change itself; a refusal can only come from a stale or tampered client, and gets the server's copy back.
+- **Related:** `apps/api/src/history/guard.ts`, `packages/shared/src/v2/ontime.ts`, `apps/web/src/components/today/prayer-group.tsx`.
+
+### 2026-10-14 — Phase 8: rewards scored per day, on the server
+
+- **Context:** Points, streaks and badges (REW-01…04) must encourage without being farmable. The owner chose: qada earns half points; rewards on Progress plus one line on Today; small celebrations for items, bigger for milestones, toasts with reduced motion.
+- **Decision:**
+  - **One scored row per user and day** (`reward_days`), computed on the server from that day's stored entries, not a per-event ledger. Scoring the same entries gives the same row, so re-syncs, replays and toggles can't add points.
+  - **Closed days are final:** scored once as they close (inside day closing). Open days are re-scored on every rewards read. A later priority edit doesn't re-price old days.
+  - **Points:** low 1 / medium 2 / high 3 / critical 5; qada half (rounded up); a late fix (server-stamped) 0; nothing extra past the goal; optional items earn as a bonus. Perfect day +10 only with no late fixes. Level n starts at 50·n·(n−1).
+  - **Streak = complete days** (late fixes in the window count, so honest forgetting doesn't cost the streak; they just earn no points). A prayer recovered after its day closed counts in history, not for the streak. Freezes: 1 per 7, max 2, used automatically.
+  - **Badges are awarded once and never taken back.** The planner badge is deferred: nothing yet records "planned tomorrow".
+  - Rewards tables are server-only (RLS on, not sync entities); a pushed rewards row is rejected.
+- **Alternatives considered:** A per-completion ledger keyed by occurrence (rejected — more rows and more ways to drift; per-day recompute is simpler and idempotent by construction). Counting the streak from the Today card's local calculation (rejected — it can't know freezes; the server's streak is shown wherever rewards are available).
+- **Consequences:** Rewards need a sync to update; the app keeps the last copy for offline and shows "+N" optimistically from the same shared rule. The known limit stands: a deliberately wound-back device clock can claim on time.
+- **Related:** `packages/shared/src/v2/rewards.ts`, `apps/api/src/rewards/engine.ts`, migration `0007_rewards`, [phase-08](./docs/phases/v2/phase-08-motivation.md).
+
+### 2026-10-15 — Phase 8.1: three daily rings lead; awards like the Health app
+
+- **Context:** The owner asked what the main achievement should be, like the iPhone Health rings, and whether rewards should become premium.
+- **Decision:**
+  - **Three rings:** Prayer (qada fills half and still closes it), Commitments (required items, prayers excluded), Balance (every area with something due touched). Free when nothing applies. All applicable rings closed = complete day (streak, freezes); complete with no late fixes = perfect (+10). Rings lead on Today and Progress; points and level move to a small line.
+  - **Awards:** perfect month, lifetime milestones, a monthly personal challenge (set once from last month, never moved), and Hijri seasonal awards (Ramadan, first ten of Dhul Hijjah) plus four Jumu'ahs, with a user Hijri adjustment (−2…+2) because local months can start a day after Makkah.
+  - **All rewards stay free.** Premium (later) would be extras — themes, ring styles, deeper insights, exports, group challenges — never points, freezes or awards.
+- **Alternatives considered:** A "Growth" or "bonus" third ring (rejected by the owner for Balance — the app is about a whole life). Qada not closing the ring (rejected: it would punish making up a prayer). Dropping the old `all_prayers` column now (kept, unused, so the migration stays additive).
+- **Consequences:** Balance makes a day with an untouched optional-only area incomplete — intended. Past days are rescored once with the new rules (migration 0008 resets `rewards_built_at`); earned awards are never taken back.
+- **Related:** `packages/shared/src/v2/{rings,awards}.ts`, migration `0008_rings_awards`, [phase-08](./docs/phases/v2/phase-08-motivation.md#81-rings-and-awards-2026-10-15).
+
+### 2026-10-16 — Phase 9a: friends, privacy, leaderboards and sharing
+
+- **Context:** SOC-01…06 and SHR-01. Accountability with friends without giving up privacy (C12).
+- **Decision (owner):**
+  - Social ships in two steps: 9a (this) and 9b (groups and group goals).
+  - **Invites by link only**, sent through the share sheet, with no email service. Following someone's link makes you friends at once.
+  - **Identity:** display name, unique @username, initials on a pastel; no photos yet.
+  - **Leaderboards by server points:** Friends and Everyone. "Local friends board" means the friends board. The top 3 get an award only, with no bonus points.
+  - **Visibility:** Everyone / Friends / **Selected friends** (a new allow-list option) / Only me, default Friends. Only "Everyone" appears on the global board.
+  - **Sharing ignores visibility:** you choose who gets it. It covers a day's rings, the day streak, an award, or **any item's streak**; the last is the only way an item title reaches someone else.
+- **Alternatives considered:** Email invites (no sender yet; the link works everywhere). Bonus points for the podium (rejected: the board would snowball). Client-built share cards (rejected: they could be faked; the server builds them from stored facts).
+- **Consequences:**
+  - Social data is fetched, not synced; the last copy is kept on the device for offline viewing.
+  - Podium periods use Monday weeks and calendar months, so they're the same for everyone.
+  - The API's CORS now allows PUT and PATCH.
+- **Related:** `apps/api/src/social/*`, `packages/shared/src/v2/social.ts`, migration `0009_social`, [phase-09](./docs/phases/v2/phase-09-social.md).
+
+### 2026-10-16 — Snaps and friend streaks, like Snapchat
+
+- **Context:** The owner wanted sharing and streaks to feel like Snapchat.
+- **Decision:**
+  - **A friend streak grows on each day both of you snap each other.** Each side counts by their own day. Today never breaks it. ⌛ shows in the last 4 hours, with one push.
+  - **A snap is a one-tap check-in** (today's rings, or an item you finished) **or any share**. It is built on the server.
+  - **Snaps open once,** then only "Opened" remains; the streak and a short log stay.
+  - Freezes are for your own day streak, not friend streaks.
+- **Alternatives considered:**
+  - Streaks from both closing rings, with no sending (rejected: Snapchat's pull is the exchange).
+  - Photo snaps (deferred: needs image storage).
+  - Disappear after 24h (rejected: "opened once" is clearer).
+- **Consequences:**
+  - The one-tap check-in reuses the "day" share for today (no separate kind).
+  - Friend streaks are visible between the two friends whatever their visibility setting, because they describe the exchange, not anyone's progress.
+- **Related:** `packages/shared/src/v2/snaps.ts`, `apps/api/src/social/streaks.ts`, migration `0010_snaps`.
+
+### 2026-10-16 — Phase 9b: groups and group goals
+
+- **Context:** SOC-02/03/04. Owner choices: up to 50 members with admins inviting; both "each member" and "together" goals; award plus a small bonus; a group streak with group check-ins; a board of my groups plus opt-in public groups.
+- **Decision:**
+  - **A goal becomes an item on each member's own Today,** made by the server. People log the way they always do, and history is theirs. The group reads progress from those items.
+  - **The goal fixes the item's name, tracking and dates.** Members can still set its category, priority and reminders. The editor locks those fields and the sync guard refuses changes (compared key-order-insensitively, since jsonb reorders keys).
+  - **Rewards come once a period's days are final** (4 days after the end): award, +10 for each "together" contributor, and podium medals for the top groups.
+  - Members see each other's progress on group goals only (SOC-05).
+- **Alternatives considered:**
+  - A shared group item instead of per-member items (rejected: it breaks offline logging and personal history).
+  - Instant rewards (rejected: they could be gamed inside the correction window).
+- **Consequences:**
+  - Leaving a group or ending a goal archives the linked items rather than deleting them.
+  - `jobs:finalize` runs the end-of-period jobs on demand.
+  - Leaderboards don't count group bonus points, which keeps the boards about daily effort.
+- **Related:** `apps/api/src/groups/*`, `packages/shared/src/v2/groups.ts`, migration `0011_groups`.
+
+### 2026-10-17 — Preprod hosting: Vercel, Northflank and a separate Supabase project
+
+- **Context:** Before going further, the app needs testing on real phones over HTTPS: installing, push on Android and iPhone, and offline use. The owner asked for free hosting, a new Supabase project for preprod, and no domain yet.
+- **Decision:**
+  - **Web on Vercel Hobby**, from root `apps/web`, with `preprod` as the production branch.
+  - **API on the Northflank Sandbox**, built from `apps/api/Dockerfile` with the repo root as build context. It runs with `tsx`, because `@life/shared` ships TypeScript source.
+  - **A new Supabase Free project** for the database, sign-in and email (the built-in sender).
+  - Scripts choose an env file with `ENV_FILE`, for example `.env.preprod.local`. That file is git-ignored and created by `scripts/preprod-secrets.mjs`.
+  - `scripts/smoke-preprod.mjs` checks a deploy.
+- **Alternatives considered:**
+  - **Render free:** the service sleeps after 15 minutes, which would stop the minute-by-minute reminder jobs.
+  - **Fly.io:** no longer has a free plan.
+  - **Railway:** a trial credit, not a free plan.
+  - **Supabase Edge Functions for the API:** would mean rewriting Fastify and the jobs.
+  - **Reusing the dev database:** rejected because test accounts and migrations would mix.
+- **Consequences:**
+  - The API must run as **one instance**, since it holds the jobs; `REMINDER_JOBS=off` is there for any extra instance.
+  - Free-plan limits apply: Supabase pauses after a week idle and its email is rate-limited; Vercel Hobby is non-commercial. Production needs its own decision.
+  - `CORS_ORIGIN` now ignores spaces and a trailing slash.
+- **Related:** [docs/guides/DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md), `apps/api/Dockerfile`, `scripts/preprod-secrets.mjs`, `scripts/smoke-preprod.mjs`.

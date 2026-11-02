@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  STEP_KINDS,
   checklistSteps,
+  stepKindOf,
   describeSchedule,
   entryState,
   entryWindow,
@@ -14,17 +16,27 @@ import {
   toggleChecklistStep,
   toggleDone,
   type Category,
+  dayReminderOf,
+  describeDays,
   type DayEntry,
+  type EntryState,
+  canLog,
+  dayAccess,
+  type DayAccess,
 } from "@life/shared";
-import { AlertTriangle, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Moon, Play, Repeat2, Timer } from "lucide-react";
+import { AlertTriangle, ArrowRight, Bell, BellOff, CalendarClock, Check, ChevronDown, Clock3, Flag, ListChecks, Lock, Moon, Play, Repeat2, Route, Timer, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { QuantityRow, Tag, TaskRow, type ItemState } from "@/components/kit";
 import { categoryIcon, categoryTone, formatTime } from "@/lib/v2/category-style";
 import { shortDate } from "@/lib/v2/dates";
-import { useActions, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
+import { useAddSheet } from "@/components/providers/add-sheet-provider";
+import { useActions, useItemReminders, usePrayerSet, usePrayerTimes } from "@/lib/v2/use-day";
+import { usePlanIsComplete, useStepLock } from "@/lib/v2/use-plans";
 import { useNow } from "@/lib/v2/use-now";
+import { useToday } from "@/lib/v2/use-today";
 
+const MOVE_LABEL: Record<EntryState, string> = { todo: "To Do", in_progress: "In Progress", done: "Done", not_today: "Not today" };
 const fmt = (n: number) => n.toLocaleString("en-US");
 const PRAYER_NAME: Record<string, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 const localDateOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -37,7 +49,7 @@ export function entryCaption(entry: DayEntry, category: Category | undefined): s
 }
 
 /** The tag line under a row title: category, time, progress, priority, schedule, history. */
-function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when?: string): ReactNode[] {
+function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when?: string, lockedBy?: string): ReactNode[] {
   const item = entry.item;
   const o = entry.occurrence;
   const t = item.tracking;
@@ -47,6 +59,16 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   const Icon = categoryIcon(category);
   const tags: ReactNode[] = [];
   if (dueLabel) tags.push(<Tag key="due" tone="todo" icon={<AlertTriangle />}>{dueLabel}</Tag>);
+  if (entry.plan) {
+    tags.push(<Tag key="plan" icon={<Route />}>{entry.plan.title}</Tag>);
+    const kind = stepKindOf(item);
+    if (kind !== "custom" && STEP_KINDS[kind].label !== item.title) tags.push(<Tag key="kind">{STEP_KINDS[kind].label}</Tag>);
+    const course = typeof item.meta.course === "string" ? item.meta.course : typeof entry.plan.meta.course === "string" ? entry.plan.meta.course : null;
+    if (course && course !== entry.plan.title) tags.push(<Tag key="course">{course}</Tag>);
+  }
+  if (lockedBy) tags.push(<Tag key="lock" icon={<Lock />}>Waits for {lockedBy}</Tag>);
+  // A group goal's item (Phase 9b): which group it belongs to.
+  if (item.groupGoalId && typeof item.meta.groupName === "string") tags.push(<Tag key="group" tone="primary" icon={<Users />}>Group · {item.meta.groupName}</Tag>);
   if (category) {
     tags.push(
       <Tag key="cat" color={`var(--cat-${categoryTone(category)})`} icon={<Icon />}>
@@ -56,22 +78,26 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   }
   if (time) tags.push(<Tag key="time" icon={<Clock3 />}>{formatTime(time)}</Tag>);
   if (when) tags.push(<Tag key="when" icon={<Moon />}>{when}</Tag>);
-  if (t.kind === "quantity") {
+  // Progress toward a goal; once reached: "Goal reached" and how far over (extra effort counts).
+  const goal = (key: string, value: number, target: number | undefined, unit: string, icon?: ReactNode) => {
+    if (target !== undefined && value >= target) {
+      tags.push(
+        <Tag key={key} tone="done" icon={<Check />}>
+          Goal reached · {fmt(value)} {unit}
+        </Tag>,
+      );
+      if (value > target) tags.push(<Tag key={`${key}-over`}>+{fmt(value - target)} over</Tag>);
+      return;
+    }
     tags.push(
-      <Tag key="qty">
-        {fmt(o?.value ?? 0)}
-        {t.target ? ` / ${fmt(t.target)}` : ""} {t.unit}
+      <Tag key={key} icon={icon}>
+        {fmt(value)}
+        {target ? ` / ${fmt(target)}` : ""} {unit}
       </Tag>,
     );
-  }
-  if (t.kind === "duration") {
-    tags.push(
-      <Tag key="dur" icon={<Timer />}>
-        {o?.value ?? 0}
-        {t.targetMin ? ` / ${t.targetMin}` : ""} min
-      </Tag>,
-    );
-  }
+  };
+  if (t.kind === "quantity") goal("qty", o?.value ?? 0, t.target, t.unit);
+  if (t.kind === "duration") goal("dur", o?.value ?? 0, t.targetMin, "min", <Timer />);
   if (t.kind === "checklist") {
     tags.push(
       <Tag key="steps" icon={<ListChecks />}>
@@ -87,10 +113,43 @@ function entryTags(entry: DayEntry, category?: Category, dueLabel?: string, when
   }
   if (repeat) tags.push(<Tag key="repeat" icon={<Repeat2 />}>{repeat}</Tag>);
   if (o?.movedFrom) tags.push(<Tag key="moved" icon={<CalendarClock />}>From {shortDate(o.movedFrom)}</Tag>);
+  if (o?.detail?.late === true) tags.push(<Tag key="late">Logged late</Tag>);
   return tags;
 }
 
+/** Chips that are real signals, kept in compact rows; the rest becomes the quiet meta line. */
+const SIGNALS = new Set(["due", "moving", "missed", "lock", "reminder"]);
+
+/**
+ * The quiet meta line of a compact row: "Physical · after Isha · 7:23 PM–5:13 AM".
+ * Repeat days and "from …" stay on the item's page; progress for counts is
+ * added by the row itself.
+ */
+function entryMeta(entry: DayEntry, category: Category | undefined, when: string | undefined): string {
+  const item = entry.item;
+  const t = item.tracking;
+  const parts: (string | null | undefined)[] = [];
+  parts.push(category?.name);
+  if (item.groupGoalId && typeof item.meta.groupName === "string") parts.push(`Group · ${item.meta.groupName}`);
+  if (entry.plan) {
+    const kind = stepKindOf(item);
+    parts.push(kind !== "custom" && STEP_KINDS[kind].label !== item.title ? `${entry.plan.title} · ${STEP_KINDS[kind].label}` : entry.plan.title);
+  }
+  if (item.schedule.kind === "once" && item.schedule.time) parts.push(formatTime(item.schedule.time));
+  if (when) parts.push(when);
+  if (t.kind === "checklist") parts.push(`${checklistSteps(entry).filter(Boolean).length}/${t.steps.length} steps`);
+  const o = entry.occurrence;
+  if (o?.detail?.late === true) parts.push("logged late");
+  if (o?.status === "in_progress" && o.startedAt && t.kind !== "quantity" && t.kind !== "duration") {
+    const d = new Date(o.startedAt);
+    parts.push(`started ${formatTime(`${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`)}`);
+  }
+  return parts.filter(Boolean).join(" · ");
+}
+
 type EntryRowProps = {
+  /** Overrides the day's own mode (tests and special lists). */
+  access?: DayAccess;
   entry: DayEntry;
   /** The day this entry belongs to (actions write to that day). */
   date: string;
@@ -98,6 +157,14 @@ type EntryRowProps = {
   onMore: (entry: DayEntry, anchor: HTMLElement) => void;
   /** Shown as a red tag, e.g. "Was due Fri 9 Oct" (Overdue list). */
   dueLabel?: string;
+  /** Called on every tap that changes progress, so Today can keep the row in place a moment. */
+  onInteract?: () => void;
+  /** Where the row will move once it settles (shown as "→ Done"). */
+  movingTo?: EntryState;
+  /** Today's grouped list: flat row, quiet meta line, compact + for counts. */
+  compact?: boolean;
+  /** The group already names the category (no dot or name on the row). */
+  hideCategory?: boolean;
 };
 
 /**
@@ -107,7 +174,7 @@ type EntryRowProps = {
 const openChecklists = new Set<string>();
 
 /** The checklist's steps as small tick rows (TRK-04). */
-function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
+function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry; date: string; onInteract?: () => void; readOnly?: boolean }) {
   const run = useActions();
   const t = entry.item.tracking;
   if (t.kind !== "checklist") return null;
@@ -120,7 +187,11 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
             type="button"
             role="checkbox"
             aria-checked={ticks[i]}
-            onClick={() => void run((ctx) => toggleChecklistStep(entry, date, i, ctx))}
+            disabled={readOnly}
+            onClick={() => {
+              onInteract?.();
+              void run((ctx) => toggleChecklistStep(entry, date, i, ctx));
+            }}
             className="flex min-h-8 w-full items-center gap-2 rounded-lg px-1 text-left text-[13px] text-ink hover:bg-track"
           >
             <span
@@ -142,9 +213,18 @@ function ChecklistSteps({ entry, date }: { entry: DayEntry; date: string }) {
  * expand to their steps, everything else is the one-tap check. Tapping the
  * title opens the item.
  */
-export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowProps) {
+export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp, compact = false, hideCategory = false }: EntryRowProps) {
+  // Daily items belong to their day: today is live, yesterday can still be logged,
+  // older days are history, future days are for planning (see day-access.ts).
+  const today = useToday() ?? date;
+  const access = accessProp ?? dayAccess(date, today);
+  const readOnly = !canLog(access);
   const run = useActions();
   const router = useRouter();
+  const { notify } = useAddSheet();
+  const lock = useStepLock(entry.item, Boolean(entry.plan));
+  const lockedBy = lock.locked && entryState(entry) !== "done" ? lock.waitingFor.map((w) => w.title).join(", ") : undefined;
+  const planComplete = usePlanIsComplete();
   const openKey = `${date}|${entry.key}`;
   const [showSteps, setShowStepsState] = useState(() => openChecklists.has(openKey));
   const setShowSteps = (update: (v: boolean) => boolean) =>
@@ -154,7 +234,20 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
       else openChecklists.delete(openKey);
       return next;
     });
-  const open = () => router.push(`/items/view?id=${entry.item.id}`);
+  // A plan step opens its plan; anything else its own page.
+  const open = () => router.push(entry.plan ? `/plans/view?id=${entry.plan.id}` : `/items/view?id=${entry.item.id}`);
+  const tick = () => {
+    if (readOnly) return;
+    if (lockedBy) {
+      notify({ message: `${entry.item.title} waits for ${lockedBy} — tick that first.` });
+      return;
+    }
+    const plan = entry.plan;
+    onInteract?.();
+    void run((ctx) => toggleDone(entry, date, ctx)).then(() => {
+      if (plan && entryState(entry) !== "done" && planComplete(plan.id, date)) notify({ message: `Plan complete — ${plan.title}` });
+    });
+  };
   const state = entryState(entry);
   const visible: ItemState = state === "not_today" ? "todo" : state;
   const t = entry.item.tracking;
@@ -174,22 +267,61 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
     } else when = range;
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
-  const list = entryTags(entry, category, dueLabel, when);
+  const list = entryTags(entry, category, dueLabel, when, lockedBy);
+  // Only an item's own reminder gets a tag; the priority's default would put a bell on every row.
+  const everyday = useItemReminders(entry.item.id)[0];
+  const forDay = dayReminderOf(entry.occurrence);
+  const custom = forDay ?? everyday;
+  if (custom && access !== "history" && entryState(entry) !== "done") {
+    const t = custom.trigger;
+    const label = !custom.enabled
+      ? "No reminder"
+      : t.type === "at" || t.type === "time"
+        ? formatTime(t.time)
+        : t.type === "beforeDue"
+          ? `${t.min} min before`
+          : t.type === "prayer"
+            ? `${Math.abs(t.offsetMin ?? 0) ? `${Math.abs(t.offsetMin ?? 0)} min ` : ""}${t.relation === "before" ? "before" : "after"} ${PRAYER_NAME[normalisePrayerKey(t.prayer)] ?? t.prayer}`
+            : "Reminder";
+    list.push(
+      <Tag key="reminder" icon={custom.enabled ? <Bell /> : <BellOff />}>
+        {forDay ? `${label} (this day)` : !forDay && everyday?.days ? `${label} · ${describeDays(everyday.days)}` : label}
+      </Tag>,
+    );
+  }
+  if (access === "history" && entryState(entry) !== "done" && entryState(entry) !== "not_today" && !dueLabel) {
+    list.unshift(<Tag key="missed" tone="todo">Missed</Tag>);
+  }
+  // Heads-up while the row waits to move (it stays put while you're editing).
+  if (movingTo) list.unshift(<Tag key="moving" tone="primary" icon={<ArrowRight />}>{MOVE_LABEL[movingTo]}</Tag>);
   const tags = list.length ? list : undefined;
+  // Compact rows: one quiet meta line; only real signals stay as chips.
+  const shownCategory = hideCategory ? undefined : category;
+  const meta = compact ? entryMeta(entry, shownCategory, when) : undefined;
+  const signals = compact ? list.filter((n) => SIGNALS.has(String((n as { key?: string | null }).key ?? ""))) : [];
+  const badges = signals.length ? signals : undefined;
+  const dotColor = compact && shownCategory ? `var(--cat-${categoryTone(shownCategory)})` : undefined;
+  const flatProps = compact ? { tags: undefined, meta, badges, categoryColor: dotColor } : { tags };
 
   if (t.kind === "quantity") {
     return (
       <QuantityRow
         title={entry.item.title}
-        tags={tags}
+        {...flatProps}
+        compact={compact}
         value={entry.occurrence?.value ?? 0}
-        onChange={(v) => void run((ctx) => setQuantity(entry, date, v, ctx))}
+        onChange={(v) => {
+          onInteract?.();
+          void run((ctx) => setQuantity(entry, date, v, ctx));
+        }}
         step={t.step}
         target={t.target}
         unit={t.unit}
         priority={entry.item.priority}
         onOpen={open}
         highlight={highlight}
+        readOnly={readOnly}
+        active={Boolean(movingTo)}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -198,15 +330,21 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
     return (
       <QuantityRow
         title={entry.item.title}
-        tags={tags}
+        {...flatProps}
+        compact={compact}
         value={entry.occurrence?.value ?? 0}
-        onChange={(v) => void run((ctx) => setDuration(entry, date, v, ctx))}
+        onChange={(v) => {
+          onInteract?.();
+          void run((ctx) => setDuration(entry, date, v, ctx));
+        }}
         step={5}
         target={t.targetMin}
         unit="min"
         priority={entry.item.priority}
         onOpen={open}
         highlight={highlight}
+        readOnly={readOnly}
+        active={Boolean(movingTo)}
         onMore={(anchor) => onMore(entry, anchor)}
       />
     );
@@ -214,10 +352,13 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
   return (
     <TaskRow
       title={entry.item.title}
-      tags={tags}
+      {...flatProps}
+      flat={compact}
       state={visible}
       priority={entry.item.priority}
-      onToggle={() => void run((ctx) => toggleDone(entry, date, ctx))}
+      onToggle={tick}
+      locked={lockedBy}
+      readOnly={readOnly}
       onOpen={open}
       highlight={highlight}
       onMore={(anchor) => onMore(entry, anchor)}
@@ -233,7 +374,7 @@ export function EntryRow({ entry, date, category, onMore, dueLabel }: EntryRowPr
             {showSteps ? "Hide steps" : "Show steps"}
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showSteps ? "rotate-180" : ""}`} aria-hidden />
           </button>
-          {showSteps ? <ChecklistSteps entry={entry} date={date} /> : null}
+          {showSteps ? <ChecklistSteps entry={entry} date={date} onInteract={onInteract} readOnly={readOnly} /> : null}
         </>
       ) : null}
     </TaskRow>

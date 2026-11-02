@@ -41,7 +41,7 @@ export function Ring({
     <div
       role="img"
       aria-label={label}
-      data-value={segments ? undefined : clamped}
+      data-value={clamped}
       className={`relative inline-flex shrink-0 items-center justify-center ${className}`}
       style={{ width: size, height: size }}
     >

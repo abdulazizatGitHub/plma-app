@@ -41,11 +41,11 @@ export const ENTITY_SPECS: Record<SyncEntity, EntitySpec> = {
   userSettings: {
     schema: userSettingsSchema,
     table: "user_settings",
-    json: ["prayerOffsets", "dayParts", "prayerManual"],
-    bool: ["jumuahLabel"],
+    json: ["prayerOffsets", "dayParts", "prayerManual", "reminderProfiles"],
+    bool: ["jumuahLabel", "notificationsEnabled"],
     refs: {},
   },
-  categories: { schema: categorySchema, table: "categories", json: [], bool: [], refs: {} },
+  categories: { schema: categorySchema, table: "categories", json: [], bool: ["remindersMuted"], refs: {} },
   items: {
     schema: itemSchema,
     table: "items",
@@ -77,7 +77,7 @@ export const ENTITY_SPECS: Record<SyncEntity, EntitySpec> = {
   reminders: {
     schema: reminderSchema,
     table: "reminders",
-    json: ["trigger"],
+    json: ["trigger", "days"],
     bool: ["repeatUntilDone", "enabled"],
     refs: { itemId: "items" },
   },
@@ -111,6 +111,8 @@ export const syncPullQueryV2Schema = z.object({
 export type SyncPullResponseV2 = {
   serverTime: string;
   changes: Partial<Record<SyncEntity, Record<string, unknown>[]>>;
+  /** Days up to here are closed (final); history reads them from stored rows only. */
+  closedThrough?: string | null;
 };
 
 export type SyncPushResponseV2 = {

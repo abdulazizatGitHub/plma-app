@@ -53,12 +53,16 @@ type HeatmapProps = {
   /** Latest month that can be shown (usually this month). */
   maxMonth: string;
   minMonth?: string;
+  /** First day of the week, 0 = Sunday … 6 (the user's setting). Default Monday. */
+  weekStart?: number;
 };
 
-/** Month calendar of an item's days (HIS-01): done / started / missed / skipped. Monday first. */
-export function Heatmap({ month, marks, onMonth, maxMonth, minMonth }: HeatmapProps) {
+const LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** Month calendar of an item's days (HIS-01): done / started / missed / skipped. */
+export function Heatmap({ month, marks, onMonth, maxMonth, minMonth, weekStart = 1 }: HeatmapProps) {
   const dates = monthDates(month);
-  const lead = (utc(dates[0]).getUTCDay() + 6) % 7;
+  const lead = (utc(dates[0]).getUTCDay() - weekStart + 7) % 7;
   return (
     <figure aria-label={`${MONTH.format(utc(dates[0]))} history`}>
       <div className="mb-2 flex items-center justify-between">
@@ -83,7 +87,7 @@ export function Heatmap({ month, marks, onMonth, maxMonth, minMonth }: HeatmapPr
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-ink-2" aria-hidden>
-        {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+        {Array.from({ length: 7 }, (_, i) => LETTERS[(weekStart + i) % 7]).map((d, i) => (
           <span key={i}>{d}</span>
         ))}
       </div>

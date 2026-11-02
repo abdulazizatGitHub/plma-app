@@ -1,24 +1,26 @@
 "use client";
 
 import {
+  hijriDate,
+  hijriLabel,
   EXTRA_PRAYERS,
   PRAYER_METHODS,
   PRAYER_TIME_ORDER,
   STARTER_PACKS,
   createPrayerSet,
   savePrayerSet,
-  todayLocalDate,
   type PrayerTimeKey,
 } from "@life/shared";
 import { ArrowLeft, LocateFixed, MapPin, Minus, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Checkbox, Pill, SegmentedTabs } from "@/components/kit";
+import { useState, type ReactNode } from "react";
+import { Button, Checkbox, ChipChoice, ChoiceSheet, Pill, SegmentedTabs, TimeField } from "@/components/kit";
 import { ListEditor, newRow, type ListRow } from "@/components/items/list-editor";
 import { useLocation } from "@/components/location/location-provider";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
 import { formatTime } from "@/lib/v2/category-style";
 import { useActions, useAllCategories, useAllItems, usePrayerSet, usePrayerTimes, useSaveSettings, useUserSettings } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 const LABEL: Record<PrayerTimeKey, string> = { fajr: "Fajr", sunrise: "Sunrise", dhuhr: "Zuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" };
 const ADJUSTABLE = PRAYER_TIME_ORDER.filter((k) => k !== "sunrise");
@@ -46,8 +48,7 @@ export default function PrayerSettingsPage() {
   const { group, prayers } = usePrayerSet();
   const { items } = useAllItems();
   const categories = useAllCategories();
-  const [today, setToday] = useState<string | null>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
+  const today = useToday();
   const times = usePrayerTimes(today);
   const [rows, setRows] = useState<ListRow[] | null>(null);
   const prayerRows = rows ?? prayers.map((p) => newRow(p.title, p.id));
@@ -95,20 +96,12 @@ export default function PrayerSettingsPage() {
       ) : null}
 
       <Card title="Calculation">
-        <label className="block">
-          <span className="mb-1 block text-[12px] font-medium text-ink">Method</span>
-          <select
-            value={settings.calcMethod}
-            onChange={(e) => void save({ calcMethod: e.target.value })}
-            className="h-10 w-full rounded-[12px] border border-border bg-surface px-3 text-[14px] text-ink outline-none focus:border-primary-strong"
-          >
-            {Object.entries(PRAYER_METHODS).map(([key, m]) => (
-              <option key={key} value={key}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ChoiceSheet
+          label="Method"
+          value={settings.calcMethod}
+          options={Object.entries(PRAYER_METHODS).map(([key, m]) => ({ value: key, label: m.label }))}
+          onChange={(calcMethod) => void save({ calcMethod })}
+        />
         <div>
           <span className="mb-1 block text-[12px] font-medium text-ink">Asr</span>
           <SegmentedTabs
@@ -124,6 +117,24 @@ export default function PrayerSettingsPage() {
         <Checkbox checked={settings.jumuahLabel} onChange={(jumuahLabel) => void save({ jumuahLabel })}>
           Show Zuhr as Jumu&apos;ah on Fridays
         </Checkbox>
+      </Card>
+
+      <Card title="Hijri date" hint="Used for seasonal awards like Ramadan. Move it if your month starts a day earlier or later than Makkah's.">
+        <p className="text-[13px] text-ink">
+          Today is <b>{hijriLabel(hijriDate(today ?? new Date().toISOString().slice(0, 10), settings.hijriOffset))}</b>
+        </p>
+        <ChipChoice
+          legend="Hijri date adjustment"
+          value={settings.hijriOffset}
+          onChange={(hijriOffset) => void save({ hijriOffset })}
+          options={[
+            { value: -2, label: "−2 days" },
+            { value: -1, label: "−1 day" },
+            { value: 0, label: "Makkah" },
+            { value: 1, label: "+1 day" },
+            { value: 2, label: "+2 days" },
+          ]}
+        />
       </Card>
 
       <Card title="Match your mosque" hint="Nudge a time by a few minutes, or set a fixed time. Empty = calculated.">
@@ -158,21 +169,27 @@ export default function PrayerSettingsPage() {
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </span>
-                <input
-                  type="time"
-                  aria-label={`${LABEL[k]} fixed time`}
-                  value={manual}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    void save((s) => {
-                      const next = { ...s.prayerManual };
-                      if (value) next[k] = value;
-                      else delete next[k];
-                      return { prayerManual: next };
-                    });
-                  }}
-                  className="ml-auto h-8 w-28 min-w-0 rounded-[10px] border border-border bg-surface px-1.5 text-[12px] text-ink"
-                />
+                <span className="ml-auto">
+                  <TimeField
+                    label={`${LABEL[k]} fixed time`}
+                    hideLabel
+                    size="sm"
+                    floating
+                    optional
+                    minuteStep={1}
+                    placeholder="Fixed time"
+                    start={times?.clock[k] ?? "12:00"}
+                    value={manual}
+                    onChange={(value) =>
+                      void save((s) => {
+                        const next = { ...s.prayerManual };
+                        if (value) next[k] = value;
+                        else delete next[k];
+                        return { prayerManual: next };
+                      })
+                    }
+                  />
+                </span>
               </li>
             );
           })}

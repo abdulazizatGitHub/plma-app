@@ -22,6 +22,6 @@ Clear week and month views of how things are going, per item, per category, and 
 
 ## Acceptance
 
-- [ ] Week and month summaries match a seeded fixture.
-- [ ] A required item left open yesterday shows as missed in history and is not in today's list.
-- [ ] Editing last Tuesday's steps updates that week's chart.
+- [x] Week and month summaries match a seeded fixture (`history-phase7.test.ts`, hand-computed values).
+- [x] A required item left open yesterday shows as missed in history and is not in today's list. Once its 2-day window ends, the server writes it down as missed (day closing).
+- [x] Editing last Tuesday's steps updates that week's chart. Inside the 2-day window it is accepted and marked late; after that the server refuses it and the app puts the old value back (owner decision 2026-10-13).

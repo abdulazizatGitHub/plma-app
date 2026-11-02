@@ -34,7 +34,7 @@ Why not keep going on the current code: the Home, prayer, and health screens are
 |-----------|------|------------------|
 | **PWA (device)** | Next.js 16 App Router, React 19, Tailwind 4, Serwist | UI. Domain services from `@life/shared`. Local SQLite (sql.js → IndexedDB, one DB per user). Outbox. Service worker for offline shell, push, and notification actions. |
 | **API** | Fastify on Node 20, Drizzle, Zod | Verifies the Supabase JWT (JWKS, cached) to get `userId`. Runs sync with ownership checks, settings and templates, reminders, rewards read APIs, social, and challenges. |
-| **Jobs** | pg-boss (queue tables in the same Postgres) | `reminders.tick` every minute, `reminders.escalate`, `rewards.evaluate`, `streaks.rollover` at each user's midnight, `challenges.close`, `leaderboard.snapshot` |
+| **Jobs** | In-process timers over queue tables in the same Postgres (`reminder_queue`, `FOR UPDATE SKIP LOCKED`); pg-boss only if later jobs need it | `reminders.tick` every minute, `reminders.escalate`, `rewards.evaluate`, `streaks.rollover` at each user's midnight, `challenges.close`, `leaderboard.snapshot` |
 | **Data** | Postgres (Supabase) | Source of truth for all tables (§4) |
 | **Auth** | Supabase Auth | Email and password, password reset, optional Google sign-in. The API never stores passwords. |
 | **Push** | Web Push (VAPID) via the `web-push` npm package | Chrome / Android / desktop; iOS 16.4+ **only when installed to the Home Screen**. Not available in EU standalone PWAs since iOS 17.4. |
@@ -43,7 +43,7 @@ Why not keep going on the current code: the Home, prayer, and health screens are
 Choices made here (logged in DECISION.md):
 
 - **Supabase Auth** over self-hosted auth. Postgres is already on Supabase. JWT verification via JWKS keeps Fastify stateless. Accounts map 1:1 to `users.id`.
-- **pg-boss** over Redis/BullMQ. There is no new infrastructure, jobs are transactional with app data, and the volume is small.
+- **Postgres queue tables** over Redis/BullMQ (and, for reminders, over pg-boss: DECISION 2026-10-12). There is no new infrastructure, jobs are transactional with app data, and the volume is small.
 - **Server-computed rewards.** Clients sync facts (occurrences). Points, badges, streaks, and ranks are derived on the server, so a modified client cannot grant itself points (NFR-04).
 
 ---

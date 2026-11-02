@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "day_end_hour" smallint DEFAULT 0 NOT NULL;

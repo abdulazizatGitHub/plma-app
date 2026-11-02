@@ -1,5 +1,6 @@
 import { toLocalDateString } from "../date.js";
-import { buildDay, MOVED_SLOT_PREFIX } from "./day.js";
+import { historyDay } from "./closing.js";
+import { MOVED_SLOT_PREFIX } from "./day.js";
 import type { Item, Occurrence } from "./entities.js";
 import { entryState } from "./progress.js";
 import { daysBetween } from "./schedule.js";
@@ -15,8 +16,28 @@ import { daysBetween } from "./schedule.js";
 
 export type DayMark = "done" | "partial" | "missed" | "skipped" | "today" | "not_due" | "future";
 
+/** One line of an item's log (newest first in `log`). */
+export type LogEntry = {
+  date: string;
+  mark: DayMark;
+  /** "moved" when the skip was a move. */
+  how?: "moved";
+  value: number | null;
+  /** The target it was logged against. */
+  target: number | null;
+  /** Logged during the correction window. */
+  late: boolean;
+  /** Prayed late. */
+  qada: boolean;
+  movedTo: string | null;
+};
+
 export type ItemHistory = {
   days: { date: string; mark: DayMark }[];
+  /** Due days, newest first, with what happened. */
+  log: LogEntry[];
+  skipped: number;
+  moved: number;
   /** Due days so far that were done. */
   done: number;
   /** Due days so far that count (done + missed + partial, plus today once done). */
@@ -42,7 +63,16 @@ export function dateRange(from: string, to: string): string[] {
  * History of one item over [from, to]. `children` are a routine's sub-items;
  * `occurrences` must include theirs too.
  */
-export function itemHistory(item: Item, children: Item[], occurrences: Occurrence[], from: string, to: string, today: string): ItemHistory {
+export function itemHistory(
+  item: Item,
+  children: Item[],
+  occurrences: Occurrence[],
+  from: string,
+  to: string,
+  today: string,
+  /** Days up to here are closed: read from stored rows only. */
+  closedThrough: string | null = null,
+): ItemHistory {
   // History ignores the archive flag (it only stops future days).
   const revive = (i: Item): Item => ({ ...i, archivedAt: null });
   const pool = [revive(item), ...children.filter((c) => c.parentId === item.id && !c.deletedAt).map(revive)];
@@ -56,14 +86,36 @@ export function itemHistory(item: Item, children: Item[], occurrences: Occurrenc
     byDate.set(o.date, list);
   }
 
+  const log: LogEntry[] = [];
+  let skipped = 0;
+  let moved = 0;
   const days = dateRange(from, to).map((date): { date: string; mark: DayMark } => {
     if (date > today) return { date, mark: "future" };
     if (date < born || (archived && date > archived)) return { date, mark: "not_due" };
-    const entry = buildDay(pool, byDate.get(date) ?? [], date).find((e) => e.item.id === item.id && !e.slot.startsWith(MOVED_SLOT_PREFIX));
+    const closed = !!closedThrough && date <= closedThrough;
+    const entry = historyDay(pool, byDate.get(date) ?? [], date, closed).find((e) => e.item.id === item.id && !e.slot.startsWith(MOVED_SLOT_PREFIX));
     if (!entry) return { date, mark: "not_due" };
     const state = entryState(entry);
     const mark: DayMark =
       state === "done" ? "done" : state === "not_today" ? "skipped" : date === today ? "today" : state === "in_progress" ? "partial" : "missed";
+    const o = entry.occurrence;
+    const how = o?.status === "moved" ? "moved" : undefined;
+    if (mark === "skipped") {
+      if (how) moved += 1;
+      else skipped += 1;
+    }
+    const t = item.tracking;
+    const snap = o?.detail?.target;
+    log.push({
+      date,
+      mark,
+      how,
+      value: o?.value ?? null,
+      target: typeof snap === "number" ? snap : t.kind === "quantity" ? (t.target ?? null) : t.kind === "duration" ? (t.targetMin ?? null) : null,
+      late: o?.detail?.late === true,
+      qada: o?.detail?.qada === true,
+      movedTo: o?.movedTo ?? null,
+    });
     return { date, mark };
   });
 
@@ -84,6 +136,9 @@ export function itemHistory(item: Item, children: Item[], occurrences: Occurrenc
   }
   return {
     days,
+    log: log.reverse(),
+    skipped,
+    moved,
     done,
     counted,
     completionRate: counted ? Math.round((done / counted) * 100) : null,

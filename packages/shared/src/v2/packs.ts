@@ -101,7 +101,7 @@ export const STARTER_PACKS: StarterPack[] = [
     id: "5e7a1c00-0005-4000-8000-000000000005",
     version: 1,
     name: "Content creation",
-    description: "Capture ideas and ship videos step by step.",
+    description: "Capture ideas and ship videos step by step — plus collab plans (shoot, edit, payment, post).",
     category: { name: "Content", icon: "video", color: "sky" },
     items: [
       { type: "habit", title: "Write down one idea" },
@@ -117,7 +117,7 @@ export const STARTER_PACKS: StarterPack[] = [
     id: "5e7a1c00-0006-4000-8000-000000000006",
     version: 1,
     name: "University",
-    description: "Revision and assignment check-ins.",
+    description: "Revision and check-ins — plus course plans for assignments, quizzes and FYP.",
     category: { name: "University", icon: "graduation", color: "lime" },
     items: [
       { type: "habit", title: "Revise today's lectures", schedule: weekdays(1, 2, 3, 4, 5), tracking: minutes(30) },

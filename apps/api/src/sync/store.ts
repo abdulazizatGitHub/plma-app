@@ -2,6 +2,7 @@ import { ENTITY_SPECS, SYNC_ENTITIES, defaultUserSettings, type SyncEntity, type
 import type { Sql } from "postgres";
 import type { AuthUser } from "../lib/auth.js";
 import type { OwnershipLookup, Row } from "./plan.js";
+import { closeUserDays } from "../history/close.js";
 import { buildPull, buildUpsert, toDto } from "./sql.js";
 
 const table = (entity: SyncEntity) => `"${ENTITY_SPECS[entity].table}"`;
@@ -17,6 +18,12 @@ export function postgresLookup(sql: Sql): OwnershipLookup {
       if (!ids.length) return [];
       const rows = await sql.unsafe(`SELECT "id" FROM ${table(entity)} WHERE "id" = ANY($1::uuid[]) AND "user_id" = $2`, [ids, userId]);
       return rows.map((r) => r.id as string);
+    },
+    async linkedItems(ids, userId) {
+      if (!ids.length) return new Map();
+      const rows = await sql<{ id: string; group_goal_id: string; title: string; tracking: unknown; schedule: unknown }[]>`
+        SELECT id, group_goal_id, title, tracking, schedule FROM items WHERE id = ANY(${ids}::uuid[]) AND user_id = ${userId} AND group_goal_id IS NOT NULL`;
+      return new Map(rows.map((r) => [r.id, { groupGoalId: r.group_goal_id, title: r.title, tracking: r.tracking, schedule: r.schedule }]));
     },
   };
 }
@@ -40,6 +47,8 @@ export async function applyPush(sql: Sql, userId: string, plan: Map<SyncEntity, 
 }
 
 export async function pullChanges(sql: Sql, userId: string, since?: string): Promise<SyncPullResponseV2> {
+  // Days that left their correction window are closed first, so this pull carries their missed rows.
+  await closeUserDays(sql, userId).catch(() => undefined);
   const [{ now }] = await sql`SELECT now() AS now`;
   const changes: SyncPullResponseV2["changes"] = {};
   for (const entity of SYNC_ENTITIES) {
@@ -47,16 +56,27 @@ export async function pullChanges(sql: Sql, userId: string, since?: string): Pro
     const rows = await sql.unsafe(text, params);
     if (rows.length) changes[entity] = rows.map((r) => toDto(r.r as Record<string, unknown>));
   }
-  return { serverTime: new Date(now as string | Date).toISOString(), changes };
+  const [u] = await sql<{ closed_through: string | Date | null }[]>`SELECT closed_through FROM users WHERE id = ${userId}`;
+  const closed = u?.closed_through ?? null;
+  return {
+    serverTime: new Date(now as string | Date).toISOString(),
+    changes,
+    closedThrough: closed ? (typeof closed === "string" ? closed.slice(0, 10) : closed.toISOString().slice(0, 10)) : null,
+  };
 }
 
 /**
  * Makes sure an authenticated user has a profile row and default settings
  * (Karachi method, Hanafi Asr, friends visibility). Cached per process.
  */
-export function userBootstrapper(sql: Sql) {
+export type EnsureUser = ((user: AuthUser) => Promise<void>) & {
+  /** Drop the "already exists" memo, e.g. after the row turned out to be missing. */
+  forget: (userId: string) => void;
+};
+
+export function userBootstrapper(sql: Sql): EnsureUser {
   const known = new Set<string>();
-  return async function ensureUser(user: AuthUser) {
+  const ensureUser = async function ensureUser(user: AuthUser) {
     if (known.has(user.id)) return;
     const now = new Date().toISOString();
     const s = defaultUserSettings(user.id, now);
@@ -72,5 +92,9 @@ export function userBootstrapper(sql: Sql) {
         ON CONFLICT DO NOTHING`;
     });
     known.add(user.id);
+  } as EnsureUser;
+  ensureUser.forget = (userId: string) => {
+    known.delete(userId);
   };
+  return ensureUser;
 }

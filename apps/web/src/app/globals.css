@@ -66,9 +66,9 @@
   --cat-peach: color-mix(in srgb, #e9cfc8 30%, #25242e);
   --cat-lime: color-mix(in srgb, #e6ecca 30%, #25242e);
   --cat-pink: color-mix(in srgb, #f6e4e2 30%, #25242e);
-  --cat-sky: #86cfe2;
+  --cat-sky: color-mix(in srgb, #86cfe2 40%, #25242e);
   --cat-teal: #2e9499;
-  --cat-yellow: #fdc703;
+  --cat-yellow: color-mix(in srgb, #fdc703 35%, #25242e);
 
   --shadow-card: none;
 }
@@ -295,5 +295,142 @@ body {
 @media (min-width: 40rem) {
   .sheet-in {
     animation-name: dialog-in;
+  }
+}
+
+/* Scroll-wheel columns (time picker): scrollable, but without a visible bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Celebrations (Phase 8): subtle for items, bigger for milestones; none with reduced motion. */
+@keyframes points-float {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -6px) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -36px);
+  }
+}
+.points-pop {
+  animation: points-float 0.95s var(--ease-standard) forwards;
+}
+@keyframes confetti-fall {
+  from {
+    opacity: 1;
+    transform: translate(0, -12px) rotate(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--drift), 55vh) rotate(var(--spin));
+  }
+}
+.confetti-piece {
+  animation: confetti-fall 1.2s var(--ease-standard) forwards;
+}
+@keyframes badge-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.badge-pop {
+  animation: badge-pop 0.5s var(--ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .points-pop,
+  .confetti-piece {
+    display: none;
+  }
+  .badge-pop {
+    animation: none;
+  }
+}
+@keyframes ring-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.04);
+  }
+}
+.ring-pulse {
+  animation: ring-pulse 0.6s var(--ease-spring);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-pulse {
+    animation: none;
+  }
+}
+
+/* Install guide (owner, 2026-10-17): a pulsing tap target, sheets sliding up, the icon popping in. */
+@keyframes install-tap {
+  0%,
+  100% {
+    transform: scale(0.85);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+}
+.install-tap {
+  animation: install-tap 1.2s var(--ease-standard) infinite;
+}
+@keyframes install-sheet {
+  from {
+    transform: translateY(40%);
+    opacity: 0;
+  }
+}
+.install-sheet {
+  animation: install-sheet 0.5s var(--ease-standard) both;
+}
+@keyframes install-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+.install-pop {
+  animation: install-pop 0.6s var(--ease-spring) 0.3s both;
+}
+@keyframes install-step {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.install-step {
+  animation: install-step 0.35s var(--ease-standard);
+}
+@media (prefers-reduced-motion: reduce) {
+  .install-tap,
+  .install-sheet,
+  .install-pop,
+  .install-step {
+    animation: none;
   }
 }

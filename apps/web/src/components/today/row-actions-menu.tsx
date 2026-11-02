@@ -1,13 +1,13 @@
 "use client";
 
-import { deleteItemTree, entryState, isPrayerGroup, moveTo, skip, start, toggleDone, type DayEntry } from "@life/shared";
-import { ArrowRight, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, SkipForward, Trash2 } from "lucide-react";
+import { canLog, dayAccess, deleteItemTree, entryState, isPrayerGroup, moveTo, removeStep, skip, start, toggleDone, type DayEntry, type ItemDependency } from "@life/shared";
+import { ArrowRight, Bell, CalendarClock, CalendarDays, ExternalLink, Pencil, Play, RotateCcw, Send, SkipForward, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Button, PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
+import { PopoverMenu, PopoverMenuDivider, PopoverMenuItem, addDays } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
-import { isoDate } from "@/lib/forms/validators";
+import { useStore } from "@/components/providers/store-provider";
 import { useActions } from "@/lib/v2/use-day";
+import { useSocial } from "@/lib/v2/use-social";
 
 /** Which row's menu is open, and the element it is anchored to. */
 export type RowMenuTarget = {
@@ -32,10 +32,10 @@ type RowActionsMenuProps = {
  */
 export function RowActionsMenu({ target, date: screenDate, today, onClose }: RowActionsMenuProps) {
   const run = useActions();
-  const { openEdit } = useAddSheet();
+  const { openSnap } = useSocial();
+  const { openEdit, openReminder, openMove } = useAddSheet();
+  const { store } = useStore();
   const router = useRouter();
-  const [picking, setPicking] = useState(false);
-  const [picked, setPicked] = useState(addDays(today, 2));
 
   if (!target) return null;
   const { entry, anchor } = target;
@@ -44,10 +44,15 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
   const isGroup = Boolean(entry.children);
   const prayers = isPrayerGroup(entry.item);
   // A repeating routine's moved copy wouldn't carry its sub-items, so routines skip instead.
-  const canMove = !isGroup || oneOff;
+  // A past day's habit can't be skipped or moved — that would hide a miss (the server refuses it too).
+  const pastDay = date !== null && date < today;
+  const canMove = (!isGroup || oneOff) && (!pastDay || oneOff);
   const quickEdit = oneOff && !isGroup && entry.item.tracking.kind === "check";
   const from = date ?? today;
   const state = date ? entryState(entry) : "todo";
+  // Status changes only on days that can be logged; future days can still be skipped or moved.
+  const access = date ? dayAccess(date, today) : "live";
+  const logging = canLog(access);
   const act = (build: Parameters<typeof run>[0]) => {
     void run(build);
     onClose();
@@ -56,6 +61,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
 
   return (
     <PopoverMenu anchor={anchor} onClose={onClose} label={entry.item.title}>
+      {date !== null && !pastDay && !prayers && state !== "done" ? (
+        <PopoverMenuItem
+          icon={<Bell />}
+          label="Remind me…"
+          onClick={() => {
+            onClose();
+            openReminder(entry, date);
+          }}
+        />
+      ) : null}
       {date === null ? (
         <>
           <PopoverMenuItem icon={<CalendarDays />} label="Do it today" onClick={() => moveAction(today)} />
@@ -63,15 +78,26 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
         </>
       ) : (
         <>
-          {state === "todo" && !isGroup && entry.item.tracking.kind !== "quantity" && entry.item.tracking.kind !== "duration" ? (
+          {logging && state === "todo" && !isGroup && entry.item.tracking.kind !== "quantity" && entry.item.tracking.kind !== "duration" ? (
             <PopoverMenuItem icon={<Play />} label="Mark started" onClick={() => act((ctx) => start(entry, date, ctx))} />
           ) : null}
-          {state === "done" && !isGroup ? (
+          {date === today && state === "done" && !prayers ? (
+            <PopoverMenuItem
+              icon={<Send />}
+              label={`Snap "${entry.item.title} done"`}
+              onClick={() => {
+                onClose();
+                openSnap({ kind: "item_done", itemId: entry.item.id, label: `"${entry.item.title} done"` });
+              }}
+            />
+          ) : null}
+          {logging && state === "done" && !isGroup ? (
             <PopoverMenuItem icon={<RotateCcw />} label="Mark not done" onClick={() => act((ctx) => toggleDone(entry, date, ctx))} />
           ) : null}
+          {!pastDay ? (
           <PopoverMenuItem
             icon={<SkipForward />}
-            label="Skip today"
+            label={access === "planned" ? "Skip that day" : "Skip today"}
             onClick={() =>
               act(async (ctx) => [
                 ...(await skip(entry, date, ctx)),
@@ -79,23 +105,25 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
               ])
             }
           />
-          {canMove ? <PopoverMenuItem icon={<ArrowRight />} label="Move to tomorrow" onClick={() => moveAction(addDays(from, 1))} /> : null}
+          ) : null}
+          {canMove ? (
+            from < today ? (
+              <PopoverMenuItem icon={<ArrowRight />} label="Move to today" onClick={() => moveAction(today)} />
+            ) : (
+              <PopoverMenuItem icon={<ArrowRight />} label="Move to tomorrow" onClick={() => moveAction(addDays(from, 1))} />
+            )
+          ) : null}
         </>
       )}
-      {canMove ? <PopoverMenuItem icon={<CalendarDays />} label="Move to a date…" onClick={() => setPicking((p) => !p)} /> : null}
-      {picking ? (
-        <div role="group" aria-label="Pick a date" className="flex gap-2 px-2 pb-1.5">
-          <input
-            type="date"
-            aria-label="Move to date"
-            value={picked}
-            onChange={(e) => setPicked(e.target.value)}
-            className="h-10 min-w-0 flex-1 rounded-[10px] border border-border bg-surface px-2 text-[14px] text-ink"
-          />
-          <Button disabled={isoDate(picked) !== null} onClick={() => moveAction(picked)} className="min-h-10 px-3">
-            Move
-          </Button>
-        </div>
+      {canMove ? (
+        <PopoverMenuItem
+          icon={<CalendarDays />}
+          label="Move to a date…"
+          onClick={() => {
+            onClose();
+            openMove(entry, from);
+          }}
+        />
       ) : null}
       {oneOff && date !== null ? (
         <PopoverMenuItem icon={<CalendarClock />} label="Mark pending (no date)" onClick={() => moveAction(null)} />
@@ -125,7 +153,16 @@ export function RowActionsMenu({ target, date: screenDate, today, onClose }: Row
               icon={<Trash2 />}
               label="Delete"
               tone="danger"
-              onClick={() => act((ctx) => deleteItemTree(entry.item, (entry.children ?? []).map((c) => c.item), ctx))}
+              onClick={() =>
+                act((ctx) => {
+                  // A plan step takes its "waits for" links with it.
+                  if (entry.plan && store) {
+                    const deps = store.query("itemDependencies", `WHERE ("item_id" = ? OR "depends_on_id" = ?) AND "deleted_at" IS NULL`, [entry.item.id, entry.item.id]) as unknown as ItemDependency[];
+                    return removeStep(entry.item, deps, ctx);
+                  }
+                  return deleteItemTree(entry.item, (entry.children ?? []).map((c) => c.item), ctx);
+                })
+              }
             />
           ) : null}
         </>

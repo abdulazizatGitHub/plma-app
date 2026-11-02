@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { addDays, weekStart } from "./date-strip";
+import { Heatmap } from "./heatmap";
 import { PopoverMenu, PopoverMenuItem } from "./popover-menu";
 import { PrayerRow, type PrayerChip } from "./prayer-row";
 import { QuantityStepper, parseQuantity, quantityState } from "./quantity-stepper";
@@ -77,7 +78,7 @@ describe("PrayerRow", () => {
     const onToggle = vi.fn();
     render(<PrayerRow prayers={prayers} onToggle={onToggle} />);
     fireEvent.click(screen.getByRole("button", { name: "Zuhr, not marked" }));
-    expect(onToggle).toHaveBeenCalledWith("zuhr");
+    expect(onToggle).toHaveBeenCalledWith("zuhr", expect.any(HTMLElement));
     expect(screen.getByRole("img", { name: "1 of 3 prayers prayed" })).toBeInTheDocument();
   });
 });
@@ -151,3 +152,18 @@ describe("PopoverMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 });
+
+describe("Heatmap", () => {
+  it("starts weeks on the user's day (Oct 2026 begins on a Thursday)", () => {
+    const lead = (start?: number) => {
+      const { container, unmount } = render(<Heatmap month="2026-10" marks={new Map()} onMonth={() => {}} maxMonth="2026-10" weekStart={start} />);
+      const n = container.querySelectorAll("ol > li[aria-hidden]").length;
+      unmount();
+      return n;
+    };
+    expect(lead()).toBe(3); // Monday first
+    expect(lead(0)).toBe(4); // Sunday first
+    expect(lead(6)).toBe(5); // Saturday first
+  });
+});
+

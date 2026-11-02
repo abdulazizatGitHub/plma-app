@@ -3,8 +3,9 @@
 import { todayLocalDate, type Category, type Item, type TaskDraft } from "@life/shared";
 import { useState, type FormEvent } from "react";
 import { DisabledHint } from "@/components/auth/auth-shell";
-import { Button, Pill, SegmentedTabs, TextField, addDays } from "@/components/kit";
+import { Button, DateField, Pill, SegmentedTabs, TextField, TimeField, addDays } from "@/components/kit";
 import { useForm } from "@/lib/forms/use-form";
+import { useToday } from "@/lib/v2/use-today";
 import { isoDate, taskTitle } from "@/lib/forms/validators";
 
 type DateChoice = "today" | "tomorrow" | "pick" | "none";
@@ -35,11 +36,13 @@ type TaskFormProps = {
   onSubmit: (draft: TaskDraft) => void;
   /** Opens the full editor with what was typed so far. */
   onMoreOptions?: (draft: TaskDraft) => void;
+  /** Opens the New-plan sheet (plans have several dated steps). */
+  onNewPlan?: () => void;
 };
 
 /** Quick add / edit for tasks: title, day + optional time, category, importance. */
-export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions }: TaskFormProps) {
-  const today = todayLocalDate();
+export function TaskForm({ categories, initial, showDate = true, submitLabel, onSubmit, onMoreOptions, onNewPlan }: TaskFormProps) {
+  const today = useToday() ?? todayLocalDate();
   const form = useForm(
     {
       title: initial.title ?? "",
@@ -90,8 +93,8 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
           </div>
           {choice !== "none" ? (
             <div className="mt-2 grid grid-cols-2 gap-2">
-              {choice === "pick" ? <TextField label="Date" type="date" required {...form.field("picked")} /> : null}
-              <TextField label="Time (optional)" type="time" {...form.field("time")} />
+              {choice === "pick" ? <DateField label="Date" today={today} value={String(form.values.picked)} onChange={(v) => form.set("picked", v)} /> : null}
+              <TimeField label="Time (optional)" optional placeholder="Add time" value={String(form.values.time)} onChange={(v) => form.set("time", v)} />
             </div>
           ) : (
             <p className="mt-1.5 text-[12px] text-ink-2">Goes to Pending until you give it a day.</p>
@@ -104,7 +107,7 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
         <div className="flex flex-wrap gap-1.5">
           {[{ id: null, name: "None", color: "" }, ...categories].map((c) => (
             <Pill key={c.id ?? "none"} selected={categoryId === c.id} onClick={() => setCategoryId(c.id)}>
-              {c.id ? <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: `var(--cat-${c.color})` }} /> : null}
+              {c.id ? <span aria-hidden className="h-2.5 w-2.5 rounded-full ring-1 ring-ink/25" style={{ background: `var(--cat-${c.color})` }} /> : null}
               {c.name}
             </Pill>
           ))}
@@ -129,6 +132,11 @@ export function TaskForm({ categories, initial, showDate = true, submitLabel, on
           className="flex min-h-8 w-full items-center justify-center text-[12px] font-medium text-link"
         >
           More options — repeat, count, checklist, routine
+        </button>
+      ) : null}
+      {onNewPlan ? (
+        <button type="button" onClick={onNewPlan} className="flex min-h-8 w-full items-center justify-center text-[12px] font-medium text-link">
+          New plan — collab, course, multi-step work
         </button>
       ) : null}
       <DisabledHint

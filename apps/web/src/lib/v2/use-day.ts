@@ -2,11 +2,16 @@
 
 import {
   buildDay,
+  customReminders,
+  isLateLog,
   dayProgress,
   defaultUserSettings,
   pendingItems,
+  dayStreak,
   prayerTimes,
+  toLocalDateString,
   updateSettings,
+  type DayStreak,
   type DayPrayerTimes,
   type UserSettings,
   type ActionContext,
@@ -16,16 +21,18 @@ import {
   type DayProgress,
   type Item,
   type Occurrence,
+  type Reminder,
 } from "@life/shared";
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useStore } from "@/components/providers/store-provider";
 import type { LocalStore } from "./local-store";
+import { useToday } from "./use-today";
 
 const noop = () => () => undefined;
 
 /** Re-renders when the store changes. */
-function useStoreVersion(store: LocalStore | null) {
+export function useStoreVersion(store: LocalStore | null) {
   return useSyncExternalStore(
     store ? store.subscribe : noop,
     () => store?.version ?? -1,
@@ -45,10 +52,20 @@ function readOccurrences(store: LocalStore, date: string): Occurrence[] {
 export function useActions() {
   const { store, syncSoon } = useStore();
   const { user } = useAuth();
+  // Changes past an item's on-time point are stamped late (Phase 7); the server confirms.
+  const today = useToday();
+  const settings = useUserSettings();
   return useCallback(
     async (build: (ctx: ActionContext) => Change[] | Promise<Change[]>) => {
       if (!store || !user) return;
-      const ctx: ActionContext = { userId: user.id, now: new Date().toISOString(), deviceId: store.deviceId() };
+      const now = new Date();
+      const ctx: ActionContext = {
+        userId: user.id,
+        now: now.toISOString(),
+        deviceId: store.deviceId(),
+        today: today ?? undefined,
+        isLate: (item, date) => isLateLog(item, date, now, settings),
+      };
       const changes = await build(ctx);
       for (const c of changes) store.save(c.entity, c.row as unknown as Parameters<LocalStore["save"]>[1]);
       syncSoon();
@@ -56,8 +73,24 @@ export function useActions() {
       // load (reload, or "Back" into another document) would otherwise lose it.
       await store.flush();
     },
-    [store, user, syncSoon],
+    [store, user, syncSoon, today, settings],
   );
+}
+
+/** Days up to here are closed on the server (final; history reads stored rows only). */
+export function useClosedThrough(): string | null {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => (store ? store.getMeta("closed_through") || null : null), [store, version]);
+}
+
+/** Has this device finished a sync yet? null while the store opens. */
+export function useHasSynced(): boolean | null {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => (store ? !!store.getMeta("last_synced_at") : null), [store, version]);
 }
 
 export type DayView = { entries: DayEntry[]; progress: DayProgress; ready: boolean };
@@ -125,10 +158,14 @@ export function useOverdue(today: string | null): DayEntry[] {
   return useMemo(() => {
     if (!store || !today) return [];
     const out: DayEntry[] = [];
-    for (const item of readItems(store)) {
+    const all = readItems(store);
+    const plans = new Map(all.filter((i) => i.type === "plan" && !i.archivedAt).map((i) => [i.id, i]));
+    for (const item of all) {
       const s = item.schedule;
-      if (item.parentId || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
-      const [entry] = buildDay([item], readOccurrences(store, s.date), s.date);
+      // Plan steps can be overdue too; other children belong to their parent.
+      const plan = item.parentId ? plans.get(item.parentId) : undefined;
+      if ((item.parentId && !plan) || item.type === "plan" || item.archivedAt || s.kind !== "once" || !s.date || s.date >= today) continue;
+      const [entry] = buildDay(plan ? [plan, item] : [item], readOccurrences(store, s.date), s.date);
       const status = entry?.occurrence?.status;
       if (entry && status !== "done" && status !== "skipped" && status !== "moved") out.push(entry);
     }
@@ -149,11 +186,17 @@ function addDaysIso(iso: string, n: number) {
 export function usePending(): Item[] {
   const { store } = useStore();
   const version = useStoreVersion(store);
-  return useMemo(
-    () => (store ? pendingItems(readItems(store)).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : []),
+  return useMemo(() => {
+    if (!store) return [];
+    // An undated plan step ticked on its plan (e.g. "Payment cleared") is done, not pending.
+    const done = new Set(
+      (store.query("occurrences", `WHERE "status" = 'done' AND "deleted_at" IS NULL`) as unknown as Occurrence[]).map((o) => o.itemId),
+    );
+    return pendingItems(readItems(store))
+      .filter((i) => !done.has(i.id))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [store, version],
-  );
+  }, [store, version]);
 }
 
 export function useCategories(): Category[] {
@@ -249,7 +292,7 @@ function readUserSettings(store: LocalStore | null, userId: string | undefined):
   if (!row) return fallback;
   const filled = { ...fallback } as Record<string, unknown>;
   for (const [k, v] of Object.entries(row)) if (v !== null && v !== undefined) filled[k] = v;
-  for (const k of ["lat", "lng", "locationLabel", "quietFrom", "quietTo"] as const) filled[k] = row[k] ?? null;
+  for (const k of ["lat", "lng", "locationLabel", "quietFrom", "quietTo", "planTomorrowAt", "morningSummaryAt"] as const) filled[k] = row[k] ?? null;
   return filled as UserSettings;
 }
 
@@ -303,4 +346,45 @@ export function usePrayerSet(): { group: Item | null; prayers: Item[] } {
     const prayers = group ? items.filter((i) => i.parentId === group.id && !i.archivedAt).sort((a, b) => a.sortOrder - b.sortOrder) : [];
     return { group, prayers };
   }, [items]);
+}
+
+/** Perfect-day streak (every required item done) up to `today`, from your first item (max a year back). */
+export function useDayStreak(today: string | null): DayStreak {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(() => {
+    if (!store || !today) return { current: 0, best: 0 };
+    const items = readItems(store);
+    if (!items.length) return { current: 0, best: 0 };
+    const first = items.reduce((min, i) => (i.createdAt < min ? i.createdAt : min), items[0].createdAt);
+    const firstDay = toLocalDateString(new Date(first));
+    const [y, m, d] = today.split("-").map(Number);
+    const yearAgo = new Date(Date.UTC(y - 1, m - 1, d)).toISOString().slice(0, 10);
+    const from = firstDay > yearAgo ? firstDay : yearAgo;
+    const occs = store.query("occurrences", `WHERE "date" >= ? AND "date" <= ? AND "deleted_at" IS NULL`, [from, today]) as unknown as Occurrence[];
+    return dayStreak(items, occs, from, today, store.getMeta("closed_through") || null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store, version, today]);
+}
+
+/** An item's custom reminder rows (normally one; the latest live one applies). */
+export function useItemReminders(itemId: string | null | undefined): Reminder[] {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => (store && itemId ? (store.query("reminders", `WHERE "item_id" = ? AND "deleted_at" IS NULL ORDER BY "updated_at" DESC`, [itemId]) as unknown as Reminder[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, itemId, version],
+  );
+}
+
+/** Every live custom reminder, by item (for row bells). */
+export function useCustomReminders(): Map<string, Reminder> {
+  const { store } = useStore();
+  const version = useStoreVersion(store);
+  return useMemo(
+    () => customReminders(store ? (store.query("reminders", `WHERE "deleted_at" IS NULL`) as unknown as Reminder[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [store, version],
+  );
 }

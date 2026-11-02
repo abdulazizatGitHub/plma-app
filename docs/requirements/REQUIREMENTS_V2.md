@@ -253,7 +253,7 @@ New direction wins unless stated. Each resolution has a DECISION.md entry dated 
 | SOC-03 | **Group goals and tasks** with a period. Each member logs from their own Today. Completers and the group earn points. | MUST | 9 | S20 |
 | SOC-04 | **Leaderboards, in this order:** (1) friends and groups; (2) a local friends leaderboard and a **global** all-users leaderboard. Group vs group uses average points per member. Weekly and monthly, with rewards for the top. | MUST | 9 | S21, A-3 |
 | SOC-05 | Privacy: others see only points, group-goal progress, and what was shared | MUST | 9 | C12 |
-| SOC-06 | **Visibility setting:** each user chooses who sees their achievements and task progress (Only me / Friends / Everyone). It is honoured by leaderboards, profiles, and shares. Users who choose "Only me" stay off the global board. | MUST | 9 | A-3 |
+| SOC-06 | **Visibility setting:** each user chooses who sees their achievements and task progress (Only me / Friends / Everyone). It is honoured by leaderboards, profiles, and shares. Users who choose "Only me" stay off the global board. **Also "Selected friends" (an allow-list), owner 2026-10-16; only "Everyone" appears on the global board.** | MUST | 9 | A-3 |
 | CHL-01 | **Platform challenges**, weekly or monthly. Users join and complete them in time to earn points and a badge. | MUST | 10 | S22 |
 | CHL-02 | A minimal admin screen to create, schedule, and close challenges | MUST | 10 | S22 |
 | SHR-01 | **Share a streak or achievement** with friends in the app; friends can send kudos | MUST | 9 | S23 |

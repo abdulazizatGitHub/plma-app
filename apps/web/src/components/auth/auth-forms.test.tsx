@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pickDate } from "@/test/date-field";
 import { OtpInput, QuantityStepper } from "@/components/kit";
 import SignUpPage from "@/app/(auth)/sign-up/page";
 import { TaskForm } from "@/components/today/task-form";
@@ -111,9 +112,7 @@ describe("TaskForm", () => {
     type(/What needs doing/, "Quiz");
     expect(add).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Pick date" }));
-    type(/^Date/, "");
-    expect(add).toBeDisabled();
-    type(/^Date/, "2026-10-20");
+    pickDate("Date", "2026-10-20");
     expect(add).toBeEnabled();
     fireEvent.click(add);
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ title: "Quiz", date: "2026-10-20" }));

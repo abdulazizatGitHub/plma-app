@@ -5,15 +5,14 @@ import {
   dayProgress,
   deleteCategory,
   moveCategory,
-  todayLocalDate,
   unarchiveCategory,
   type Category,
   type DayEntry,
 } from "@life/shared";
-import { ArrowDown, ArrowRight, ArrowUp, Archive, MoreHorizontal, Package, Pencil, Plus, Tag as TagIcon, Trash2, Undo2 } from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUp, Archive, Bell, BellOff, MoreHorizontal, Package, Pencil, Plus, Tag as TagIcon, Trash2, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CategorySheet } from "@/components/categories/category-sheet";
 import { Button, CategoryCard, ConfirmSheet, PopoverMenu, PopoverMenuDivider, PopoverMenuItem } from "@/components/kit";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
@@ -21,6 +20,7 @@ import { DayEntryRow } from "@/components/today/day-entry-row";
 import { RowActionsMenu, type RowMenuTarget } from "@/components/today/row-actions-menu";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { useActions, useAllCategories, useAllItems, useDay } from "@/lib/v2/use-day";
+import { useToday } from "@/lib/v2/use-today";
 
 type Editing = { category: Category | null } | null;
 
@@ -31,7 +31,7 @@ export default function CategoriesPage() {
   const run = useActions();
   const router = useRouter();
   const { notify } = useAddSheet();
-  const [today, setToday] = useState<string | null>(null);
+  const today = useToday();
   const [open, setOpen] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -39,7 +39,6 @@ export default function CategoriesPage() {
   const [menu, setMenu] = useState<{ category: Category; anchor: HTMLElement } | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
   const [rowMenu, setRowMenu] = useState<RowMenuTarget>(null);
-  useEffect(() => setToday(todayLocalDate()), []); // eslint-disable-line react-hooks/set-state-in-effect -- client-only date
   const { entries } = useDay(today ?? "1970-01-01");
 
   const active = all.filter((c) => !c.archivedAt);
@@ -84,7 +83,7 @@ export default function CategoriesPage() {
     return (
       <CategoryCard
         key={key}
-        name={name}
+        name={category?.remindersMuted ? `${name} · muted` : name}
         tone={categoryTone(category)}
         icon={<Icon className="h-4.5 w-4.5" />}
         done={p.done}
@@ -111,6 +110,9 @@ export default function CategoriesPage() {
       <header className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-ink">Categories</h1>
         <div className="flex gap-1.5">
+          <Button size="sm" variant="secondary" onClick={() => router.push("/plans")}>
+            Plans
+          </Button>
           {active.length > 1 ? (
             <Button size="sm" variant="secondary" aria-pressed={reordering} onClick={() => setReordering((r) => !r)}>
               {reordering ? "Done" : "Reorder"}
@@ -196,6 +198,17 @@ export default function CategoriesPage() {
             onClick={() => {
               setEditing({ category: menu.category });
               setMenu(null);
+            }}
+          />
+          <PopoverMenuItem
+            icon={menu.category.remindersMuted ? <Bell /> : <BellOff />}
+            label={menu.category.remindersMuted ? "Unmute reminders" : "Mute reminders"}
+            onClick={() => {
+              const c = menu.category;
+              const muted = !c.remindersMuted;
+              void run((ctx) => [{ entity: "categories", row: { ...c, remindersMuted: muted, updatedAt: ctx.now } }]);
+              setMenu(null);
+              notify({ message: muted ? `“${c.name}” won't remind you` : `“${c.name}” reminds again` });
             }}
           />
           <PopoverMenuItem
