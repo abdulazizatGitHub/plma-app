@@ -27,7 +27,7 @@ export function AuthShell({ title, subtitle, onSubmit, children, footer, redirec
     <main className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col justify-center px-4 py-6 sm:py-10">
       <div className="mb-4 flex items-center gap-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[14px] font-semibold text-on-fill" aria-hidden>
-          L
+          M
         </span>
         <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
       </div>

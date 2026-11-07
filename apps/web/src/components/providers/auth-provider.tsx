@@ -77,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { data: { full_name: name.trim() } },
     });
+    // An address that already has an account gets a stand-in user with no identities
+    // and no email (Supabase hides which emails exist). Say so instead of waiting for a code.
+    if (!error && data.user && data.user.identities?.length === 0) {
+      return { error: "This email already has an account. Sign in, or use Forgot password.", needsCode: false };
+    }
     return { error: msg(error), needsCode: !error && !data.session };
   }, []);
 
