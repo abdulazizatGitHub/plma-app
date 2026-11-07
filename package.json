@@ -17,7 +17,7 @@
     "dev:api": "npm run dev -w @life/api",
     "verify": "npm run typecheck && npm run lint && npm run test && npm audit --omit=dev --audit-level=high",
     "secrets": "node scripts/scan-secrets.mjs",
-    "prepare": "husky"
+    "prepare": "node .husky/install.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
