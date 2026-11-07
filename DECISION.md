@@ -921,3 +921,24 @@ Use this template for each decision:
   - Free-plan limits apply: Supabase pauses after a week idle and its email is rate-limited; Vercel Hobby is non-commercial. Production needs its own decision.
   - `CORS_ORIGIN` now ignores spaces and a trailing slash.
 - **Related:** [docs/guides/DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md), `apps/api/Dockerfile`, `scripts/preprod-secrets.mjs`, `scripts/smoke-preprod.mjs`.
+
+### 2026-11-07 — Preprod API moved to Render; app renamed Mehrmah
+
+- **Context:**
+  - Northflank sign-up didn't work for the owner.
+  - The owner named the app **Mehrmah**.
+- **Decision:**
+  - **The API runs on Render's free web service** from the same Dockerfile, on branch `preprod`, in the Singapore region (the database is in Tokyo).
+  - **A cron-job.org ping of `/health` every 10 minutes** keeps it awake, so the minute-by-minute reminder jobs keep running. Render's 750 free hours cover one service for a whole month.
+  - **The web app is on Vercel** at `mehrmah.vercel.app`. Production tracks `preprod` (Settings → Environments → Production → Branch Tracking).
+  - **"Mehrmah" replaces "Life"** everywhere users see it. Internal names (`@life/*`, storage keys) stay as they are, so nobody is signed out.
+- **Alternatives considered:**
+  - Koyeb (now needs a card and also sleeps).
+  - Railway ($1 a month of credit is too little for an always-on API).
+  - Fly.io (no free plan).
+  - Oracle Always Free (a server to manage, and needs a card).
+- **Consequences:**
+  - A cold start takes about a minute if the ping ever stops.
+  - Each deploy rebuilds the image (about 5 minutes).
+  - `scripts/e2e-preprod.mjs` checks a deployed API end to end with throwaway accounts.
+- **Related:** [docs/guides/DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md).
