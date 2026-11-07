@@ -1,6 +1,10 @@
 import path from "node:path";
 import { defineConfig } from "vitest/config";
 
+// Tests are written for the owner's timezone ("2 AM Tuesday in Karachi"); the app
+// reads the device clock, so pin it. CI runners are UTC.
+process.env.TZ = "Asia/Karachi";
+
 export default defineConfig({
   test: {
     projects: [
