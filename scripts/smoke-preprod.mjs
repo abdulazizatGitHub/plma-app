@@ -81,10 +81,16 @@ await check("PWA: Apple touch icon", async () => {
   must(r.ok, `HTTP ${r.status}`);
 });
 await check("Web points at this API", async () => {
-  // The API URL is baked into the web build; it shows up in the sign-in page's scripts.
-  const html = await (await get(`${web}/sign-in`)).text();
-  const scripts = [...html.matchAll(/src="(\/_next\/static\/chunks\/[^"]+\.js)"/g)].map((m) => m[1]).slice(0, 40);
-  for (const s of scripts) if ((await (await get(`${web}${s}`)).text()).includes(api)) return "found in the build";
+  // The API URL is baked into the web build; it shows up in the scripts of pages that call the API.
+  const seen = new Set();
+  for (const page of ["/", "/profile", "/friends"]) {
+    const html = await (await get(`${web}${page}`)).text();
+    for (const [, s] of html.matchAll(/(\/_next\/static\/[^"' ]+\.js)/g)) {
+      if (seen.has(s)) continue;
+      seen.add(s);
+      if ((await (await get(`${web}${s}`)).text()).includes(api)) return "found in the build";
+    }
+  }
   throw new Error("API URL not found in the web build — check NEXT_PUBLIC_API_URL on Vercel and redeploy");
 });
 
