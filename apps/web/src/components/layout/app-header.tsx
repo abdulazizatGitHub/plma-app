@@ -72,7 +72,7 @@ export function AppHeader() {
       <div className="mx-auto flex h-12 w-full max-w-xl items-center justify-between px-4 md:max-w-2xl lg:max-w-none lg:px-6">
         <Link href="/" className="flex items-center gap-2" aria-label="Mehrmah — go to Today">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-on-fill" aria-hidden>
-            L
+            M
           </span>
           <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
         </Link>
