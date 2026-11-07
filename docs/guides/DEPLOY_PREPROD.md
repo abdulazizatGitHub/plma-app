@@ -4,13 +4,13 @@ Preprod is a full copy of Mehrmah on free hosting, for testing on real phones ov
 
 | Part | Where | Free plan |
 |------|-------|-----------|
-| Web app (Next.js PWA) | **Vercel** (Hobby) | `https://<project>.vercel.app` |
-| API (Fastify) | **Northflank** (Sandbox) | always-on service with a `*.code.run` URL |
+| Web app (Next.js PWA) | **Vercel** (Hobby) | `https://mehrmah.vercel.app` |
+| API (Fastify) | **Render** (Free web service), kept awake by a cron-job.org ping | `https://mehrmah-api.onrender.com` |
 | Database, sign-in and email | **Supabase** (Free), a **new project** just for preprod | emails sent through a Gmail account (custom SMTP) |
 
 Both hosts deploy the **`preprod`** branch. To release to preprod, merge `dev` into `preprod` and push. Both rebuild on their own.
 
-This was decided on 2026-10-17; see DECISION.md.
+This was decided on 2026-10-17 and changed to Render on 2026-11-07, because Northflank sign-up didn't work; see DECISION.md.
 
 Time needed: about 45 minutes the first time.
 
@@ -21,7 +21,7 @@ Time needed: about 45 minutes the first time.
 1. At [supabase.com](https://supabase.com), choose **New project**.
    - **Name:** `life-preprod`
    - **Database password:** generate one and keep it in your password manager.
-   - **Region:** the one nearest your testers. Use the same region for Northflank in step 4.
+   - **Region:** the one nearest your testers. Pick the nearest Render region in step 4.
 2. Wait for the project to finish setting up.
 3. Collect these values. They go into `.env.preprod.local` in step 2.
 
@@ -33,7 +33,7 @@ Time needed: about 45 minutes the first time.
    | `SUPABASE_JWT_SECRET` | Project Settings → JWT Keys → **legacy JWT secret**. If the project shows only new signing keys, leave this empty; the API checks tokens against the project's public keys automatically. |
    | `DATABASE_URL` | **Connect** → **Session pooler** connection string (port 5432), with your database password filled in |
 
-   Use the **session pooler**, not the direct connection. The direct connection is IPv6-only, and most hosts, Northflank included, connect over IPv4.
+   Use a **pooler** connection (session, port 5432, or transaction, port 6543), not the direct connection. The direct connection is IPv6-only, and most hosts, Render included, connect over IPv4.
 
 4. Set up sign-in and the branded emails by following [`docs/email-templates/README.md`](../email-templates/README.md):
    - all four templates
@@ -70,19 +70,18 @@ ENV_FILE=.env.preprod.local npm run db:seed:templates -w @life/api   # optional:
 
 The first command creates every table, with row-level security on. The second is optional and adds the plan presets. Both are safe to run again; they skip anything already applied.
 
-## 4. API on Northflank
+## 4. API on Render
 
-1. Sign up at [northflank.com](https://northflank.com) and connect your GitHub account. Give it access to this repository.
-   - The free **Sandbox** may ask for a card to verify your account. It isn't charged on the Sandbox.
-2. **Create project** → name it `life-preprod`. Choose a region close to the Supabase one.
-3. **Create service → Combined service** (build and deploy) → name it `life-api`.
-   - **Repository:** this repo. **Branch:** `preprod`.
-   - **Build type:** Dockerfile.
-     - **Dockerfile location:** `/apps/api/Dockerfile`
-     - **Build context:** `/`
-   - **Networking:** port **4000**, protocol **HTTP**, **Public**.
-   - **Resources:** the smallest free plan is enough.
-4. **Environment → Runtime variables.** Add these, copying the values from `.env.preprod.local`:
+1. At [render.com](https://render.com), choose **Sign up with GitHub** and allow access to this repository. No card is needed.
+2. **New → Web Service** → pick the repository.
+   - **Name:** `mehrmah-api`. **Branch:** `preprod`.
+   - **Region:** the closest to the Supabase one (Singapore for a Tokyo database).
+   - **Language:** Docker.
+     - **Dockerfile Path:** `apps/api/Dockerfile`
+     - **Docker Build Context Directory:** `.` (the repo root)
+   - **Instance type:** Free (0.1 CPU, 512 MB).
+   - **Health Check Path:** `/health` (under Advanced).
+3. **Environment Variables.** Add these, copying the values from `.env.preprod.local`:
 
    ```text
    DATABASE_URL
@@ -95,11 +94,13 @@ The first command creates every table, with row-level security on. The second is
    CORS_ORIGIN                    (fill in after step 5; until then the API refuses browser calls)
    ```
 
-   `PORT`, `HOST` and `NODE_ENV` are set by the Dockerfile. Don't add the service-role key or the anon key; the API doesn't use them.
-5. **Health checks:** add a readiness check, HTTP `GET /health` on port 4000.
-6. Deploy. When it's running, copy the public URL. It looks like `https://p01--life-api--xxxx.code.run`.
+   Don't add `PORT`: Render sets it and the API reads it. `HOST` and `NODE_ENV` come from the Dockerfile. Don't add the service-role key or the anon key; the API doesn't use them.
+4. **Deploy Web Service.** When it's running, copy the URL (`https://mehrmah-api.onrender.com`).
    - Put it in `.env.preprod.local` as `NEXT_PUBLIC_API_URL`, with no trailing slash.
    - Open `<url>/health/db`. It should say `"connected"`.
+5. **Keep it awake.** A free Render service sleeps after 15 minutes without traffic, which would stop reminders (checked every minute).
+   - At [cron-job.org](https://cron-job.org), create a job for `<url>/health` running **every 10 minutes**.
+   - Render's 750 free hours a month cover one service running all month.
 
 Run **only one** API instance. It also runs the reminder and day-closing jobs every minute and every hour. If you ever add a second instance, set `REMINDER_JOBS=off` on it.
 
@@ -112,19 +113,19 @@ Run **only one** API instance. It also runs the reminder and day-closing jobs ev
 3. **Environment Variables**, for Production:
 
    ```text
-   NEXT_PUBLIC_API_URL            the Northflank URL from step 4
+   NEXT_PUBLIC_API_URL            the Render URL from step 4
    NEXT_PUBLIC_SUPABASE_URL
    NEXT_PUBLIC_SUPABASE_ANON_KEY
    HUSKY=0                        skips git hooks during install
    ```
 
    All three `NEXT_PUBLIC_*` values are built into the app. **After changing any of them, redeploy.**
-4. **Deploy.** Then go to **Settings → Git**.
-   - **Production Branch:** `preprod`.
-   - Optional: under **Ignored Build Step**, build only the `preprod` branch, so `dev` pushes don't make preview builds.
-5. Copy the production URL, for example `https://life-preprod.vercel.app`.
+4. **Deploy.** Then go to **Settings → Environments → Production → Branch Tracking** and set the branch to `preprod`. (It's no longer under Settings → Git.)
+   - The next push to `preprod` makes the production build. Until then the URL shows `DEPLOYMENT_NOT_FOUND`.
+   - Optional: under **Build and Deployment → Ignored Build Step**, build only the `preprod` branch, so `dev` pushes don't make preview builds.
+5. Copy the production URL, `https://mehrmah.vercel.app`.
    - Put it in `.env.preprod.local` as `CORS_ORIGIN`.
-   - Add it in Northflank as the `CORS_ORIGIN` runtime variable, then restart the service.
+   - Add it on Render as the `CORS_ORIGIN` environment variable. Render restarts the service by itself.
    - In Supabase → **Authentication → URL Configuration**:
      - **Site URL:** the Vercel URL
      - **Redirect URLs:** the Vercel URL followed by `/**`
@@ -173,7 +174,7 @@ Write the results in PROGRESS.md under Phase 6. Push on phones is the item still
 ## Releasing again
 
 ```bash
-git checkout preprod && git merge --no-ff dev && git push   # Vercel and Northflank rebuild
+git checkout preprod && git merge --no-ff dev && git push   # Vercel and Render rebuild
 ```
 
 - If the release adds a migration, run step 3 again **before** pushing.
@@ -186,15 +187,15 @@ git checkout preprod && git merge --no-ff dev && git push   # Vercel and Northfl
   - A project **pauses after about a week with no activity**. Restore it from the dashboard; no data is lost.
   - Custom SMTP is required before templates can be edited. Gmail allows about 500 emails a day; Gmail-sent emails may land in spam until there's a domain.
   - Two free projects per account, so dev plus preprod fits.
-- **Northflank Sandbox:**
-  - small CPU and memory, which is plenty for testing
-  - the service stays running and doesn't sleep
-  - a card may be needed to verify the account
+- **Render Free:**
+  - 0.1 CPU and 512 MB, which is enough for testing
+  - sleeps after 15 minutes without traffic unless the cron-job.org ping runs; a cold start takes about a minute
+  - each push to `preprod` rebuilds the image (about 5 minutes), with a short gap while the new one starts
 - **Vercel Hobby:**
   - for personal and non-commercial use
   - production needs Pro or another host
 - **No custom domain yet.**
-  - The `vercel.app` and `code.run` URLs are permanent while the projects exist.
+  - The `vercel.app` and `onrender.com` URLs are permanent while the projects exist.
   - Moving to a domain later means updating `CORS_ORIGIN`, the Supabase URL settings and `NEXT_PUBLIC_API_URL`, then redeploying.
   - Installed copies of the app keep their old address, so testers reinstall.
 
@@ -202,9 +203,10 @@ git checkout preprod && git merge --no-ff dev && git push   # Vercel and Northfl
 
 | Symptom | Likely cause |
 |---------|--------------|
-| Sign-in works, but every screen says it can't reach the server | `CORS_ORIGIN` on Northflank doesn't exactly match the Vercel URL (no trailing slash), or `NEXT_PUBLIC_API_URL` on Vercel is wrong. **Redeploy** after fixing it. |
+| Sign-in works, but every screen says it can't reach the server | `CORS_ORIGIN` on Render doesn't exactly match the Vercel URL (no trailing slash), or `NEXT_PUBLIC_API_URL` on Vercel is wrong. **Redeploy** after fixing it. Or the API was asleep: check the cron-job.org ping. |
+| Vercel URL shows `DEPLOYMENT_NOT_FOUND` | No production build from `preprod` yet. Push to `preprod`, or check Branch Tracking under Settings → Environments → Production. |
 | `/health/db` fails | The `DATABASE_URL` password is wrong, you used the direct connection instead of the session pooler, or the Supabase project is paused |
-| Everything gives 401 after signing in | `NEXT_PUBLIC_SUPABASE_URL` on Northflank points at a different project from the one the web app uses |
-| "Reminders aren't available" | VAPID keys are missing on Northflank. `/v1/push/key` returns 503. |
+| Everything gives 401 after signing in | `NEXT_PUBLIC_SUPABASE_URL` on Render points at a different project from the one the web app uses |
+| "Reminders aren't available" | VAPID keys are missing on Render. `/v1/push/key` returns 503. |
 | No sign-up email | Supabase's email limit has been reached. Wait an hour, or set up SMTP. |
 | Install banner never shows | It is hidden once installed, for 14 days after **Not now**, and on unsupported browsers. Try a private window. |
