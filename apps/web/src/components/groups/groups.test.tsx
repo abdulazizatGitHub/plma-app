@@ -80,8 +80,9 @@ describe("Group page", () => {
     const { default: GroupPage } = await import("@/app/(main)/groups/view/page");
     render(<GroupPage />);
     fireEvent.click(await screen.findByRole("button", { name: /Snap the group/ }));
-    expect(await screen.findByRole("button", { name: /Checked in today/ })).toBeDisabled();
-    expect(notify).toHaveBeenCalledWith({ message: "Everyone's in today" });
+    // The label and the disabled state can land in separate renders under load.
+    await waitFor(() => expect(screen.getByRole("button", { name: /Checked in today/ })).toBeDisabled());
+    await waitFor(() => expect(notify).toHaveBeenCalledWith({ message: "Everyone's in today" }));
   });
 });
 
