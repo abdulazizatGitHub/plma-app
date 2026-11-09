@@ -115,6 +115,20 @@
   --link: #9a85b9; /* (d) */
 }
 
+/*
+ * Brand mark colours, from the owner's logo kit (mehrmah-logo-kit-v2), not UI
+ * tokens. Used only by <BrandMark>. Dark mode follows the kit's reverse-dark variant.
+ */
+:root {
+  --brand-sun: #f2a55a;
+  --brand-dusk: #c9809e;
+  --brand-moon: #4766d0;
+}
+:root[data-mode="dark"] {
+  --brand-dusk: #d08aa8;
+  --brand-moon: #7293f1;
+}
+
 /* Motion and shape. */
 :root {
   --ease-standard: cubic-bezier(0.165, 0.84, 0.44, 1);
