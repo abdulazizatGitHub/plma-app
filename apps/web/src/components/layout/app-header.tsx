@@ -2,6 +2,7 @@
 
 import { AlertCircle, Bell, Cloud, CloudOff, RefreshCw, Send } from "lucide-react";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useStore } from "@/components/providers/store-provider";
 import { useSocial } from "@/lib/v2/use-social";
 import { UserMenu } from "./user-menu";
@@ -70,11 +71,8 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-12 w-full max-w-xl items-center justify-between px-4 md:max-w-2xl lg:max-w-none lg:px-6">
-        <Link href="/" className="flex items-center gap-2" aria-label="Mehrmah — go to Today">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-on-fill" aria-hidden>
-            M
-          </span>
-          <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
+        <Link href="/" className="flex items-center" aria-label="Mehrmah — go to Today">
+          <BrandLogo />
         </Link>
         <div className="flex items-center gap-1">
           <SyncIndicator />

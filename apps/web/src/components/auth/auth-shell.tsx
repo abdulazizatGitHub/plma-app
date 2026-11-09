@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, type FormEvent, type ReactNode } from "react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useAuth } from "@/components/providers/auth-provider";
 
 type AuthShellProps = {
@@ -25,11 +26,8 @@ export function AuthShell({ title, subtitle, onSubmit, children, footer, redirec
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-[400px] flex-col justify-center px-4 py-6 sm:py-10">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[14px] font-semibold text-on-fill" aria-hidden>
-          M
-        </span>
-        <span className="text-[15px] font-semibold text-ink">Mehrmah</span>
+      <div className="mb-4">
+        <BrandLogo size="md" trademark />
       </div>
       <h1 className="text-xl font-semibold text-ink">{title}</h1>
       {subtitle ? <p className="mt-0.5 text-[13px] text-ink-2">{subtitle}</p> : null}

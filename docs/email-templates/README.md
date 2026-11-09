@@ -61,5 +61,7 @@ Each Supabase project (dev, preprod, production) has its own templates and setti
 
 ## Notes
 
+- **The logo is an image hosted by the web app:** `{{ .SiteURL }}/brand/mehrmah-email-logo.png`. It shows only once the **Site URL** (step 3) points at a deployed build that has the file. The PNG has a solid `#F4F4F9` background, the same as the email canvas, so it stays readable when a mail app switches to dark mode. If a mail app blocks images, the alt text "mehrmah" shows instead.
+
 - **Don't use fake or test addresses** like `@example.com` with the real sign-up form. Bounced emails can get a Supabase project's email sending restricted. Automated tests create accounts through the admin API, which sends no email.
 - Supabase sends the code in the same request whether the template shows a link or a code. With these templates, only the code is shown.
