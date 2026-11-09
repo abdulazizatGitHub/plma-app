@@ -12,3 +12,7 @@ life_pg_data
 
 # Local-only design research (extracted from third-party sites; not shipped)
 docs/design-references/
+
+# Owner's logo kit (source of the shipped icons in apps/web/public/icons and /brand)
+mehrmah-logo-kit-v2/
+mehrmah-logo-kit-v2.zip
