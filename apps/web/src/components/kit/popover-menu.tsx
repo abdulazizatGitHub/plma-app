@@ -14,6 +14,8 @@ type PopoverMenuProps = {
   /** Accessible name, e.g. the row title. Shown as a small caption. */
   label: string;
   children: ReactNode;
+  /** "dialog" for a small panel of controls (e.g. a − / + stepper) instead of a list of actions. */
+  role?: "menu" | "dialog";
 };
 
 /**
@@ -22,7 +24,7 @@ type PopoverMenuProps = {
  * trigger on scroll/resize. Escape or an outside tap closes it; Escape returns
  * focus to the trigger.
  */
-export function PopoverMenu({ anchor, onClose, label, children }: PopoverMenuProps) {
+export function PopoverMenu({ anchor, onClose, label, children, role = "menu" }: PopoverMenuProps) {
   const panel = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -63,7 +65,7 @@ export function PopoverMenu({ anchor, onClose, label, children }: PopoverMenuPro
 
   useEffect(() => {
     if (!anchor) return;
-    panel.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    panel.current?.querySelector<HTMLElement>(role === "menu" ? "[role=menuitem]" : "button:not([disabled])")?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -86,13 +88,13 @@ export function PopoverMenu({ anchor, onClose, label, children }: PopoverMenuPro
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
     };
-  }, [anchor, onClose]);
+  }, [anchor, onClose, role]);
 
   if (!anchor) return null;
   return createPortal(
     <div
       ref={panel}
-      role="menu"
+      role={role}
       aria-label={label}
       className="card fixed z-50 rounded-[14px] p-1 shadow-[0_8px_24px_rgb(27_26_34/14%)]"
       style={{ width: WIDTH, top: pos?.top ?? -9999, left: pos?.left ?? -9999, visibility: pos ? "visible" : "hidden" }}

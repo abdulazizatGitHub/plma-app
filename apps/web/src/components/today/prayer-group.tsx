@@ -47,6 +47,7 @@ import { longDate } from "@/lib/v2/dates";
 import { useActions, usePrayerTimes, useUserSettings } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
+import { MosqueIcon } from "./mosque-icon";
 
 const CHIP: Record<PrayerMark, PrayerChip["status"]> = {
   prayed: "done",
@@ -235,6 +236,7 @@ export function PrayerGroup({
       <PrayerRow
         title={entry.item.title}
         subtitle={subtitle}
+        icon={<MosqueIcon />}
         prayers={chips}
         onToggle={(key, anchor) => {
           const child = children.find((c) => c.key === key);

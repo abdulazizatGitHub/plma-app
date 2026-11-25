@@ -164,8 +164,8 @@ describe("Plans on Today and in categories", () => {
       </AddSheetProvider>,
     );
     const lockBtn = await screen.findByRole("button", { name: "Post: locked — Payment cleared" });
-    expect(screen.getByText(/Collab — Café X/)).toBeInTheDocument();
-    expect(screen.getByText("Waits for Payment cleared")).toBeInTheDocument();
+    // One quiet line under the title: the wait, the time and the plan.
+    expect(screen.getByText(/^Waits for Payment cleared · 6:00 PM · Collab — Café X/)).toBeInTheDocument();
     fireEvent.click(lockBtn);
     expect(await screen.findByRole("status")).toHaveTextContent("Post waits for Payment cleared — tick that first.");
     expect(store.query("occurrences")).toHaveLength(0);

@@ -7,6 +7,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { addDays } from "@/components/kit";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
+import { pickDay } from "./pick-day.test-helper";
 import { PrayerGroup } from "./prayer-group";
 import { TodayScreen } from "./today-screen";
 
@@ -110,10 +111,8 @@ describe("Prayer block on Today", () => {
   it("a closed day (3 days ago): unmarked prayers read as missed, and tapping one recovers it as qada", async () => {
     today();
     const yesterday = addDays(todayLocalDate(), -3);
-    const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${yesterday}T12:00:00`));
     await screen.findByRole("region", { name: "Daily prayers" });
-    if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
+    await pickDay(yesterday);
     const block = await screen.findByRole("region", { name: "Daily prayers" });
     await waitFor(() => expect(within(block).getByRole("button", { name: /^Maghrib, missed/ })).toBeInTheDocument());
     expect(within(block).getByText(/tap one to recover it as qada/)).toBeInTheDocument();

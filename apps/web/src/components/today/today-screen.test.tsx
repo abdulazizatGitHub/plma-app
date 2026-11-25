@@ -5,11 +5,9 @@ import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { addDays } from "@/components/kit";
-import { SETTLE_MS } from "@/lib/v2/use-settle";
-
-const SETTLED = { timeout: SETTLE_MS + 2000 };
 import { AddSheetProvider, useAddSheet } from "@/components/providers/add-sheet-provider";
 import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
+import { pickDay } from "./pick-day.test-helper";
 import { TodayScreen } from "./today-screen";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
@@ -77,51 +75,49 @@ beforeAll(async () => {
   SQL = await initSqlJs();
 });
 beforeEach(async () => {
-  // These tests read the To Do / In Progress / Done sections ("By status").
-  try {
-    localStorage.setItem("life_today_view", "status");
-  } catch {
-    /* ignore */
-  }
   store = await LocalStore.open(uid(), { sqlJs: SQL });
 });
 
 describe("TodayScreen", () => {
-  it("sorts today's items into To Do, In Progress and Done", async () => {
-    const steps = item({ title: "Steps", tracking: { v: 1, kind: "quantity", unit: "steps", target: 10000, step: 500 } });
-    store.save("items", steps);
+  it("lists habits and tasks in two simple cards; a ticked item stays where it is, crossed out", async () => {
+    store.save("items", item({ title: "Steps", tracking: { v: 1, kind: "quantity", unit: "steps", target: 10000, step: 500 } }));
     store.save("items", item({ title: "Make bed" }));
     store.save("items", item({ type: "task", title: "Quiz", schedule: { v: 1, kind: "once", date: todayLocalDate() } }));
     renderToday();
-    const todo = await screen.findByRole("region", { name: "To Do" });
-    expect(within(todo).getByText("Make bed")).toBeInTheDocument();
+    const habits = await screen.findByRole("region", { name: "My Habits" });
+    expect(within(habits).getByText("Make bed")).toBeInTheDocument();
+    expect(within(habits).getByText("0 / 10,000 steps")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Tasks" })).getByText("Quiz")).toBeInTheDocument();
+    // No status tiles, no view switch, no week strip: one summary, then the lists.
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Day summary" })).toHaveTextContent("0 of 3 done");
 
-    // While you're editing, the row stays put and says where it's going…
-    fireEvent.click(screen.getByRole("button", { name: "Increase Steps by 500" }));
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Steps")).toBeInTheDocument());
-    expect(within(screen.getByRole("region", { name: "To Do" })).getAllByText("In Progress").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("checkbox", { name: "Quiz" }));
     await waitFor(() => expect(ring()).toHaveAttribute("data-value", "33")); // the % updates at once
-    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Quiz")).toBeInTheDocument();
-    // …and moves once it settles.
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Steps")).toBeInTheDocument(), SETTLED);
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "Done" })).getByText("Quiz")).toBeInTheDocument(), SETTLED);
+    expect(screen.getByRole("region", { name: "Day summary" })).toHaveTextContent("1 of 3 done");
+    const tasks = screen.getByRole("region", { name: "Tasks" });
+    expect(within(tasks).getByRole("checkbox", { name: "Quiz" })).toHaveAttribute("aria-checked", "true");
+    expect(within(tasks).getByText("Quiz")).toHaveClass("line-through");
+    expect(within(tasks).getByText("1/1")).toBeInTheDocument();
   });
 
-  it("keeps a row in place while you keep tapping, then moves it", async () => {
+  it("tapping an amount opens − / + ; the box fills a count to its goal", async () => {
     store.save("items", item({ title: "Pages", tracking: { v: 1, kind: "quantity", unit: "pages", target: 5, step: 1 } }));
     renderToday();
-    const plus = await screen.findByRole("button", { name: "Increase Pages by 1" });
-    for (let i = 0; i < 3; i++) {
-      fireEvent.click(plus);
-      await new Promise((r) => setTimeout(r, 900)); // each tap restarts the wait
-    }
-    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Pages")).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "In Progress" })).not.toBeInTheDocument();
-    await waitFor(() => expect(within(screen.getByRole("region", { name: "In Progress" })).getByText("Pages")).toBeInTheDocument(), SETTLED);
+    fireEvent.click(await screen.findByRole("button", { name: "Adjust Pages: 0 / 5 pages" }));
+    const panel = screen.getByRole("dialog", { name: "Pages" });
+    fireEvent.click(within(panel).getByRole("button", { name: "Increase Pages by 1" }));
+    expect(await screen.findByRole("button", { name: "Adjust Pages: 1 / 5 pages" })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Pages" })).getByRole("button", { name: "Increase Pages by 1" }));
+    expect(await screen.findByRole("button", { name: "Adjust Pages: 2 / 5 pages" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Pages" })).toHaveAttribute("aria-checked", "mixed");
+    // The row didn't move anywhere; one tap on the box completes it.
+    fireEvent.click(screen.getByRole("checkbox", { name: "Pages" }));
+    expect(await screen.findByRole("button", { name: "Adjust Pages: 5 / 5 pages" })).toBeInTheDocument();
+    await waitFor(() => expect(ring()).toHaveAttribute("data-value", "100"));
   });
 
-  it("reaches 100% when the only To Do item is skipped", async () => {
+  it("reaches 100% when the only item is skipped, and Bring back undoes it", async () => {
     store.save("items", item({ title: "Gym" }));
     renderToday();
     await waitFor(() => expect(ring()).toHaveAttribute("data-value", "0"));
@@ -129,17 +125,15 @@ describe("TodayScreen", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Skip today" }));
     expect(screen.queryByRole("menu")).not.toBeInTheDocument(); // closes after the action
     await waitFor(() => expect(ring()).toHaveAttribute("data-value", "100"));
-    expect(screen.getByRole("button", { name: /Not today · 1/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bring back" }));
+    await waitFor(() => expect(ring()).toHaveAttribute("data-value", "0"));
   });
 
-  it("adds a task to the day that is on screen (plan tomorrow)", async () => {
+  it("adds a task to the day picked in the calendar (plan tomorrow)", async () => {
     renderToday();
     const tomorrow = addDays(todayLocalDate(), 1);
-    const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${tomorrow}T12:00:00`));
-    await screen.findByRole("button", { name: "Next week" });
-    // On a Sunday, tomorrow is in next week's strip.
-    if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Next week" }));
-    fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^${label}`) }));
+    await pickDay(tomorrow);
+    expect(await screen.findByRole("heading", { level: 1, name: "Tomorrow" })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: "Add a task" }));
     fireEvent.change(screen.getByLabelText(/What needs doing/), { target: { value: "Shoot at Café X" } });
     fireEvent.click(screen.getByRole("button", { name: "Add task" }));
@@ -149,27 +143,22 @@ describe("TodayScreen", () => {
     });
     expect(await screen.findByText("Shoot at Café X")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(/Added to Tomorrow/);
+    fireEvent.click(screen.getByRole("button", { name: "Back to today" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Today" })).toBeInTheDocument();
   });
 
-  it("shows later tasks under Upcoming and missed ones under Overdue, with Move to today", async () => {
+  it("shows missed tasks under Overdue, with Move to today", async () => {
     const today = todayLocalDate();
-    store.save("items", item({ type: "task", title: "Late call", schedule: { v: 1, kind: "once", date: addDays(today, 1), time: "23:00" } }));
     store.save("items", item({ type: "task", title: "Old essay", schedule: { v: 1, kind: "once", date: addDays(today, -2) } }));
     renderToday();
-    const upcoming = await screen.findByRole("region", { name: "Upcoming" });
-    expect(within(upcoming).getByText("Late call")).toBeInTheDocument();
-    expect(within(upcoming).getByText("11:00 PM")).toBeInTheDocument();
-    HTMLElement.prototype.scrollIntoView = vi.fn(); // jsdom has no layout
-    fireEvent.click(screen.getByRole("button", { name: "1 overdue" })); // badge by the date jumps to the list
-    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
-    const overdue = screen.getByRole("region", { name: "Overdue" });
+    const overdue = await screen.findByRole("region", { name: "Overdue" });
     expect(within(overdue).getByText(/^Was due/)).toBeInTheDocument();
     fireEvent.click(within(overdue).getByRole("button", { name: "Move to today" }));
     await waitFor(() => expect(screen.queryByRole("region", { name: "Overdue" })).not.toBeInTheDocument());
-    expect(within(screen.getByRole("region", { name: "To Do" })).getByText("Old essay")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Tasks" })).getByText("Old essay")).toBeInTheDocument();
   });
 
-  it("toggles one prayer from the prayer row, in any order", async () => {
+  it("toggles one prayer from the prayer card, in any order", async () => {
     const group = item({ type: "group", title: "Daily prayers", meta: { prayerSet: true } });
     store.save("items", group);
     for (const t of ["Fajr", "Zuhr", "Asr"]) store.save("items", item({ title: t, parentId: group.id }));
@@ -183,11 +172,7 @@ describe("TodayScreen", () => {
 
   it("+ on a past day adds the task to today (a new task can't start in the past)", async () => {
     renderToday();
-    const past = addDays(todayLocalDate(), -3);
-    const label = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${past}T12:00:00`));
-    await screen.findByRole("button", { name: "Previous week" });
-    if (!screen.queryByRole("button", { name: new RegExp(`^${label}`) })) fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
-    fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}`) }));
+    await pickDay(addDays(todayLocalDate(), -3));
     // A past day doesn't invite planning; the + in the nav still works and adds to today.
     expect(await screen.findByText(/Nothing was planned for/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add a task" })).not.toBeInTheDocument();
@@ -199,34 +184,30 @@ describe("TodayScreen", () => {
       expect(saved?.schedule).toEqual({ v: 1, kind: "once", date: todayLocalDate() });
     });
   });
+
+  it("opens a routine to tick its steps, and its box ticks them all", async () => {
+    const gym = item({ type: "group", title: "Gym — Push day" });
+    store.save("items", gym);
+    for (const t of ["Bench", "Dips"]) store.save("items", item({ title: t, parentId: gym.id }));
+    renderToday();
+    fireEvent.click(await screen.findByRole("button", { name: "Gym — Push day steps: 0 of 2 done" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Bench" }));
+    expect(await screen.findByRole("button", { name: "Gym — Push day steps: 1 of 2 done" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Gym — Push day" }));
+    expect(await screen.findByRole("button", { name: "Gym — Push day steps: 2 of 2 done" })).toBeInTheDocument();
+    await waitFor(() => expect(ring()).toHaveAttribute("data-value", "100"));
+  });
 });
 
-
-describe("My day (the default view)", () => {
-  it("groups untimed items by category in one card each, with a compact + and Done folded away", async () => {
-    try {
-      localStorage.removeItem("life_today_view");
-    } catch {
-      /* ignore */
-    }
+describe("Rows", () => {
+  it("show the category icon instead of its name, a flag for high priority, and the amount on the right", async () => {
     const physical = { id: uid(), userId: USER, createdAt: NOW, updatedAt: NOW, deletedAt: null, name: "Physical", icon: "dumbbell", color: "mint", sortOrder: 0, archivedAt: null, remindersMuted: false, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null };
     store.save("categories", physical as unknown as StoredRow);
     store.save("items", item({ title: "Steps", categoryId: physical.id, priority: "high", tracking: { v: 1, kind: "quantity", unit: "steps", target: 1000, step: 500 } }));
-    store.save("items", item({ title: "Floss" }));
     renderToday();
-    const group = await screen.findByRole("region", { name: "Physical" });
-    expect(screen.getByRole("tab", { name: "My day" })).toHaveAttribute("aria-selected", "true");
-    // The group names the category, so the row doesn't repeat it; high priority is a small flag.
-    expect(within(group).getByText("0 / 1,000 steps")).toBeInTheDocument();
-    expect(within(group).getByRole("img", { name: "high priority" })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Other" })).getByText("Floss")).toBeInTheDocument();
-    // One tap on + logs a step; reaching the goal folds the row into Done.
-    fireEvent.click(within(group).getByRole("button", { name: "Increase Steps by 500" }));
-    expect(await within(group).findByText("500 / 1,000 steps")).toBeInTheDocument();
-    fireEvent.click(within(group).getByRole("button", { name: "Increase Steps by 500" }));
-    const done = await screen.findByRole("button", { name: /Done · 1/ }, SETTLED);
-    expect(screen.queryByText(/Goal reached · 1,000 steps/)).not.toBeInTheDocument();
-    fireEvent.click(done);
-    expect(screen.getByText(/Goal reached · 1,000 steps/)).toBeInTheDocument();
+    const habits = await screen.findByRole("region", { name: "My Habits" });
+    expect(within(habits).getByText("0 / 1,000 steps")).toBeInTheDocument();
+    expect(within(habits).getByRole("img", { name: "high priority" })).toBeInTheDocument();
+    expect(within(habits).queryByText("Physical")).not.toBeInTheDocument();
   });
 });

@@ -942,3 +942,27 @@ Use this template for each decision:
   - Each deploy rebuilds the image (about 5 minutes).
   - `scripts/e2e-preprod.mjs` checks a deployed API end to end with throwaway accounts.
 - **Related:** [docs/guides/DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md).
+
+### 2026-11-25 — A simpler Today, from the owner's mockup
+
+- **Context:** users said the app was hard to use. The owner sent a mockup of a much simpler home screen: one ring, a prayer card and one list of habits.
+- **Decision:**
+  - **Today** is now: the day's title with a **calendar** beside it, one **summary ring** ("4 of 16 done" and a bar), the **prayer card**, then **My Habits** and **Tasks** cards. **Overdue** and **Pending** appear only when there is something in them.
+  - **Rows don't move.** A finished item stays where it is, struck through. That removes the To Do / In Progress / Done sections, the status tiles, the "My day / By status" switch and the "settle in place" wait.
+  - **Row actions:**
+    - **The square box** finishes an item; a count fills to its goal.
+    - **The amount** ("0 / 8 glasses") opens a small − / + panel.
+    - **Steps** on a checklist or routine expand them.
+    - **The row itself** opens skip, move, remind, edit and details.
+  - **Top bar:** the logo and a **Notifications** bell only. Theme, sync and sign-out were already in Profile. Snapping your day lives on the Notifications page (formerly "Snaps").
+  - **Bottom bar:** "Categories" is renamed **Habits**.
+  - **Unchanged on purpose:** the three rings, points and streak stay on **Progress**. **Sky** stays the default theme; the mockup's colours are the existing Mauve theme.
+- **Alternatives considered:**
+  - Keeping the three rings on Today, which the owner declined.
+  - Keeping the avatar menu and sync and Snap icons in the top bar.
+  - Making Mauve the default theme.
+- **Consequences:**
+  - Upcoming days are no longer listed on Today; the calendar opens any day, and the "View" button on the add toast still jumps there.
+  - The tour now has 6 steps.
+  - The help guide is updated (regenerate `USER_GUIDE.md` with `npm run docs:guide -w web`).
+- **Related:** `components/today/today-screen.tsx`, `habit-row.tsx`, `today-summary.tsx`, `kit/prayer-row.tsx`, `layout/app-header.tsx`.
