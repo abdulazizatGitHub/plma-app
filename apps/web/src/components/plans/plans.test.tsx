@@ -195,7 +195,7 @@ describe("Plans on Today and in categories", () => {
         <TodayScreen />
       </AddSheetProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "More actions for Post" }));
+    fireEvent.contextMenu(await screen.findByText("Post"));
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete" }));
     await waitFor(() => expect(items().some((i) => i.title === "Post")).toBe(false));
     expect(deps()).toHaveLength(0);

@@ -93,10 +93,15 @@ describe("Item page", () => {
       </AddSheetProvider>,
     );
     expect(await screen.findByRole("heading", { name: "Steps" })).toBeInTheDocument();
-    const stats = screen.getByRole("region", { name: "Stats" });
-    expect(within(stats).getByText("2 days")).toBeInTheDocument(); // current streak
-    expect(within(stats).getByText("75%")).toBeInTheDocument(); // 3 of 4 past days
-    expect(screen.getByRole("img", { name: "Steps, last 7 days" })).toBeInTheDocument();
+    const summary = within(screen.getByRole("region", { name: "Summary" }));
+    expect(summary.getByText("2 days")).toBeInTheDocument(); // current streak
+    expect(summary.getByText("Streak · best 2")).toBeInTheDocument();
+    // This week as seven day circles; today is marked.
+    const week = within(screen.getByRole("region", { name: "History" }));
+    expect(week.getAllByRole("img", { name: /^\w+day \d+ \w+: / })).toHaveLength(7);
+    expect(week.getByRole("img", { name: /: today$/ })).toBeInTheDocument();
+    // The month view is the calendar.
+    fireEvent.click(screen.getByRole("tab", { name: "Month" }));
     const history = screen.getByRole("region", { name: "History" });
     const cell = (d: string) => history.querySelector(`[aria-label^="${new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`))}"]`);
     // The month on screen holds today; earlier days may be in the previous month.
@@ -121,7 +126,7 @@ describe("Item page", () => {
     );
     fireEvent.click(await screen.findByRole("button", { name: "Archive" }));
     expect(await screen.findByText("Archived — not scheduled.")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Stats" })).getByText("Best").nextSibling).toHaveTextContent("1");
+    expect(within(screen.getByRole("region", { name: "Summary" })).getByText("Streak · best 1")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     await waitFor(() => expect(screen.queryByText("Archived — not scheduled.")).not.toBeInTheDocument());
   });

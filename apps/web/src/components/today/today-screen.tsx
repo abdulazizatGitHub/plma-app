@@ -13,21 +13,22 @@ import {
   type DayEntry,
   type DayPrayerTimes,
 } from "@life/shared";
-import { AlertTriangle, Calendar as CalendarIcon, CalendarClock, ChevronRight, CircleCheck, ListTodo, Plus } from "lucide-react";
+import { Calendar as CalendarIcon, CalendarClock, ChevronRight, History, Hourglass, MoreHorizontal, Plus, Telescope } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button, Calendar, Sheet, addDays } from "@/components/kit";
+import { useRouter } from "next/navigation";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Calendar, PopoverMenu, PopoverMenuItem, Sheet, addDays } from "@/components/kit";
 import { Tour } from "@/components/onboarding/tour";
 import { useAddSheet } from "@/components/providers/add-sheet-provider";
-import { dayLabel, longDate, shortDate } from "@/lib/v2/dates";
+import { dayLabel, shortDate } from "@/lib/v2/dates";
+import { categoryIcon } from "@/lib/v2/category-style";
 import { useActions, useCategories, useDay, useUserSettings, useOverdue, usePending, usePrayerTimes } from "@/lib/v2/use-day";
 import { useNow } from "@/lib/v2/use-now";
 import { useToday } from "@/lib/v2/use-today";
 import { GettingStarted } from "@/components/onboarding/getting-started";
-import { HabitRow, ListCard } from "./habit-row";
+import { ItemCard } from "./item-card";
 import { IshaCarryOver, PrayerGroup } from "./prayer-group";
 import { RowActionsMenu, type RowMenuTarget } from "./row-actions-menu";
-import { TodaySummary } from "./today-summary";
 
 /** Timed tasks first, by time; then the rest in their saved order (lists without prayer times). */
 const byTime = (a: DayEntry, b: DayEntry) => {
@@ -44,31 +45,42 @@ const byWindow = (times: DayPrayerTimes | null) => (a: DayEntry, b: DayEntry) =>
   return ka - kb || a.item.sortOrder - b.item.sortOrder;
 };
 
-/** "3/7": done of required in a list (a routine counts its steps; skipped and optional items don't count). */
-function listCount(list: DayEntry[]): string {
-  let required = 0;
-  let done = 0;
-  for (const u of list.flatMap((e) => e.children ?? [e])) {
-    const s = entryState(u);
-    if (s === "not_today" || u.item.isOptional) continue;
-    required += 1;
-    if (s === "done") done += 1;
-  }
-  return required ? `${done}/${required}` : "";
+/** "Wed, 25 Nov". */
+const SHORT_DAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" });
+const dateLine = (iso: string) => SHORT_DAY.format(new Date(`${iso}T12:00:00`)).replace(/^(\w+) /, "$1, ");
+
+/** A filter pill: All, or one category with its icon. */
+function FilterChip({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`transition-token flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[14px] font-medium whitespace-nowrap ${
+        active ? "bg-primary-strong text-on-primary-strong" : "bg-surface text-ink shadow-(--shadow-card) hover:bg-track in-data-[mode=dark]:border in-data-[mode=dark]:border-border"
+      }`}
+    >
+      {icon}
+      {children}
+    </button>
+  );
 }
 
 /**
- * v2 Home, simplified (owner mockup, 2026-11-25 — users found the old Today too
- * complex): the day's title with a calendar, one summary ring, the prayer card,
- * and one card per list (My Habits, Tasks). Rows stay where they are when ticked.
- * Other days open from the calendar; Overdue appears only when something is.
+ * v2 Home (owner mockup, 2026-11-26): "Today" with the date and a calendar, a
+ * small progress box, category filters, the prayer card, then one card per
+ * item. Tapping an item opens its page; its circle ticks it. Overdue and
+ * Pending show only when they have something.
  */
 export function TodayScreen() {
   // Computed on the client: a prerendered page would freeze the build date.
   const today = useToday();
+  const router = useRouter();
   const [date, setDate] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<RowMenuTarget>(null);
   const [picking, setPicking] = useState(false);
+  const [filter, setFilter] = useState<string | null>(null);
+  const [moreAt, setMoreAt] = useState<HTMLElement | null>(null);
   const { openAdd, setDefaultDate, registerShowDay } = useAddSheet();
   const run = useActions();
 
@@ -97,6 +109,7 @@ export function TodayScreen() {
     // The "View" button on the add confirmation jumps here.
     registerShowDay((d) => {
       setDate(d);
+      setFilter(null);
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
     return () => registerShowDay(null);
@@ -128,75 +141,141 @@ export function TodayScreen() {
     .format(windowEnd(date, settings.timezone, settings.dayEndHour))
     .replace(":00", "");
   const prayerBlocks = entries.filter((e) => e.children && isPrayerGroup(e.item));
-  // In the day's order; skipped and moved rows go to the end of their list.
+  // In the day's order; skipped and moved rows go to the end.
   const rows = entries
     .filter((e) => !(e.children && isPrayerGroup(e.item)))
     .sort(byWindow(times))
     .sort((a, b) => Number(entryState(a) === "not_today") - Number(entryState(b) === "not_today"));
-  const isTask = (e: DayEntry) => e.item.schedule.kind === "once" || Boolean(e.plan);
-  const habits = rows.filter((e) => !isTask(e));
-  const tasks = rows.filter(isTask);
-  const nothing = ready && rows.length === 0 && prayerBlocks.length === 0;
   const categoryOf = (e: DayEntry) => (e.item.categoryId ? byId.get(e.item.categoryId) : undefined);
-  const onMenu = (date?: string) => (entry: DayEntry, anchor: HTMLElement) => setMenuFor({ entry, anchor, date });
+  // Filters: the categories that have something on this day, in their saved order.
+  const present = new Set([...rows, ...prayerBlocks].map((e) => e.item.categoryId).filter(Boolean));
+  const chips = categories.filter((c) => present.has(c.id));
+  const active = filter && chips.some((c) => c.id === filter) ? filter : null;
+  const matches = (e: DayEntry) => !active || e.item.categoryId === active;
+  const shown = rows.filter(matches);
+  const prayersShown = prayerBlocks.filter(matches);
+  const nothing = ready && rows.length === 0 && prayerBlocks.length === 0;
+  const onMenu = (own?: string) => (entry: DayEntry, anchor: HTMLElement) => setMenuFor({ entry, anchor, date: own });
   const goTo = (d: string) => {
     setDate(d);
+    setFilter(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const { done, required, pct } = progress;
+  const note =
+    access === "late"
+      ? { icon: <Hourglass />, text: `Still open — you can fix this day until ${fixUntil}. Changes now are marked late.` }
+      : access === "history"
+        ? { icon: <History />, text: "This day is closed and its progress is final. Unfinished tasks can still be moved to today." }
+        : access === "planned"
+          ? { icon: <Telescope />, text: "Planning ahead: add, skip or move things here. You can tick them when the day comes." }
+          : null;
 
   return (
     <div className="space-y-4">
-      <header className="flex items-start justify-between gap-3 pt-1">
+      <header className="flex items-center justify-between gap-3 pt-1">
         <div className="min-w-0">
-          <h1 className="text-[26px] leading-tight font-semibold text-ink">{dayLabel(date, today)}</h1>
-          <p className="text-[14px] text-ink-2">{longDate(date)}</p>
-          {!isToday ? (
-            <button type="button" onClick={() => goTo(today)} className="mt-1.5 min-h-8 rounded-full bg-track px-3 text-[12.5px] font-medium text-ink hover:bg-border">
-              Back to today
+          <h1 className="text-[28px] leading-tight font-semibold text-ink">{dayLabel(date, today)}</h1>
+          <p className="flex items-center gap-1 text-[15px] text-ink-2">
+            {dateLine(date)}
+            <button
+              type="button"
+              onClick={() => setPicking(true)}
+              aria-label="Pick a day"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+            >
+              <CalendarIcon className="h-4.5 w-4.5" strokeWidth={1.75} aria-hidden />
             </button>
-          ) : null}
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setPicking(true)}
-          aria-label="Pick a day"
-          className="-mr-1.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-track"
+        <section
+          data-tour="ring"
+          aria-label="Day summary"
+          className="card w-[44%] max-w-52 shrink-0 px-4 py-3.5"
         >
-          <CalendarIcon className="h-6 w-6" strokeWidth={1.75} aria-hidden />
-        </button>
+          <p className="text-[19px] leading-tight font-semibold text-ink tabular-nums">{access === "planned" ? `${required} planned` : `${done} / ${required}`}</p>
+          <div role="img" aria-label={`${pct}% of the day done`} data-value={access === "planned" ? 0 : pct} className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-track">
+            <div className="h-full rounded-full bg-primary transition-[width] duration-(--duration-slow) ease-(--ease-standard)" style={{ width: `${access === "planned" ? 0 : pct}%` }} />
+          </div>
+        </section>
       </header>
 
-      <div data-tour="ring">
-        <TodaySummary access={access} progress={progress} fixUntil={access === "late" ? fixUntil : undefined} />
-      </div>
+      {!isToday ? (
+        <button type="button" onClick={() => goTo(today)} className="min-h-9 rounded-full bg-track px-3.5 text-[13px] font-medium text-ink hover:bg-border">
+          Back to today
+        </button>
+      ) : null}
+      {note ? (
+        <p role="note" className="flex items-start gap-2 rounded-xl bg-track px-3 py-2.5 text-[13px] text-ink">
+          <span className="mt-0.5 text-ink-2 [&>svg]:h-4 [&>svg]:w-4" aria-hidden>
+            {note.icon}
+          </span>
+          <span>{note.text}</span>
+        </p>
+      ) : null}
+
+      {chips.length > 1 ? (
+        <div role="group" aria-label="Show a category" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1 md:-mx-6 md:px-6">
+          <FilterChip active={!active} onClick={() => setFilter(null)}>
+            All
+          </FilterChip>
+          {chips.map((c) => (
+            <FilterChip key={c.id} active={active === c.id} onClick={() => setFilter(active === c.id ? null : c.id)} icon={createElement(categoryIcon(c), { className: "h-4.5 w-4.5", strokeWidth: 1.75, "aria-hidden": true })}>
+              {c.name}
+            </FilterChip>
+          ))}
+          <button
+            type="button"
+            aria-label="All categories"
+            aria-haspopup="menu"
+            onClick={(e) => setMoreAt(e.currentTarget)}
+            className="flex min-h-10 w-12 shrink-0 items-center justify-center rounded-full bg-surface text-ink shadow-(--shadow-card) hover:bg-track in-data-[mode=dark]:border in-data-[mode=dark]:border-border"
+          >
+            <MoreHorizontal className="h-5 w-5" aria-hidden />
+          </button>
+          {moreAt ? (
+            <PopoverMenu anchor={moreAt} onClose={() => setMoreAt(null)} label="Show a category">
+              <PopoverMenuItem label="All" onClick={() => (setFilter(null), setMoreAt(null))} />
+              {chips.map((c) => (
+                <PopoverMenuItem key={c.id} icon={createElement(categoryIcon(c))} label={c.name} onClick={() => (setFilter(c.id), setMoreAt(null))} />
+              ))}
+            </PopoverMenu>
+          ) : null}
+        </div>
+      ) : null}
 
       {isToday ? <GettingStarted rings={rings} /> : null}
 
-      {overdue.length ? (
-        <ListCard title="Overdue" icon={<AlertTriangle />} tone="todo" count={String(overdue.length)}>
-          {overdue.map((e) => {
-            const was = e.item.schedule.kind === "once" ? (e.item.schedule.date ?? date) : date;
-            return (
-              <HabitRow
-                key={e.key}
-                entry={e}
-                date={was}
-                category={categoryOf(e)}
-                dueLabel={`Was due ${shortDate(was)}`}
-                onMenu={onMenu(was)}
-                aside={
-                  <button
-                    type="button"
-                    onClick={() => void run((ctx) => moveTo(e, was, today, ctx))}
-                    className="-mr-1.5 min-h-9 rounded-full px-2.5 text-[13px] font-medium whitespace-nowrap text-link hover:bg-track"
-                  >
-                    Move to today
-                  </button>
-                }
-              />
-            );
-          })}
-        </ListCard>
+      {overdue.length && !active ? (
+        <section aria-label="Overdue" className="space-y-2">
+          <h2 className="px-1 text-[15px] font-semibold text-ink">
+            Overdue <span className="font-normal text-ink-2">· {overdue.length}</span>
+          </h2>
+          <ul className="space-y-2.5">
+            {overdue.map((e) => {
+              const was = e.item.schedule.kind === "once" ? (e.item.schedule.date ?? date) : date;
+              return (
+                <ItemCard
+                  key={e.key}
+                  entry={e}
+                  date={was}
+                  category={categoryOf(e)}
+                  dueLabel={`Was due ${shortDate(was)}`}
+                  onMenu={onMenu(was)}
+                  aside={
+                    <button
+                      type="button"
+                      onClick={() => void run((ctx) => moveTo(e, was, today, ctx))}
+                      className="-mr-1 min-h-9 shrink-0 rounded-full bg-track px-3 text-[13px] font-medium whitespace-nowrap text-ink hover:bg-border"
+                    >
+                      Move to today
+                    </button>
+                  }
+                />
+              );
+            })}
+          </ul>
+        </section>
       ) : null}
 
       {(() => {
@@ -205,8 +284,8 @@ export function TodayScreen() {
         const isha = block?.children ? carryOverIsha(block.children, yesterday, today, now, yesterdayTimes) : null;
         return isha ? <IshaCarryOver entry={isha} date={yesterday} times={yesterdayTimes} /> : null;
       })()}
-      {prayerBlocks.map((g) => (
-        <PrayerGroup key={g.key} entry={g} date={date} />
+      {prayersShown.map((g) => (
+        <PrayerGroup key={g.key} entry={g} date={date} onOpen={() => router.push(`/items/view?id=${g.item.id}`)} />
       ))}
 
       {nothing ? (
@@ -229,29 +308,22 @@ export function TodayScreen() {
         </div>
       ) : null}
 
-      <div data-tour={habits.length || tasks.length ? "list" : undefined} className="space-y-4">
-        {habits.length ? (
-          <ListCard title="My Habits" icon={<CircleCheck />} count={listCount(habits)}>
-            {habits.map((e) => (
-              <HabitRow key={`${date}|${e.key}`} entry={e} date={date} category={categoryOf(e)} onMenu={onMenu()} />
-            ))}
-          </ListCard>
-        ) : null}
-        {tasks.length ? (
-          <ListCard title="Tasks" icon={<ListTodo />} count={listCount(tasks)}>
-            {tasks.map((e) => (
-              <HabitRow key={`${date}|${e.key}`} entry={e} date={date} category={categoryOf(e)} onMenu={onMenu()} />
-            ))}
-          </ListCard>
-        ) : null}
-      </div>
+      {shown.length ? (
+        <ul data-tour="list" aria-label="Items" className="space-y-2.5">
+          {shown.map((e) => (
+            <ItemCard key={`${date}|${e.key}`} entry={e} date={date} category={categoryOf(e)} onMenu={onMenu()} />
+          ))}
+        </ul>
+      ) : active && !prayersShown.length ? (
+        <p className="card px-4 py-3 text-[13.5px] text-ink-2">Nothing in {byId.get(active)?.name ?? "this category"} on this day.</p>
+      ) : null}
 
-      {pending.length ? (
-        <Link href="/pending" className="card flex min-h-12 items-center gap-2.5 px-3.5 text-[14px] text-ink">
-          <CalendarClock className="h-4.5 w-4.5 text-ink-2" aria-hidden />
+      {pending.length && !active ? (
+        <Link href="/pending" className="card flex min-h-13 items-center gap-3 px-4 text-[15px] text-ink">
+          <CalendarClock className="h-5 w-5 text-ink-2" aria-hidden />
           <span className="flex-1">Pending — no date yet</span>
-          <span className="text-[13px] text-ink-2">{pending.length}</span>
-          <ChevronRight className="h-4 w-4 text-ink-2" aria-hidden />
+          <span className="text-[13.5px] text-ink-2">{pending.length}</span>
+          <ChevronRight className="h-4.5 w-4.5 text-ink-2" aria-hidden />
         </Link>
       ) : null}
 

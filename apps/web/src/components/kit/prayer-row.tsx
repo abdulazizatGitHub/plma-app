@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, MoreHorizontal } from "lucide-react";
+import { Check, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useRef, type ReactNode } from "react";
 import type { RingSegment } from "./ring";
 
@@ -10,7 +10,7 @@ export type PrayerChip = {
   key: string;
   label: string;
   status: PrayerChipStatus;
-  /** Local time, e.g. "1:15 PM". */
+  /** Local time, e.g. "1:15 PM" (read out; the chip itself stays short). */
   time?: string;
   /** It's this prayer's time now. */
   now?: boolean;
@@ -21,12 +21,12 @@ export type PrayerChip = {
   pending?: "upcoming" | "unmarked";
 };
 
-/** Prayed = the theme's filled accent with a tick (owner mockup, 2026-11-25); qada and missed keep their status colours. */
+/** Prayed = the theme's filled accent with a tick (owner mockup, 2026-11-26); qada and missed keep their status colours. */
 const CHIP_STYLE: Record<PrayerChipStatus, string> = {
   done: "bg-primary-strong text-on-primary-strong border-transparent",
   qada: "bg-progress text-on-fill border-transparent",
   missed: "bg-surface text-ink border-todo",
-  open: "bg-track text-ink border-transparent",
+  open: "bg-surface text-ink border-border",
 };
 
 const STATUS_WORD: Record<PrayerChipStatus, string> = {
@@ -37,7 +37,7 @@ const STATUS_WORD: Record<PrayerChipStatus, string> = {
 };
 
 const PENDING_STYLE = {
-  upcoming: "bg-track text-ink-2 border-transparent",
+  upcoming: "bg-surface text-ink-2 border-border",
   unmarked: "bg-surface text-ink border-dashed border-ink-2",
 } as const;
 
@@ -45,27 +45,29 @@ const LONG_PRESS_MS = 500;
 
 type PrayerRowProps = {
   title?: string;
-  /** Under the title, e.g. "Asr now · until 6:02 PM". */
+  /** Under the title; defaults to "1 of 5 completed". */
   subtitle?: ReactNode;
-  /** The header's icon tile (a mosque on Today). */
+  /** The header's icon tile (a mosque). */
   icon?: ReactNode;
   prayers: PrayerChip[];
   /** One tap: open ↔ prayed. Any prayer, any order. */
   onToggle?: (key: string, anchor: HTMLElement) => void;
   /** Long-press (or right-click) a chip: Prayed late / Missed / Clear for that prayer. */
   onChipMore?: (key: string, anchor: HTMLElement) => void;
-  /** The visible ⋯: all prayers' actions for the day. */
+  /** The chevron: opens the prayers' page (Today). */
+  onOpen?: () => void;
+  /** The visible ⋯: all prayers' actions for the day (on the prayers' page). */
   onMore?: (anchor: HTMLElement) => void;
   /** Extra line at the bottom (e.g. "Times are for Karachi · Set location"). */
   footer?: ReactNode;
 };
 
 /**
- * The daily prayer card (owner mockup, 2026-11-25): an icon tile, the title and
- * "1/5", then one equal-width chip per prayer with its time. A prayed chip is
- * filled with a tick; the prayer whose time it is now gets a ring.
+ * The daily prayer card (owner mockup, 2026-11-26): a softly tinted card with
+ * the mosque tile, "1 of 5 completed" and a chevron, then one pill per prayer.
+ * A prayed pill is filled with a tick; the prayer whose time it is gets a ring.
  */
-export function PrayerRow({ title = "Daily prayers", subtitle, icon, prayers, onToggle, onChipMore, onMore, footer }: PrayerRowProps) {
+export function PrayerRow({ title = "Daily prayers", subtitle, icon, prayers, onToggle, onChipMore, onOpen, onMore, footer }: PrayerRowProps) {
   const prayed = prayers.filter((p) => p.status === "done" || p.status === "qada").length;
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
@@ -73,41 +75,58 @@ export function PrayerRow({ title = "Daily prayers", subtitle, icon, prayers, on
     if (timer.current) clearTimeout(timer.current);
     timer.current = null;
   };
-  return (
-    <section data-tour="prayers" className="card p-3.5" aria-label={title}>
-      <div className="mb-3 flex items-center gap-3">
-        {icon ? (
-          <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-strong [&>svg]:h-5 [&>svg]:w-5">
-            {icon}
-          </span>
-        ) : null}
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[16px] font-semibold text-ink">{title}</h2>
-          {subtitle ? <p className="truncate text-[12px] text-ink-2">{subtitle}</p> : null}
-        </div>
-        <span role="img" aria-label={`${prayed} of ${prayers.length} prayers prayed`} className="text-[16px] font-semibold text-link tabular-nums">
-          {prayed}/{prayers.length}
+  const head = (
+    <>
+      {icon ? (
+        <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary-strong [&>svg]:h-6 [&>svg]:w-6">
+          {icon}
         </span>
+      ) : null}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[17px] font-semibold text-ink">{title}</span>
+        <span role="img" aria-label={`${prayed} of ${prayers.length} prayers prayed`} className="block truncate text-[13.5px] text-ink-2">
+          {subtitle ?? `${prayed} of ${prayers.length} completed`}
+        </span>
+      </span>
+    </>
+  );
+  return (
+    <section
+      data-tour="prayers"
+      aria-label={title}
+      className="rounded-(--radius-card) p-3.5 shadow-(--shadow-card) in-data-[mode=dark]:border in-data-[mode=dark]:border-border"
+      style={{ background: "color-mix(in srgb, var(--primary) 9%, var(--surface))" }}
+    >
+      <div className="mb-3 flex items-center gap-1">
+        {onOpen ? (
+          <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3.5 text-left">
+            {head}
+            <ChevronRight className="h-5 w-5 shrink-0 text-ink-2" aria-hidden />
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-center gap-3.5">{head}</div>
+        )}
         {onMore ? (
           <button
             type="button"
             onClick={(e) => onMore(e.currentTarget)}
             aria-label={`More actions for ${title}`}
-            className="-my-1 -mr-1.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
+            className="-my-1 -mr-1.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-2 hover:bg-track hover:text-ink"
           >
-            <MoreHorizontal className="h-4.5 w-4.5" aria-hidden />
+            <MoreHorizontal className="h-5 w-5" aria-hidden />
           </button>
         ) : null}
       </div>
-      <ul className="grid grid-cols-[repeat(auto-fit,minmax(3.5rem,1fr))] gap-1">
+      <ul className="no-scrollbar -mx-3.5 flex gap-2 overflow-x-auto px-3.5 py-1">
         {prayers.map((p) => {
           const marked = p.status === "done" || p.status === "qada";
           return (
-            <li key={p.key} className="min-w-0">
+            <li key={p.key} className="shrink-0">
               <button
                 type="button"
                 aria-pressed={marked}
                 aria-label={`${p.label}, ${p.pending === "upcoming" ? "upcoming" : p.pending === "unmarked" ? "time passed, not marked" : STATUS_WORD[p.status]}${p.time ? `, ${p.time}` : ""}${p.now ? ", now" : ""}`}
+                title={p.time}
                 onPointerDown={(e) => {
                   if (!onChipMore) return;
                   const el = e.currentTarget;
@@ -134,24 +153,18 @@ export function PrayerRow({ title = "Daily prayers", subtitle, icon, prayers, on
                   }
                   onToggle?.(p.key, e.currentTarget);
                 }}
-                className={`transition-token press-pop relative flex min-h-13 w-full flex-col items-center justify-center rounded-xl border-[1.5px] px-0.5 py-1.5 leading-tight select-none ${
+                className={`transition-token press-pop flex min-h-10 items-center gap-1.5 rounded-full border-[1.5px] px-4 text-[14px] font-medium whitespace-nowrap select-none ${
                   p.status === "open" && p.pending ? PENDING_STYLE[p.pending] : CHIP_STYLE[p.status]
                 } ${p.now ? "ring-2 ring-primary-strong ring-offset-2 ring-offset-surface" : ""}`}
               >
-                <span className="max-w-full truncate text-[12px] font-medium">{p.label}</span>
-                {p.time ? <span className="mt-0.5 max-w-full truncate text-[11px] tabular-nums opacity-85">{p.time}</span> : null}
-                {marked ? (
-                  // A corner badge, so "Maghrib ✓" never has to fit on a phone-width chip.
-                  <span aria-hidden className="absolute -top-1.5 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-strong text-on-primary-strong ring-2 ring-surface">
-                    <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
-                  </span>
-                ) : null}
+                {marked ? <Check className="h-4 w-4" strokeWidth={2.75} aria-hidden /> : null}
+                {p.label}
               </button>
             </li>
           );
         })}
       </ul>
-      {footer ? <div className="mt-3 border-t border-border pt-2">{footer}</div> : null}
+      {footer ? <div className="mt-2.5 border-t border-border pt-2">{footer}</div> : null}
     </section>
   );
 }

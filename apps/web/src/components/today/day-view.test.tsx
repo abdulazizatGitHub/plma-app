@@ -53,7 +53,7 @@ describe("Prayer anchors and the Day view", () => {
     );
     expect(await screen.findByText(/^After Isha · \d/)).toBeInTheDocument();
     // The list follows the day: walk (7:30) before Mulk (after Isha), untimed last.
-    const habits = within(screen.getByRole("region", { name: "My Habits" }));
+    const habits = within(screen.getByRole("list", { name: "Items" }));
     const titles = habits.getAllByText(/^(Morning walk|Surah Mulk|Read)$/).map((el) => el.textContent);
     expect(titles).toEqual(["Morning walk", "Surah Mulk", "Read"]);
   });

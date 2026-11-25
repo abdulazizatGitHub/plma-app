@@ -966,3 +966,28 @@ Use this template for each decision:
   - The tour now has 6 steps.
   - The help guide is updated (regenerate `USER_GUIDE.md` with `npm run docs:guide -w web`).
 - **Related:** `components/today/today-screen.tsx`, `habit-row.tsx`, `today-summary.tsx`, `kit/prayer-row.tsx`, `layout/app-header.tsx`.
+
+### 2026-11-26 — Today as cards; Progress and item pages in one look
+
+- **Context:** the owner sent two more mockups: a card-based home and a clean Progress page. They asked for the item page in the same style. UI only.
+- **Decision:**
+  - **Today:**
+    - "Today" with the date and a calendar button; a small "4 / 16" box with a bar.
+    - **Category pills** (All, then each area with something that day, then ⋯ for the full list).
+    - The **prayer card** (tinted, "1 of 5 completed", a chevron to the prayers' page, pill chips).
+    - **One card per item:** a pastel category tile, the title, the amount underneath, and a **round check** that fills as progress is made.
+  - **Tapping an item opens its page.** The circle ticks it. Long-press or right-click opens the quick menu; the item page has the visible ⋯.
+  - **Top bar:** logo, bell and the user's initials, which open Profile.
+  - **Progress:**
+    - Title and subtitle, with **Week / Month / Year** pills.
+    - A big "Overall" ring with Habits done, Missed and Perfect days.
+    - **This week** as day circles; Month is the calendar; Year is twelve month rings.
+    - **By category** bars with "View details"; a **Focus** card for the weakest areas.
+    - Prayers, rewards and the leaderboard follow. The leaderboard is week and month only, as the server keeps them that way.
+  - **Item page:** icon and title, Today's control, then the same Week / Month / Year summary (done, missed, streak), days, log and notes.
+  - **Year** is computed on the device from stored days; no server change.
+- **Not done:** the mockup's sprout illustration needs an image asset.
+- **Consequences:**
+  - Amounts are logged on the item's page, not on Today.
+  - Prayer times aren't printed on Today's chips. They're read out by screen readers, and the prayers' page shows what's now and next.
+- **Related:** `components/today/item-card.tsx`, `components/history/period-ui.tsx`, `app/(main)/progress/page.tsx`, `app/(main)/items/view/page.tsx`, `kit/prayer-row.tsx`.

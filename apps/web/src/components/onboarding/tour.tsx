@@ -12,7 +12,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: "ring",
     title: "Your day at a glance",
-    body: "The ring fills as you finish things. Skipped or moved items don't count against you. Rings for prayer, commitments and balance are on Progress.",
+    body: "How much of today is done. Skipped or moved items don't count against you. Your weeks, months and years are on Progress.",
   },
   {
     target: "prayers",
@@ -22,7 +22,7 @@ export const TOUR_STEPS: TourStep[] = [
   {
     target: "list",
     title: "Mark things done",
-    body: "Tap the box to finish an item. Tap an amount like “0 / 8 glasses” for − and +. Tap the item itself to skip it, move it, set a reminder or see its history.",
+    body: "Tap the circle to finish an item. Tap the item itself to log an amount, skip or move it, set a reminder, or see its week, month and year.",
   },
   { target: "add", title: "Add anything", body: "+ adds a task for today or any day. “More options” makes habits, counts, checklists and routines." },
   { target: "nav:/categories", title: "Your habits", body: "See your habits by area, organise them, and add more interests any time." },
