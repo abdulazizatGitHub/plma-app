@@ -57,8 +57,9 @@ export const HELP: HelpSection[] = [
         id: "marking",
         q: "Marking things done",
         a: [
-          "Tap the box to finish an item. For counts and minutes, tap the amount on the right (like **0 / 8 glasses**) for **−** and **+**, or tap the number to type it. Tap **steps** on a checklist or routine to tick them one by one.",
-          "Tap the item itself to skip it, move it to another day, set a reminder, snap it to friends once done, edit it or see its history. A finished item stays in its place, crossed out.",
+          "Tap the **circle** on the right to finish an item; for counts and minutes it fills to the goal. The circle fills as you go.",
+          "Tap the **item** to open its page: log an amount with **−** and **+**, tick checklist or routine steps, and use **⋯** to skip it, move it, set a reminder or snap it. The page also shows its week, month and year. A finished item stays in its place, crossed out.",
+          "The pills above the list (**All**, **Spiritual**, **Physical**…) show one area at a time.",
         ],
       },
       {

@@ -1,30 +1,43 @@
 "use client";
 
 import { prayerInsights, type CategoryTally, type SummaryDay } from "@life/shared";
-import { ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Flame, Sparkles, Trophy, TriangleAlert } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronRight, Circle, Target } from "lucide-react";
 import Link from "next/link";
 import { createElement, useMemo, useState } from "react";
-import { Heatmap, Ring, RingStack, SegmentedTabs, type HeatMark } from "@/components/kit";
+import { Heatmap, type HeatMark } from "@/components/kit";
 import { categoryIcon, categoryTone } from "@/lib/v2/category-style";
 import { SyncingNote } from "@/components/history/syncing-note";
+import {
+  MONTH_SHORT,
+  PeriodCard,
+  PeriodTabs,
+  STAT_TONE,
+  Stat,
+  SummaryCard,
+  WEEKDAY_SHORT,
+  WeekDots,
+  YearMonths,
+  periodRange,
+  periodTitle,
+  rangeLabel,
+  stepPeriod,
+  utc,
+  type DayDot,
+  type MonthDot,
+  type Period,
+} from "@/components/history/period-ui";
+import { MosqueIcon } from "@/components/today/mosque-icon";
 import { RewardsPanel } from "@/components/rewards/rewards-panel";
 import { Leaderboard } from "@/components/social/leaderboard";
 import { ShareSheet, type ShareWhat } from "@/components/social/share-sheet";
 import { useRewards } from "@/lib/v2/use-rewards";
-import { useDayStreak, useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
-import { usePeriodRings, usePeriodSummary, type PeriodKind } from "@/lib/v2/use-history";
-import { ringsLabel, stackFromRings } from "@/lib/v2/rings";
+import { useHasSynced, useItemOccurrences, usePrayerSet, useUserSettings } from "@/lib/v2/use-day";
+import { useRangeSummary } from "@/lib/v2/use-history";
 import { useToday } from "@/lib/v2/use-today";
 
 const KEY = "life_progress_period";
-const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "narrow", timeZone: "UTC" });
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
-const MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const utc = (d: string) => new Date(`${d}T12:00:00Z`);
-const shift = (d: string, days: number) => {
-  const [y, m, dd] = d.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, dd + days)).toISOString().slice(0, 10);
-};
+const LONG_DAY = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "short", timeZone: "UTC" });
+const LONG_MONTH = new Intl.DateTimeFormat("en-GB", { month: "long", timeZone: "UTC" });
 
 function heatMark(d: SummaryDay): HeatMark {
   if (d.kind === "future") return "future";
@@ -33,7 +46,34 @@ function heatMark(d: SummaryDay): HeatMark {
   return d.pct === 100 ? "done" : d.pct > 0 ? "partial" : "missed";
 }
 
-/** Week and month history (HIS-02/03, owner 2026-10-13): averages of finished days, trend, categories, insights. */
+/** A day of the period as a circle: ticked when complete, a ring when part-done, red outline when missed. */
+function dayDot(d: SummaryDay, todaySoFar: number | null): DayDot {
+  const label = WEEKDAY_SHORT.format(utc(d.date));
+  const when = LONG_DAY.format(utc(d.date));
+  if (d.kind === "future") return { date: d.date, label, state: "future", aria: `${when}: to come` };
+  if (d.kind === "today") {
+    const pct = todaySoFar ?? d.pct ?? 0;
+    return { date: d.date, label, state: pct === 100 ? "done" : "today", pct, href: `/?date=${d.date}`, aria: `${when}, today: ${pct}% so far` };
+  }
+  if (d.pct === null) return { date: d.date, label, state: "free", href: `/?date=${d.date}`, aria: `${when}: free day` };
+  const state = d.pct === 100 ? "done" : d.pct > 0 ? "partial" : "missed";
+  return { date: d.date, label, state, pct: d.pct, href: `/?date=${d.date}`, aria: `${when}: ${d.pct}%` };
+}
+
+/** Each month's average of finished days (Year view). */
+function monthDots(days: SummaryDay[], today: string): MonthDot[] {
+  const year = days[0]?.date.slice(0, 4) ?? today.slice(0, 4);
+  return Array.from({ length: 12 }, (_, i) => {
+    const month = `${year}-${String(i + 1).padStart(2, "0")}`;
+    const counted = days.filter((d) => d.date.startsWith(month) && d.kind === "past" && d.pct !== null);
+    const pct = counted.length ? Math.round(counted.reduce((n, d) => n + (d.pct ?? 0), 0) / counted.length) : null;
+    const future = `${month}-01` > today;
+    const name = LONG_MONTH.format(utc(`${month}-15`));
+    return { month, label: MONTH_SHORT.format(utc(`${month}-15`)).slice(0, 1), pct, future, aria: future ? `${name}: to come` : pct === null ? `${name}: no finished days` : `${name}: ${pct}% average` };
+  });
+}
+
+/** Week / month / year history (HIS-02/03), laid out from the owner's mockup (2026-11-26). */
 export default function ProgressPage() {
   const today = useToday();
   if (!today) return <div className="skeleton h-40" aria-busy="true" aria-label="Loading progress" />;
@@ -41,15 +81,16 @@ export default function ProgressPage() {
 }
 
 function Progress({ today }: { today: string }) {
-  const [kind, setKindState] = useState<PeriodKind>(() => {
+  const [kind, setKindState] = useState<Period>(() => {
     try {
-      return localStorage.getItem(KEY) === "month" ? "month" : "week";
+      const saved = localStorage.getItem(KEY);
+      return saved === "month" || saved === "year" ? saved : "week";
     } catch {
       return "week";
     }
   });
   const [anchor, setAnchor] = useState(today);
-  const setKind = (k: PeriodKind) => {
+  const setKind = (k: Period) => {
     setKindState(k);
     setAnchor(today);
     try {
@@ -58,223 +99,138 @@ function Progress({ today }: { today: string }) {
       /* fine */
     }
   };
-  const { current, previous } = usePeriodSummary(kind, anchor, today);
-  const dayRings = usePeriodRings(current.from, current.to, today);
-  const streak = useDayStreak(today);
+  const { weekStart } = useUserSettings();
+  const range = periodRange(kind, anchor, weekStart);
+  const summary = useRangeSummary(range.from, range.to, today);
   const synced = useHasSynced();
   const { rewards } = useRewards();
   const [share, setShare] = useState<ShareWhat | null>(null);
-  const { weekStart } = useUserSettings();
-  const isCurrent = current.from <= today && today <= current.to;
-  const label = isCurrent
-    ? kind === "week"
-      ? "This week"
-      : "This month"
-    : kind === "week"
-      ? `${DAY.format(utc(current.from))} – ${DAY.format(utc(current.to))}`
-      : MONTH.format(utc(current.from));
-  const step = (dir: -1 | 1) => setAnchor(kind === "week" ? shift(current.from, dir * 7) : shift(dir < 0 ? current.from : current.to, dir));
-  const trend = current.average !== null && previous.average !== null ? current.average - previous.average : null;
+  const isCurrent = range.from <= today && today <= range.to;
+  const next = kind === "week" ? "next week" : kind === "month" ? "next month" : "next year";
 
   // Prayers in the same period.
   const { group, prayers } = usePrayerSet();
   const prayerIds = useMemo(() => prayers.map((p) => p.id), [prayers]);
-  const pTo = current.to < today ? current.to : today;
-  const prayerOccs = useItemOccurrences(prayerIds, current.from, pTo);
-  const prayerStats = useMemo(() => (group && current.from <= today ? prayerInsights(group, prayers, prayerOccs, current.from, pTo, today) : null), [group, prayers, prayerOccs, current.from, pTo, today]);
+  const pTo = range.to < today ? range.to : today;
+  const prayerOccs = useItemOccurrences(prayerIds, range.from, pTo);
+  const prayerStats = useMemo(() => (group && range.from <= today ? prayerInsights(group, prayers, prayerOccs, range.from, pTo, today) : null), [group, prayers, prayerOccs, range.from, pTo, today]);
+
+  // What to work on: the areas that need attention, else the lowest under 80%.
+  const focus = (summary.needsAttention.length ? summary.needsAttention : summary.byCategory.filter((c) => c.rate !== null && c.rate < 80).sort((a, b) => (a.rate ?? 0) - (b.rate ?? 0))).slice(0, 2);
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold text-ink">Progress</h1>
-        <p className="text-[13px] text-ink-2">Finished days only — skipped and moved items don&apos;t count against you.</p>
+      <header className="flex items-start justify-between gap-3 pt-1">
+        <div className="min-w-0">
+          <h1 className="text-[26px] leading-tight font-semibold text-ink">Progress</h1>
+          <p className="text-[13.5px] text-ink-2">Track your habits and growth</p>
+        </div>
+        <PeriodTabs value={kind} onChange={setKind} />
       </header>
       {synced === false ? <SyncingNote /> : null}
-      <RewardsPanel rewards={rewards} onShareStreak={() => setShare({ kind: "streak", label: "your streak" })} />
-      <ShareSheet what={share} onClose={() => setShare(null)} />
 
-      <SegmentedTabs<PeriodKind>
-        label="Period"
-        value={kind}
-        onChange={setKind}
-        options={[
-          { value: "week", label: "Week" },
-          { value: "month", label: "Month" },
-        ]}
-      />
-      <div className="flex items-center justify-between">
-        <button type="button" aria-label={`Previous ${kind}`} onClick={() => step(-1)} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track">
-          <ChevronLeft className="h-5 w-5" aria-hidden />
-        </button>
-        <span className="text-[15px] font-semibold text-ink" aria-live="polite">
-          {label}
-        </span>
-        <button type="button" aria-label={`Next ${kind}`} disabled={isCurrent} onClick={() => step(1)} className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 hover:bg-track disabled:opacity-30">
-          <ChevronRight className="h-5 w-5" aria-hidden />
-        </button>
-      </div>
+      <SummaryCard pct={summary.average} label={summary.average === null ? "No finished days yet" : `${summary.average}% overall`}>
+        <Stat icon={<Check strokeWidth={2.5} />} tone={STAT_TONE.done} value={summary.totals.done} label="Habits done" />
+        <Stat icon={<Circle />} tone={STAT_TONE.missed} value={summary.totals.missed} label="Missed" />
+        <Stat icon={<CalendarDays />} tone={STAT_TONE.lilac} value={summary.perfectDays} label="Perfect days" />
+      </SummaryCard>
 
-      {/* Summary */}
-      <section aria-label="Summary" className="card flex items-center gap-4 p-4">
-        <Ring label={current.average === null ? "No finished days yet" : `${current.average}% average`} value={current.average ?? 0} size={96} stroke={9}>
-          <span className="flex flex-col items-center leading-tight">
-            <span className="text-[22px] font-semibold text-ink">{current.average === null ? "—" : `${current.average}%`}</span>
-            <span className="text-[11px] text-ink-2">average</span>
-          </span>
-        </Ring>
-        <div className="min-w-0 flex-1 space-y-1 text-[13px] text-ink">
-          {trend !== null ? (
-            <p className={`flex items-center gap-1 font-medium ${trend >= 0 ? "text-done" : "text-todo"}`}>
-              {trend >= 0 ? <ArrowUpRight className="h-4 w-4" aria-hidden /> : <ArrowDownRight className="h-4 w-4" aria-hidden />}
-              {trend === 0 ? "Same as" : `${Math.abs(trend)} pts ${trend > 0 ? "up on" : "down on"}`} last {kind}
-            </p>
-          ) : null}
-          <p>
-            <b>{current.perfectDays}</b> perfect day{current.perfectDays === 1 ? "" : "s"} of {current.countedDays}
-          </p>
-          {current.todaySoFar !== null ? <p className="text-ink-2">Today so far: {current.todaySoFar}%</p> : null}
-          {/* One streak on screen: once rewards arrive, theirs (with freezes) is the streak. */}
-          {rewards ? null : (
-            <p className="flex items-center gap-3 text-[12px] text-ink-2">
-              <span className="flex items-center gap-1">
-                <Flame className="h-3.5 w-3.5 text-progress" aria-hidden /> {streak.current} in a row
-              </span>
-              <span className="flex items-center gap-1">
-                <Trophy className="h-3.5 w-3.5" aria-hidden /> best {streak.best}
-              </span>
-            </p>
-          )}
-        </div>
-      </section>
-
-      {/* Days */}
-      <section aria-label="Days" className="card p-4">
+      <PeriodCard label="Days" title={periodTitle(kind, isCurrent)} range={rangeLabel(kind, range)} onStep={(dir) => setAnchor(stepPeriod(kind, range, dir))} canNext={!isCurrent && range.to < today}
+        unit={kind}>
         {kind === "week" ? (
-          <ul className="flex items-end justify-between gap-1">
-            {current.days.map((d) => {
-              const r = dayRings.get(d.date);
-              return (
-                <li key={d.date} className="flex-1">
-                  <Link
-                    href={d.kind === "future" ? "#" : `/?date=${d.date}`}
-                    aria-label={`${DAY.format(utc(d.date))}: ${d.kind === "future" ? "to come" : r ? `${d.pct === null ? "free day" : `${d.pct}%`} · ${ringsLabel(r)}` : "free day"}`}
-                    aria-disabled={d.kind === "future" || undefined}
-                    className={`flex flex-col items-center gap-1 rounded-xl py-1.5 ${d.kind === "future" ? "pointer-events-none opacity-50" : "hover:bg-track"}`}
-                  >
-                    <RingStack
-                      label=""
-                      rings={r ? stackFromRings(r) : stackFromRings({ prayer: null, commit: null, balance: null })}
-                      size={38}
-                      stroke={4}
-                      gap={1.5}
-                    >
-                      {r?.complete ? <span className="h-1.5 w-1.5 rounded-full bg-done" /> : null}
-                    </RingStack>
-                    <span className={`text-[12px] ${d.kind === "today" ? "font-semibold text-ink" : "text-ink-2"}`}>{WEEKDAY.format(utc(d.date))}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <WeekDots days={summary.days.map((d) => dayDot(d, summary.todaySoFar))} />
+        ) : kind === "month" ? (
+          <Heatmap month={range.from.slice(0, 7)} marks={new Map(summary.days.map((d) => [d.date, heatMark(d)]))} onMonth={(m) => setAnchor(`${m}-01`)} maxMonth={today.slice(0, 7)} weekStart={weekStart} />
         ) : (
-          <Heatmap
-            month={current.from.slice(0, 7)}
-            marks={new Map(current.days.map((d) => [d.date, heatMark(d)]))}
-            onMonth={(m) => setAnchor(`${m}-01`)}
-            maxMonth={today.slice(0, 7)}
-            weekStart={weekStart}
-          />
+          <YearMonths months={monthDots(summary.days, today)} />
         )}
-        <p className="mt-2 text-[11.5px] text-ink-2">{kind === "week" ? "Tap a day to open it. " : ""}Days with nothing due are free days and don&apos;t count.</p>
-      </section>
+      </PeriodCard>
 
-      <Leaderboard period={kind} />
-
-      {/* Insights */}
-      {current.doingWell.length || current.needsAttention.length ? (
-        <section aria-label="Insights" className="card space-y-2 p-4">
-          {current.doingWell.map((c) => (
-            <p key={`w-${c.category?.id ?? "none"}`} className="flex items-start gap-2 text-[13px] text-ink">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-done" aria-hidden />
-              <span>
-                Doing well: <b>{c.category?.name ?? "Other"}</b> {c.rate}%{c.best ? ` — ${c.best.item.title} leads` : ""}.
-              </span>
-            </p>
-          ))}
-          {current.needsAttention.map((c) => (
-            <p key={`n-${c.category?.id ?? "none"}`} className="flex items-start gap-2 text-[13px] text-ink">
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-progress" aria-hidden />
-              <span>
-                Needs attention: <b>{c.category?.name ?? "Other"}</b> {c.rate}%{c.mostMissed ? ` — most missed: ${c.mostMissed.item.title}` : ""}.
-              </span>
-            </p>
-          ))}
-        </section>
-      ) : null}
-
-      {/* By category */}
-      {current.byCategory.length ? (
-        <section aria-label="By category">
-          <h2 className="mb-1.5 px-1 text-[12px] font-semibold tracking-wide text-ink-2 uppercase">By category</h2>
-          <ul className="card divide-y divide-border overflow-hidden">
-            {current.byCategory.map((c) => (
+      {summary.byCategory.length ? (
+        <section aria-label="By category" className="card p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="text-[17px] font-semibold text-ink">By category</h2>
+            <Link href="/categories" className="inline-flex min-h-8 items-center gap-1 text-[13.5px] font-medium text-link">
+              View details <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </div>
+          <ul>
+            {summary.byCategory.map((c) => (
               <CategoryRow key={c.category?.id ?? "none"} c={c} />
             ))}
           </ul>
         </section>
       ) : null}
 
-      {group && prayerStats && prayerStats.totals.due ? (
-        <Link href={`/items/view?id=${group.id}`} aria-label={`Prayers, ${label.toLowerCase()}`} className="card flex items-center gap-4 p-4">
-          <Ring
-            label={`${prayerStats.totals.prayed + prayerStats.totals.qada} of ${prayerStats.totals.due} prayers`}
-            value={((prayerStats.totals.prayed + prayerStats.totals.qada) / prayerStats.totals.due) * 100}
-            size={52}
-            stroke={6}
-          />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-medium text-ink">Prayers</span>
-            <span className="block text-[12.5px] text-ink-2">
-              {prayerStats.totals.prayed} on time · {prayerStats.totals.qada} qada · {prayerStats.totals.missed} missed
-              {prayerStats.mostMissed ? ` · most missed: ${prayerStats.mostMissed.title}` : ""}
-            </span>
+      {focus.length ? (
+        <Link
+          href={focus[0].category ? `/categories/view?id=${focus[0].category.id}` : "/categories"}
+          className="flex items-center gap-3.5 rounded-(--radius-card) p-4 shadow-(--shadow-card) in-data-[mode=dark]:border in-data-[mode=dark]:border-border"
+          style={{ background: "color-mix(in srgb, var(--primary) 12%, var(--surface))" }}
+        >
+          <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/20 text-primary-strong">
+            <Target className="h-6 w-6" />
           </span>
-          <ChevronRight className="h-4 w-4 text-ink-2" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[16px] font-semibold text-ink">Focus for {next}</span>
+            <span className="block text-[13.5px] text-ink-2">Improve {focus.map((c) => c.category?.name ?? "Other").join(" and ")} habits.</span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-ink-2" aria-hidden />
         </Link>
       ) : null}
+
+      {group && prayerStats && prayerStats.totals.due ? (
+        <Link href={`/items/view?id=${group.id}`} aria-label={`Prayers, ${periodTitle(kind, isCurrent).toLowerCase()}`} className="card flex items-center gap-3.5 p-4">
+          <span aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary-strong">
+            <MosqueIcon className="h-6 w-6" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-[16px] font-semibold text-ink">Prayers</span>
+              <span className="text-[14px] font-semibold text-ink tabular-nums">{Math.round(((prayerStats.totals.prayed + prayerStats.totals.qada) / prayerStats.totals.due) * 100)}%</span>
+            </span>
+            <span className="block text-[12.5px] text-ink-2">
+              {prayerStats.totals.prayed} on time · {prayerStats.totals.qada} qada · {prayerStats.totals.missed} missed
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-ink-2" aria-hidden />
+        </Link>
+      ) : null}
+
+      <RewardsPanel rewards={rewards} onShareStreak={() => setShare({ kind: "streak", label: "your streak" })} />
+      {/* Leaderboards are kept by week and month on the server. */}
+      {kind !== "year" ? <Leaderboard period={kind} /> : null}
+      <ShareSheet what={share} onClose={() => setShare(null)} />
     </div>
   );
 }
 
+/** Pastel tile, name, a bar and the % (mockup). Tapping opens the category. */
 function CategoryRow({ c }: { c: CategoryTally }) {
-  const counts = [`${c.done} done`, `${c.missed} missed`, c.skipped ? `${c.skipped} skipped` : null, c.moved ? `${c.moved} moved` : null, c.late ? `${c.late} late` : null]
-    .filter(Boolean)
-    .join(" · ");
   const body = (
     <>
-      <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: c.category ? `var(--cat-${categoryTone(c.category)})` : "var(--track)" }}>
-        {createElement(categoryIcon(c.category ?? undefined), { className: "h-4 w-4 text-ink" })}
+      <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: c.category ? `var(--cat-${categoryTone(c.category)})` : "var(--track)" }}>
+        {createElement(categoryIcon(c.category ?? undefined), { className: "h-5 w-5 text-ink", strokeWidth: 1.75 })}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[14px] font-medium text-ink">{c.category?.name ?? "Other"}</span>
-          <span className="text-[13px] font-semibold text-ink tabular-nums">{c.rate === null ? "—" : `${c.rate}%`}</span>
-        </span>
-        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-track">
-          <span className={`block h-full rounded-full ${(c.rate ?? 0) >= 80 ? "bg-done" : (c.rate ?? 0) <= 50 ? "bg-progress" : "bg-primary"}`} style={{ width: `${c.rate ?? 0}%` }} />
-        </span>
-        <span className="mt-1 block text-[12px] text-ink-2">{counts}</span>
+      <span className="w-24 shrink-0 truncate text-[15px] font-medium text-ink">{c.category?.name ?? "Other"}</span>
+      <span aria-hidden className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-track">
+        <span className="block h-full rounded-full bg-primary" style={{ width: `${c.rate ?? 0}%` }} />
       </span>
+      <span className="w-11 shrink-0 text-right text-[14.5px] font-semibold text-ink tabular-nums">{c.rate === null ? "—" : `${c.rate}%`}</span>
     </>
   );
+  const row = "relative flex items-center gap-3 py-2.5 after:absolute after:right-0 after:bottom-0 after:left-13 after:h-px after:bg-border";
+  const aria = `${c.category?.name ?? "Other"}: ${c.rate === null ? "nothing due" : `${c.rate}%`} · ${c.done} done, ${c.missed} missed`;
   return (
-    <li>
+    <li className="last:[&>*]:after:hidden">
       {c.category ? (
-        <Link href={`/categories/view?id=${c.category.id}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-track/50">
+        <Link href={`/categories/view?id=${c.category.id}`} aria-label={aria} className={row}>
           {body}
         </Link>
       ) : (
-        <div className="flex items-center gap-3 px-3 py-2.5">{body}</div>
+        <div role="img" aria-label={aria} className={row}>
+          {body}
+        </div>
       )}
     </li>
   );

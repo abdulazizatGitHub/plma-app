@@ -128,9 +128,12 @@ function chipTime(
 export function PrayerGroup({
   entry,
   date,
+  onOpen,
 }: {
   entry: DayEntry;
   date: string;
+  /** Today's card: the chevron opens the prayers' page (which has the ⋯ for marking them all). */
+  onOpen?: () => void;
 }) {
   const run = useActions();
   const router = useRouter();
@@ -170,8 +173,10 @@ export function PrayerGroup({
     );
     return child ? label(child) : (NAMES[key] ?? key);
   };
+  // Today's card says "1 of 5 completed" (mockup); the prayers' page says what's now or next.
   let subtitle: string | undefined;
-  if (headline && times) {
+  if (access === "live" && onOpen) subtitle = undefined;
+  else if (headline && times) {
     const text = headlineText(headline, now, times, nameOf);
     subtitle = text.current?.split(" · best before")[0] ?? (text.next ? `Next: ${text.next}` : undefined);
   } else if (access === "late")
@@ -247,7 +252,8 @@ export function PrayerGroup({
           const child = children.find((c) => c.key === key);
           if (child && markable) setChipMenu({ child, anchor });
         }}
-        onMore={() => setAllOpen(true)}
+        onOpen={onOpen}
+        onMore={onOpen ? undefined : () => setAllOpen(true)}
         footer={
           unmarked || needsLocation ? (
             <div className="space-y-1.5">
