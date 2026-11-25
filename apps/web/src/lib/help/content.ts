@@ -17,7 +17,7 @@ export const HELP: HelpSection[] = [
         id: "what",
         q: "What is Mehrmah?",
         a: [
-          "Mehrmah keeps your prayers, habits, tasks and plans in one calm place. Each day is summed up by three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.",
+          "Mehrmah keeps your prayers, habits, tasks and plans in one calm place. Today shows one ring for the day; Progress breaks it into three rings — Prayer, Commitments and Balance — and friends and groups help you keep going.",
           "Everything works offline. Changes are saved on your device first and sync when you're back online.",
         ],
       },
@@ -57,15 +57,15 @@ export const HELP: HelpSection[] = [
         id: "marking",
         q: "Marking things done",
         a: [
-          "Tap the circle to finish an item. For counts and minutes, use **−** and **+** (or tap the number to type it). A checklist expands so you can tick each step.",
-          "**⋯** on any row lets you skip it, move it to another day, set a reminder, snap it to friends once done, or edit it.",
+          "Tap the box to finish an item. For counts and minutes, tap the amount on the right (like **0 / 8 glasses**) for **−** and **+**, or tap the number to type it. Tap **steps** on a checklist or routine to tick them one by one.",
+          "Tap the item itself to skip it, move it to another day, set a reminder, snap it to friends once done, edit it or see its history. A finished item stays in its place, crossed out.",
         ],
       },
       {
         id: "days",
         q: "Yesterday, other days and fixing mistakes",
         a: [
-          "Use the week strip to open any day. You can fix a day for **two days after it ends** — changes then are marked late. After that the day is closed and final, except recovering a missed prayer as qada.",
+          "Tap the **calendar** next to the date to open any day. You can fix a day for **two days after it ends** — changes then are marked late. After that the day is closed and final, except recovering a missed prayer as qada.",
           "Your day ends at midnight unless you choose later in **Profile → My day ends at** (up to 4 AM, for night owls).",
         ],
       },
@@ -87,7 +87,7 @@ export const HELP: HelpSection[] = [
       {
         id: "categories",
         q: "Categories",
-        a: ["Categories group your items (Physical, Mental, Spiritual…). Open **Categories** to rename, recolour, reorder or archive them, or **Add from starter packs** for new ones with suggestions."],
+        a: ["Categories group your items (Physical, Mental, Spiritual…). Open **Habits** (bottom bar) to rename, recolour, reorder or archive them, or **Add from starter packs** for new ones with suggestions."],
       },
       {
         id: "priority",
@@ -195,13 +195,13 @@ export const HELP: HelpSection[] = [
       {
         id: "add",
         q: "Adding friends",
-        a: ["Open **Friends** (from Profile or the account menu). Share your invite link — anyone who opens it can sign up and becomes your friend — or add someone by their **@username**."],
+        a: ["Open **Friends** (from Profile). Share your invite link — anyone who opens it can sign up and becomes your friend — or add someone by their **@username**."],
       },
       {
         id: "snaps",
         q: "Snaps and friend streaks",
         a: [
-          "Tap the send icon at the top or **Snap** on Today's card to send today's rings to friends. You can also snap an item you've finished, a streak or an award.",
+          "Open **Notifications** (the bell at the top) and tap **Snap** to send your day to friends. You can also snap an item you've finished, a streak or an award.",
           "Snaps open once, full-screen, with **Kudos** and **Snap back**. Snap each other every day to keep a streak together (the flame and its number) — an hourglass means it ends within a few hours.",
         ],
       },
@@ -252,7 +252,7 @@ export const HELP: HelpSection[] = [
         id: "offline",
         q: "Using Mehrmah offline",
         a: [
-          "Everything you do is saved on this device first, so Today works without a connection. The cloud icon at the top shows sync; tap it to sync now. Friends, snaps and leaderboards need a connection and show their last copy offline.",
+          "Everything you do is saved on this device first, so Today works without a connection. **Profile → Sync** shows whether everything is saved; tap **Sync now** to sync straight away. Friends, snaps and leaderboards need a connection and show their last copy offline.",
           "Signing out removes your data from this device; it stays safe in your account.",
         ],
       },

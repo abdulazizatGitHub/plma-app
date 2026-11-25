@@ -174,7 +174,7 @@ type EntryRowProps = {
 const openChecklists = new Set<string>();
 
 /** The checklist's steps as small tick rows (TRK-04). */
-function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry; date: string; onInteract?: () => void; readOnly?: boolean }) {
+export function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry; date: string; onInteract?: () => void; readOnly?: boolean }) {
   const run = useActions();
   const t = entry.item.tracking;
   if (t.kind !== "checklist") return null;
@@ -209,15 +209,16 @@ function ChecklistSteps({ entry, date, onInteract, readOnly }: { entry: DayEntry
 }
 
 /**
- * One row on Today: quantity and duration items get the stepper, checklists
- * expand to their steps, everything else is the one-tap check. Tapping the
- * title opens the item.
+ * What every Today row needs to know and do, shared by the classic row and the
+ * simple list row: whether the day can be logged, a plan step's lock, the
+ * one-tap tick, its prayer-anchored window ("After Isha · 7:23 PM–5:13 AM")
+ * and whether it's happening now.
  */
-export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp, compact = false, hideCategory = false }: EntryRowProps) {
+export function useEntryRow(entry: DayEntry, date: string, opts: { access?: DayAccess; onInteract?: () => void } = {}) {
   // Daily items belong to their day: today is live, yesterday can still be logged,
   // older days are history, future days are for planning (see day-access.ts).
   const today = useToday() ?? date;
-  const access = accessProp ?? dayAccess(date, today);
+  const access = opts.access ?? dayAccess(date, today);
   const readOnly = !canLog(access);
   const run = useActions();
   const router = useRouter();
@@ -225,15 +226,6 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
   const lock = useStepLock(entry.item, Boolean(entry.plan));
   const lockedBy = lock.locked && entryState(entry) !== "done" ? lock.waitingFor.map((w) => w.title).join(", ") : undefined;
   const planComplete = usePlanIsComplete();
-  const openKey = `${date}|${entry.key}`;
-  const [showSteps, setShowStepsState] = useState(() => openChecklists.has(openKey));
-  const setShowSteps = (update: (v: boolean) => boolean) =>
-    setShowStepsState((v) => {
-      const next = update(v);
-      if (next) openChecklists.add(openKey);
-      else openChecklists.delete(openKey);
-      return next;
-    });
   // A plan step opens its plan; anything else its own page.
   const open = () => router.push(entry.plan ? `/plans/view?id=${entry.plan.id}` : `/items/view?id=${entry.item.id}`);
   const tick = () => {
@@ -243,14 +235,11 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
       return;
     }
     const plan = entry.plan;
-    onInteract?.();
+    opts.onInteract?.();
     void run((ctx) => toggleDone(entry, date, ctx)).then(() => {
       if (plan && entryState(entry) !== "done" && planComplete(plan.id, date)) notify({ message: `Plan complete — ${plan.title}` });
     });
   };
-  const state = entryState(entry);
-  const visible: ItemState = state === "not_today" ? "todo" : state;
-  const t = entry.item.tracking;
   const times = usePrayerTimes(date);
   const now = useNow();
   const { prayers } = usePrayerSet();
@@ -267,6 +256,28 @@ export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, 
     } else when = range;
   }
   const highlight = Boolean(slot && inWindow(now, slot) && entryState(entry) !== "done" && times?.date === localDateOf(now));
+  return { access, readOnly, lockedBy, open, tick, when, highlight, run };
+}
+
+/**
+ * One row on Today: quantity and duration items get the stepper, checklists
+ * expand to their steps, everything else is the one-tap check. Tapping the
+ * title opens the item.
+ */
+export function EntryRow({ entry, date, category, onMore, dueLabel, onInteract, movingTo, access: accessProp, compact = false, hideCategory = false }: EntryRowProps) {
+  const { access, readOnly, lockedBy, open, tick, when, highlight, run } = useEntryRow(entry, date, { access: accessProp, onInteract });
+  const openKey = `${date}|${entry.key}`;
+  const [showSteps, setShowStepsState] = useState(() => openChecklists.has(openKey));
+  const setShowSteps = (update: (v: boolean) => boolean) =>
+    setShowStepsState((v) => {
+      const next = update(v);
+      if (next) openChecklists.add(openKey);
+      else openChecklists.delete(openKey);
+      return next;
+    });
+  const state = entryState(entry);
+  const visible: ItemState = state === "not_today" ? "todo" : state;
+  const t = entry.item.tracking;
   const list = entryTags(entry, category, dueLabel, when, lockedBy);
   // Only an item's own reminder gets a tag; the priority's default would put a bell on every row.
   const everyday = useItemReminders(entry.item.id)[0];

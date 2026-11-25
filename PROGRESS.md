@@ -1,6 +1,6 @@
 # Progress tracker
 
-Last updated: **2026-11-07**
+Last updated: **2026-11-25**
 
 ## Overall
 
@@ -17,6 +17,7 @@ Last updated: **2026-11-07**
 | **v2 Phase 3** | **Built and verified.** Category create/edit/reorder/archive/delete, category detail, full item editor (task/habit/routine; tick, count, time, checklist; daily, some days, every N days, monthly, active range), routines, item page with streaks, 7-day bars and heatmap, starter packs and onboarding. Browser acceptance 16/16; offline 6/6. |
 | **v2 Phase 5** | **Built and verified.** Plans: presets (content collab, university course, blank), dated steps on Today, "waits for" locks, cadence warnings and suggestions, rules per plan or category, /plans and the plan page, category Plans section. Browser 10/10. |
 | **v2 Phase 7** | **Built and verified.** History and analytics: Progress week/month (average of finished days, trend, perfect days, streaks, insights, categories), item log, category last-7-days card. History can't be rewritten: target snapshots, day closing (missed rows), a server guard on past days, and a 2-day correction window marked late. Tests: 371; API integration 11/11; browser checks. |
+| **Simple Today (2026-11-25)** | **Built; unit-tested.** Owner mockup: one summary ring, prayer card, My Habits and Tasks cards with square checks; rows stay in place; calendar for other days; top bar = logo + Notifications bell; "Habits" tab. Tests 438 pass. **Waiting on:** a phone check on preprod (the local Supabase project no longer resolves, so Today couldn't be viewed signed-in locally). |
 | **Preprod (2026-11-07)** | **Deployed.** Web on Vercel (`mehrmah.vercel.app`, branch `preprod`); API on Render (`mehrmah-api.onrender.com`, kept awake by cron-job.org); Supabase project with Gmail SMTP and branded code emails. App renamed **Mehrmah**. Security update (Next 16.4.4, Fastify 5.12.8, Zod 4.6.7). End-to-end against the live API 34/34; smoke test in [DEPLOY_PREPROD.md](./docs/guides/DEPLOY_PREPROD.md). **Next:** phone checks (install, push on Android and iPhone, offline). |
 | **v2 Phase 9b** | **Built and verified.** Groups (roles, link and friend invites, up to 50), group goals (each or together; days, counts or minutes; week, month or dates) as linked items on members' Todays, group streak with check-ins, Groups board, group goal awards and +10 bonus, group podium. Tests 437; API 26/26 (all five suites 93/93); browser 8/8. |
 | **Snaps (9a+)** | **Built and verified.** Snapchat-style snaps (one-tap check-in, item done, any share), open-once viewer with Kudos and Snap back, friend streaks (🔥, ⌛ and a push), chat-style friends list, friend-streak awards. Tests 427; API 15/15; browser 10/10. |

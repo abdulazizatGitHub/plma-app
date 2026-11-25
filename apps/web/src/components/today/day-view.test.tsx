@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { Item } from "@life/shared";
 import initSqlJs, { type SqlJsStatic } from "sql.js";
 import type { ReactNode } from "react";
@@ -52,15 +52,9 @@ describe("Prayer anchors and the Day view", () => {
       </AddSheetProvider>,
     );
     expect(await screen.findByText(/^After Isha · \d/)).toBeInTheDocument();
-    // Status view sorts by time of day: walk (7:30) before Mulk (after Isha), untimed last.
-    const todo = within(screen.getByRole("region", { name: "To Do" }));
-    const titles = todo.getAllByText(/^(Morning walk|Surah Mulk|Read)$/).map((el) => el.textContent);
+    // The list follows the day: walk (7:30) before Mulk (after Isha), untimed last.
+    const habits = within(screen.getByRole("region", { name: "My Habits" }));
+    const titles = habits.getAllByText(/^(Morning walk|Surah Mulk|Read)$/).map((el) => el.textContent);
     expect(titles).toEqual(["Morning walk", "Surah Mulk", "Read"]);
-
-    fireEvent.click(screen.getByRole("tab", { name: "My day" }));
-    expect(within(screen.getByRole("region", { name: "Night" })).getByText("Surah Mulk")).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Other" })).getByText("Read")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /Morning|After Fajr/ })).toHaveTextContent("Morning walk");
-    expect(localStorage.getItem("life_today_view")).toBe("day");
   });
 });

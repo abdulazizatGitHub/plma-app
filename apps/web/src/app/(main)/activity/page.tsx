@@ -87,8 +87,8 @@ export default function ActivityPage() {
       </button>
       <header className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-ink">Snaps</h1>
-          <p className="text-[13px] text-ink-2">Snaps open once. Snap each other every day to keep your streaks going.</p>
+          <h1 className="text-2xl font-semibold text-ink">Notifications</h1>
+          <p className="text-[13px] text-ink-2">Snaps from friends (they open once), kudos and friend requests.</p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" onClick={() => setSnap({ kind: "day", label: "today's rings" })}>

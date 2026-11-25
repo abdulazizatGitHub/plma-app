@@ -8,7 +8,7 @@ import { useAddSheet } from "@/components/providers/add-sheet-provider";
 
 const ITEMS: [NavItem, NavItem, NavItem, NavItem] = [
   { href: "/", label: "Today", icon: Home },
-  { href: "/categories", label: "Categories", icon: LayoutGrid },
+  { href: "/categories", label: "Habits", icon: LayoutGrid },
   { href: "/progress", label: "Progress", icon: TrendingUp },
   { href: "/profile", label: "Profile", icon: User },
 ];
@@ -46,7 +46,7 @@ function SideNav({ active, onAdd }: { active: string; onAdd: () => void }) {
   );
 }
 
-/** Today · Categories · + · Progress · Profile (UI-02): bottom bar on phone/tablet, side rail on desktop. Pending counts as Today. */
+/** Today · Habits · + · Progress · Profile (UI-02): bottom bar on phone/tablet, side rail on desktop. Pending counts as Today. */
 export function AppNav() {
   const pathname = usePathname();
   const { openAdd } = useAddSheet();
