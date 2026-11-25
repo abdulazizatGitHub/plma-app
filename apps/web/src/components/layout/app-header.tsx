@@ -3,6 +3,8 @@
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { useAuth } from "@/components/providers/auth-provider";
+import { Avatar } from "@/components/social/avatar";
 import { useSocial } from "@/lib/v2/use-social";
 
 /** Notifications (snaps, kudos, friend requests) with an unread dot (Phase 9a). */
@@ -21,19 +23,34 @@ function NotificationsBell() {
   );
 }
 
+/** Your initials on your avatar colour; opens Profile (owner mockup, 2026-11-26). */
+function ProfileAvatar() {
+  const { me } = useSocial();
+  const { user } = useAuth();
+  const name = me?.displayName ?? user?.name ?? user?.email ?? null;
+  return (
+    <Link href="/profile" aria-label="Profile" className="rounded-full p-0.5 hover:bg-track">
+      <Avatar person={{ name: name ?? "", username: me?.username ?? null, avatarColor: me?.avatarColor ?? null }} size={40} />
+    </Link>
+  );
+}
+
 /**
- * Top bar (owner, 2026-11-25): the logo and the notifications bell — nothing
- * else. Theme, sync and sign-out live in Profile; snapping your day lives on
- * the notifications page. Pages keep their own H1.
+ * Top bar: the logo, the notifications bell and your avatar. Theme, sync and
+ * sign-out live in Profile; snapping your day lives on the notifications page.
+ * Pages keep their own H1.
  */
 export function AppHeader() {
   return (
     <header className="sticky top-0 z-40 bg-bg/90 pt-[env(safe-area-inset-top)] backdrop-blur">
-      <div className="mx-auto flex h-14 w-full max-w-xl items-center justify-between px-4 md:max-w-2xl lg:max-w-none lg:px-6">
+      <div className="mx-auto flex h-16 w-full max-w-xl items-center justify-between px-4 md:max-w-2xl lg:max-w-none lg:px-6">
         <Link href="/" className="flex items-center" aria-label="Mehrmah — go to Today">
           <BrandLogo />
         </Link>
-        <NotificationsBell />
+        <div className="flex items-center gap-1.5">
+          <NotificationsBell />
+          <ProfileAvatar />
+        </div>
       </div>
     </header>
   );

@@ -187,7 +187,7 @@ describe("Remind me… from a row's menu", () => {
     );
   };
   const open = async (title: string) => {
-    fireEvent.click(await screen.findByRole("button", { name: `More actions for ${title}` }));
+    fireEvent.contextMenu(await screen.findByText(title)); // right-click = long-press on the card
     fireEvent.click(screen.getByRole("menuitem", { name: "Remind me…" }));
     return within(await screen.findByRole("dialog"));
   };
@@ -233,7 +233,7 @@ describe("Remind me… from a row's menu", () => {
   it("Move to a date… opens chips and a calendar; one tap moves it", async () => {
     const run = item({ title: "Run" });
     todayScreen(run);
-    fireEvent.click(await screen.findByRole("button", { name: "More actions for Run" }));
+    fireEvent.contextMenu(await screen.findByText("Run"));
     fireEvent.click(screen.getByRole("menuitem", { name: "Move to a date…" }));
     const sheet = within(await screen.findByRole("dialog"));
     expect(sheet.getByRole("grid")).toBeInTheDocument();

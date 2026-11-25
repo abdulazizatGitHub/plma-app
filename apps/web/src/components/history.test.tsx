@@ -59,7 +59,7 @@ beforeEach(async () => {
 afterEach(() => vi.useRealTimers());
 
 describe("Progress", () => {
-  it("opens on this week, pages back, and shows the average, trend-free insights and categories", () => {
+  it("opens on this week, pages back, and shows the overall ring, stats, days, categories and a focus", () => {
     render(
       <AddSheetProvider>
         <ProgressPage />
@@ -67,18 +67,33 @@ describe("Progress", () => {
     );
     expect(screen.getByRole("tab", { name: "Week" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("This week")).toBeInTheDocument();
-    // Nothing finished yet this week: no average, today "so far".
+    // Nothing finished yet this week: no overall %.
     expect(screen.getByRole("img", { name: "No finished days yet" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next week" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
-    expect(screen.getByText("5 Oct – 11 Oct")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "43% average" })).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Insights" })).getByText(/Needs attention:/)).toHaveTextContent("Physical 43% — most missed: Steps");
-    const cats = within(screen.getByRole("region", { name: "By category" }));
-    expect(cats.getByText("3 done · 4 missed · 1 late")).toBeInTheDocument();
-    // Each finished day links to Today.
-    expect(screen.getByRole("link", { name: /^5 Oct: 100% · Prayer free · Commitments/ })).toHaveAttribute("href", "/?date=2026-10-05");
+    expect(screen.getByText("5 – 11 Oct")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "43% overall" })).toBeInTheDocument();
+    const summary = within(screen.getByRole("region", { name: "Summary" }));
+    expect(summary.getByText("Habits done").previousSibling).toHaveTextContent("3");
+    expect(summary.getByText("Missed").previousSibling).toHaveTextContent("4");
+    // Each finished day links to Today; a complete day is ticked.
+    expect(screen.getByRole("link", { name: "Monday 5 Oct: 100%" })).toHaveAttribute("href", "/?date=2026-10-05");
+    expect(screen.getByRole("link", { name: "Thursday 8 Oct: 0%" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^Physical: 43% · 3 done, 4 missed/ })).toHaveAttribute("href", `/categories/view?id=${physical.id}`);
+    expect(screen.getByRole("link", { name: /Focus for next week/ })).toHaveTextContent("Improve Physical habits.");
+  });
+
+  it("year view shows each month's average", () => {
+    render(
+      <AddSheetProvider>
+        <ProgressPage />
+      </AddSheetProvider>,
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Year" }));
+    expect(screen.getByText("This year")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /^October: \d+% average$/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "December: to come" })).toBeInTheDocument();
   });
 
   it("month view uses the calendar", () => {
@@ -127,6 +142,8 @@ describe("item log", () => {
         <ItemViewPage />
       </AddSheetProvider>,
     );
+    // The log follows the chosen period; this month holds last week.
+    fireEvent.click(screen.getByRole("tab", { name: "Month" }));
     const log = within(screen.getByRole("region", { name: "Log" }));
     const rows = log.getAllByRole("listitem").map((li) => li.textContent);
     expect(rows[0]).toMatch(/^Mon 12 Oct/); // today first

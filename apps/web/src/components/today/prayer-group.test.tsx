@@ -48,15 +48,30 @@ const today = () =>
     </AddSheetProvider>,
   );
 
+/** The prayer block as the prayers' own page shows it (headline and ⋯; no chevron). */
+const prayersPage = () => {
+  const date = todayLocalDate();
+  const entry = buildDay(store.query("items") as unknown as Item[], occs(), date).find((e) => e.children)!;
+  return render(
+    <AddSheetProvider>
+      <PrayerGroup entry={entry} date={date} />
+    </AddSheetProvider>,
+  );
+};
+
 describe("Prayer block on Today", () => {
   it("shows each prayer's time and what's next; approximate until a location is set", async () => {
-    today();
+    const { unmount } = today();
     const block = await screen.findByRole("region", { name: "Daily prayers" });
     // Time passed but not marked: neutral, never assumed qada or missed.
     expect(within(block).getByRole("button", { name: /^Fajr, time passed, not marked, \d{1,2}:\d{2} (AM|PM)/ })).toBeInTheDocument();
     expect(within(block).getByRole("button", { name: /^Isha, not marked, .*, now$/ })).toBeInTheDocument();
-    expect(within(block).getByText(/^Isha now · until \d{1,2}:\d{2} AM tomorrow$/)).toBeInTheDocument();
+    expect(within(block).getByText("0 of 5 completed")).toBeInTheDocument();
     expect(within(block).getByText("Times are approximate (Karachi).")).toBeInTheDocument();
+    unmount();
+    // The prayers' page says what's now.
+    prayersPage();
+    expect(await screen.findByText(/^Isha now · until \d{1,2}:\d{2} AM tomorrow$/)).toBeInTheDocument();
   });
 
   it("tapping a prayer whose time passed marks it on time (marked later); 'Prayed late?' switches it to qada", async () => {
@@ -100,8 +115,8 @@ describe("Prayer block on Today", () => {
     expect(within(block).getByRole("button", { name: /^Fajr, prayed late \(qada\)/ })).toBeInTheDocument();
   });
 
-  it("the ⋯ sheet sets every prayer explicitly (visible twin of hold)", async () => {
-    today();
+  it("the ⋯ sheet on the prayers' page sets every prayer explicitly (visible twin of hold)", async () => {
+    prayersPage();
     fireEvent.click(await screen.findByRole("button", { name: "More actions for Daily prayers" }));
     const sheet = screen.getByRole("dialog");
     fireEvent.click(within(within(sheet).getByRole("group", { name: "Isha status" })).getByRole("button", { name: "Missed" }));
