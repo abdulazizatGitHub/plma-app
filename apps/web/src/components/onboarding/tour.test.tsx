@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { AddSheetProvider } from "@/components/providers/add-sheet-provider";
 import { TodayScreen } from "@/components/today/today-screen";
-import { LocalStore } from "@/lib/v2/local-store";
+import { LocalStore, type StoredRow } from "@/lib/v2/local-store";
 import { TOUR_KEY } from "./onboarding-gate";
 
 const USER = "6f1c2b8e-3a4d-4c5e-9f60-718293a4b5c6";
@@ -41,22 +41,27 @@ const today = () =>
 describe("First-run tour", () => {
   it("walks through the steps once and is marked done", async () => {
     store.setMeta(TOUR_KEY, "pending");
+    const now = new Date().toISOString();
+    store.save("items", {
+      id: uid(), userId: USER, createdAt: now, updatedAt: now, deletedAt: null, categoryId: null, parentId: null, type: "habit", title: "Read",
+      notes: null, priority: "medium", isOptional: false, tracking: { v: 1, kind: "check" }, schedule: { v: 1, kind: "daily" }, meta: {},
+      groupGoalId: null, sortOrder: 0, archivedAt: null, sourceTemplateId: null, sourceTemplateVersion: null, adoptedAt: null,
+    } as unknown as StoredRow);
     const { unmount } = today();
     const tour = await screen.findByRole("dialog", { name: "App tour" });
-    expect(tour).toHaveTextContent("1 of 3"); // ring, tiles, list (the navs aren't rendered here)
-    expect(tour).toHaveTextContent("Your three rings");
+    expect(tour).toHaveTextContent("1 of 2"); // ring, list (no prayers here, and the navs aren't rendered)
+    expect(tour).toHaveTextContent("Your day at a glance");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    expect(tour).toHaveTextContent("To Do · In Progress · Done");
+    expect(tour).toHaveTextContent("Mark things done");
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(tour).toHaveTextContent("Your three rings");
-    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(tour).toHaveTextContent("Your day at a glance");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     fireEvent.click(screen.getByRole("button", { name: "Got it" }));
     expect(screen.queryByRole("dialog", { name: "App tour" })).not.toBeInTheDocument();
     expect(store.getMeta(TOUR_KEY)).toBe("done");
     unmount();
     today();
-    await screen.findByText(/Nothing planned/);
+    await screen.findByText("Read");
     expect(screen.queryByRole("dialog", { name: "App tour" })).not.toBeInTheDocument();
   });
 

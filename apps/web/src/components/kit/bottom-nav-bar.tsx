@@ -12,7 +12,7 @@ type BottomNavBarProps = {
   inline?: boolean;
 };
 
-/** White bar with a 56px center + (ref 2): Today · Categories · + · Progress · Profile. */
+/** White bar with a 56px center + (ref 2): Today · Habits · + · Progress · Profile. */
 export function BottomNavBar({ items, activeHref, onAdd, inline = false }: BottomNavBarProps) {
   const tab = ({ href, label, icon: Icon }: NavItem) => {
     const active = href === activeHref;
@@ -22,7 +22,7 @@ export function BottomNavBar({ items, activeHref, onAdd, inline = false }: Botto
           data-tour={`nav:${href}`}
           href={href}
           aria-current={active ? "page" : undefined}
-          className={`flex min-h-12 flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium ${
+          className={`flex min-h-12 flex-col items-center justify-center gap-0.5 text-[11.5px] font-medium ${
             active ? "text-link" : "text-ink-2 hover:text-ink"
           }`}
         >

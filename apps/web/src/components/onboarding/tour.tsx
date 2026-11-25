@@ -11,24 +11,22 @@ type TourStep = { target: string; title: string; body: string };
 export const TOUR_STEPS: TourStep[] = [
   {
     target: "ring",
-    title: "Your three rings",
-    body: "Prayer, Commitments and Balance fill as you go. Close every ring that applies for a complete day — that keeps your streak. Skipped or moved items don't count against you.",
+    title: "Your day at a glance",
+    body: "The ring fills as you finish things. Skipped or moved items don't count against you. Rings for prayer, commitments and balance are on Progress.",
   },
   {
     target: "prayers",
     title: "Your prayers",
     body: "Tap a prayer once you've prayed it — in any order. Hold one (or use ⋯) for prayed late (qada) or missed.",
   },
-  { target: "tiles", title: "To Do · In Progress · Done", body: "Tap a tile to see only those items. Tap it again to see everything." },
   {
     target: "list",
     title: "Mark things done",
-    body: "Tap the circle to finish an item and use − / + for counts. ⋯ skips it, moves it to another day or edits it. Tap a title to see its history.",
+    body: "Tap the box to finish an item. Tap an amount like “0 / 8 glasses” for − and +. Tap the item itself to skip it, move it, set a reminder or see its history.",
   },
   { target: "add", title: "Add anything", body: "+ adds a task for today or any day. “More options” makes habits, counts, checklists and routines." },
-  { target: "nav:/categories", title: "Your categories", body: "Organise, reorder or archive your areas, and add more interests any time." },
-  { target: "snap", title: "Snap your day", body: "Send today's rings to friends in one tap. Snap each other every day to keep a streak going together." },
-  { target: "activity", title: "Snaps and requests", body: "Snaps from friends open here — once. Friend requests and kudos show up here too." },
+  { target: "nav:/categories", title: "Your habits", body: "See your habits by area, organise them, and add more interests any time." },
+  { target: "activity", title: "Notifications", body: "Snaps from friends open here — once. Friend requests and kudos show up here too, and you can snap your day back." },
 ];
 
 const PAD = 6;
